@@ -81,7 +81,7 @@ def check(path):
         if s not in covered and s not in approved:
             out.append(("scope", f"{s} is in no beat: add a beat, or move it to Out of scope with 'Approved:'"))
     b = re.search(r"^\s*[-*]\s+Budget:(.*)$", sec.get("brief", ""), re.M)
-    nums = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", b.group(1))] if b else []
+    nums = [float(n) for n in re.findall(r"(?<![\d.])-?\d+(?:\.\d+)?", b.group(1))] if b else []
     if not nums or min(nums) <= 0:
         out.append(("structure", "Brief has no '- Budget: <seconds>' line with a positive number"))
     elif holds > max(nums) * 1.1:

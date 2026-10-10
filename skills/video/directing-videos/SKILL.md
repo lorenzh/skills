@@ -25,13 +25,16 @@ Every number this skill uses (length, hook, hold time, idle limit, formats, capt
 4. **Beats.** One row per idea: what is in frame, the action, the end state that proves it worked, the hold (Reading time), the text on screen. Beat 1 meets the Hook rule. Order wide before detail. A scope item you cannot show moves to Out of scope only with the requester's yes: ask, giving the reason and what showing it would cost.
    Done when `python3 <skill dir>/scripts/coverage.py plan.md` reports only `cut:` findings.
 
-5. **Hand off.** Give each recorder the plan and the beats it owns, one take per beat or short group, so a failed take is redone alone. Find recorders at run time, for example `driving-terminal-apps` (terminal) or `agent-browser` / Playwright (web). Hand assembly to a cutting skill (e.g. `cutting-videos`) and voice-over to a narration skill (e.g. `narrating-videos`); when none is installed, tell the requester which part has no owner and ask how to proceed. Tell every recorder that a beat it cannot record comes back as `MISSING: <reason>`.
+5. **Check the demo data.** Before the first take, run the reset and drive the demo to each beat's end state once. Compare the screen with the beat's end state and text on screen: every number, name and state the caption claims must be visible (a cost column at `$0.00`, a timeline where nothing ends, a caption naming a feature that never ran). Fix the data or the setup, not the caption; a take recorded on wrong data is redone whole. Under Shared state in plan.md, list the beats that show the same session state (the same totals, the same items), so they come from one take: a retake of one of them retakes the group.
+   Done when every beat has a dry-run frame that shows its end state, and Shared state lists every beat group or says `none`.
+
+6. **Hand off.** Give each recorder the plan and the beats it owns, one take per beat or short group, so a failed take is redone alone. Find recorders at run time, for example `driving-terminal-apps` (terminal) or `agent-browser` / Playwright (web). Hand assembly to an editing skill (e.g. `editing-videos`) and voice-over to a narration skill (e.g. `narrating-videos`); when none is installed, tell the requester which part has no owner and ask how to proceed. Tell every recorder that a beat it cannot record comes back as `MISSING: <reason>`.
    Done when every beat has an owner and the takes are back.
 
-6. **Review against the plan.** For each beat, find it in the delivered cut, extract a frame from that file at that time (e.g. `ffmpeg -ss 1:12 -i cut.mp4 -frames:v 1 frames/b7.png`; a recording's raw timestamps shift once pauses are cut), look at it, and fill the cut cell with `1:12 frames/b7.png` or `MISSING: <reason>`. A beat also fails when its frame shows text cut off at the edge or ending in `…`, a private name or path, text too small to read, or a still stretch longer than its hold plus the Idle limit.
+7. **Review against the plan.** For each beat, find it in the delivered cut, extract a frame from that file at that time (e.g. `ffmpeg -ss 1:12 -i cut.mp4 -frames:v 1 frames/b7.png`; a recording's raw timestamps shift once pauses are cut), look at it, and fill the cut cell with `1:12 frames/b7.png` or `MISSING: <reason>`. A beat also fails when its frame shows text cut off at the edge or ending in `…`, a private name or path, text too small to read, or a still stretch longer than its hold plus the Idle limit.
    Done when `python3 <skill dir>/scripts/coverage.py plan.md` exits 0, or each remaining finding is in the report.
 
-7. **Iterate or report.** Re-record only failed beats, then repeat step 6. Report: the file, its length and size, one line per beat with its timestamp, every `MISSING` beat with its reason, the decisions you need, and coverage.py's last output quoted.
+8. **Iterate or report.** Re-record only failed beats and the beats Shared state ties to them, then repeat step 7. Report: the file, its length and size, one line per beat with its timestamp, every `MISSING` beat with its reason, the decisions you need, and coverage.py's last output quoted.
    Done when the report lists every beat.
 
 ## Example: one beat row, reviewed
@@ -42,5 +45,5 @@ Every number this skill uses (length, hook, hold time, idle limit, formats, capt
 
 ## References
 
-- [references/numbers.md](references/numbers.md): Length, Hook, Reading time, Frame, Formats, Accessibility; at the end, numbers kept for the cutting and narration skills.
+- [references/numbers.md](references/numbers.md): Length, Hook, Reading time, Frame, Formats, Accessibility; at the end, numbers kept for the editing and narration skills.
 - `python3 <skill dir>/scripts/coverage.py --help` lists every check it makes; `bash <skill dir>/scripts/test.sh` tests it.

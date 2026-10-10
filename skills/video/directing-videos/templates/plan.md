@@ -29,6 +29,11 @@
 |---|---|---|---|---|---|---|---|
 | B1 | <S ids> | <full window / region / zoom target> | <keys, clicks, commands> | <what proves it worked> | <s> | <caption or toast text, or -> | - |
 
+## Shared state
+
+<!-- Beats that show the same session state (totals, item lists) and must come from one take. Format: `- B2, B5: <the state they share>`, or `- none`. -->
+- <beat ids>: <the state they share>
+
 ## Out of scope
 
 <!-- A scope item lands here only with the requester's yes. Format: `- S4: <reason>. Approved: <who, when>` -->

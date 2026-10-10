@@ -2,7 +2,7 @@
 
 Labels: [S] standard, study or canonical text; [P] practitioner consensus; [F] folk wisdom, single or vendor source. Defaults marked *tunable* are this skill's choice, not a source's.
 
-Contents: Length · Hook · Reading time · Frame · Formats · Accessibility · For cutting-videos · For narrating-videos · Sources
+Contents: Length · Hook · Reading time · Frame · Formats · Accessibility · For editing-videos · For narrating-videos · Sources
 
 ## Length
 
@@ -51,9 +51,9 @@ Contents: Length · Hook · Reading time · Frame · Formats · Accessibility ·
 - 2.3.1 At most 3 flashes per second (A).
 - 2.2.2 Autoplaying motion over 5 s beside other content needs a pause control (A): applies to looping GIFs in a README.
 
-## For cutting-videos
+## For editing-videos
 
-Not used by directing-videos; kept for the sibling cutting skill until it owns them.
+Not used by directing-videos; kept for the sibling editing skill until it owns them.
 - Murch's rule of six, in priority order: emotion 51, story 23, rhythm 10, eye-trace 7, 2D plane 5, 3D space 4; never trade a higher one for a lower one. [S]
 - Cut on action; J-cut and L-cut to carry narration across picture changes; jump cuts are fine to trim typing and waiting. [P]
 - Trim dead air; pauses only for reading time or to let a result land. [P]

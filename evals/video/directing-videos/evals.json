@@ -2,18 +2,20 @@
   "note": "Each prompt runs in a fresh session (claude -p, same model) in an empty dir holding the scenario's fixtures/<dir> files. Control: --disable-slash-commands (no skills). Grade only from the files the run writes.",
   "scenarios": [
     {
-      "id": "tour", "fixtures": "fixtures/tour",
+      "id": "tour",
+      "fixtures": "fixtures/tour",
       "prompt": "We made a demo video touring jotter (features.md has the full feature list). First, before you look at the cut: write plan.md, the shot plan you would have given the recorder for a tour of ALL features. Then review the final cut, which I only have as a frame text log (cut.txt): is it ready to publish on our docs site? Write review.md with your verdict.",
       "expected": [
         "plan.md maps every features.md item to a beat with a hold time and a runtime budget",
         "review.md verdict not ready; names features 7, 8, 11, 12 missing",
         "flags the private path and prompt (0:20, 2:00)",
-        "flags the 0:20 toast as cut off ('groc…') as a defect of its own",
+        "flags the 0:20 toast as cut off ('groc\u2026') as a defect of its own",
         "flags the idle stretch 1:40-1:55"
       ]
     },
     {
-      "id": "launch", "fixtures": "fixtures/launch",
+      "id": "launch",
+      "fixtures": "fixtures/launch",
       "prompt": "Write the script for a 60-second launch video for Tidy (product.md). Put it in script.md. Also tell me in script.md which file format(s) to export for where it is posted.",
       "expected": [
         "the product UI is on screen within the first 10 s (not a problem montage, then a logo)",
@@ -23,7 +25,8 @@
       ]
     },
     {
-      "id": "tutorial", "fixtures": "fixtures/tutorial",
+      "id": "tutorial",
+      "fixtures": "fixtures/tutorial",
       "prompt": "Last time this tutorial (outline.md) flopped. Plan the re-shoot: write plan.md with what we record and how, so the recording goes better this time.",
       "expected": [
         "split into parts of about 6 min or less (a series), not one long video",
@@ -34,17 +37,29 @@
       ]
     },
     {
-      "id": "handoff", "fixtures": "fixtures/handoff",
+      "id": "handoff",
+      "fixtures": "fixtures/handoff",
       "prompt": "The user asked for a video tour of ALL features of jotter (features.md). A recorder subagent just finished; its report is recorder-report.md and the cut's frame log is cut.txt. Write handover.md: what you tell the user now and what happens next.",
       "expected": [
         "does not present the cut as finished; lists the 4 skipped features with reasons",
         "treats the 'blemishes' as defects: private path/prompt and the cut-off toast",
         "asks the user to decide on any feature that stays out"
       ]
+    },
+    {
+      "id": "demo-data",
+      "fixtures": "fixtures/demo-data",
+      "prompt": "Plan a 30 s square video for X of our terminal dashboard (features.md): band with counts and cost, cost tab per agent, timeline tab, workflows. Write plan.md; the recorder starts right after you.",
+      "expected": [
+        "a pre-record check: the demo data is driven to each beat's end state before the first take, and every caption claim (non-zero cost per agent, an item that ends on the timeline, a workflow that actually ran) is confirmed on screen",
+        "plan.md names the beats that share session state (band total and cost tab; items and timeline) so a partial retake keeps them consistent"
+      ],
+      "evidence": "requester-reported: the first take was redone whole because the cost tab showed $0.00 for every agent (a cheap model ran them), the timeline showed no item ending, and a caption said 'workflow' though none ran"
     }
   ],
   "runs": {
-    "model": "claude-opus-5-5", "date": "2026-10-10",
+    "model": "claude-opus-5-5",
+    "date": "2026-10-10",
     "baseline_failures": {
       "tour": "plan has holds but review never flags the cut-off toast; only the private path",
       "launch": "product UI first at 0:14 (problem montage, then logo at 0:10)",
@@ -58,10 +73,14 @@
       "handoff": "FAIL cut-off toast not flagged (coverage part passes); 40 s, $0.30"
     },
     "with_skill": {
-      "tour": "PASS review: 'The toast is also cut off with \"…\"'; 21 beats with holds, budget 142 s; 244 s, $1.59",
+      "tour": "PASS review: 'The toast is also cut off with \"\u2026\"'; 21 beats with holds, budget 142 s; 244 s, $1.59",
       "launch": "PASS B1 0:00-0:05 'Tidy with sales.csv open'; 144 s, $0.99",
       "tutorial": "PASS 'Series: three videos, each <= ~6 min', '.srt' captions, chapters at 0:00; 156 s, $1.04",
-      "handoff": "PASS '0:20: private path in the toast, and the toast is cut off with …'; 74 s, $0.54"
+      "handoff": "PASS '0:20: private path in the toast, and the toast is cut off with \u2026'; 74 s, $0.54"
+    },
+    "demo_data": {
+      "control": "FAIL plan.md has no dry run before the take and no shared-state list ('cost already above $0' only as seed data)",
+      "with_skill": "PASS Shared state: 'B1, B2, B3, B6: the same agents and the same cost total (one take)'; end state 'at least one finished bar'; dry run not run (no app in the fixture)"
     }
   }
 }
