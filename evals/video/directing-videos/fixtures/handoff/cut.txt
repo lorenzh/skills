@@ -1,0 +1,26 @@
+# Text log of the final cut tour.mp4 (2:05). One entry per extracted frame every 5 s.
+0:00 jotter list view: folders "work", "home"; 6 notes
+0:05 focus moves down to "groceries"
+0:10 n pressed: editor pane "Untitled"
+0:15 typing "Buy oat milk"
+0:20 toast: "Saved to /home/alice.meyer/acme-corp/clients/notes/groc…"
+0:25 / pressed: search box
+0:30 search "milk" filters list to 1 note
+0:35 search cleared
+0:40 p pressed: "groceries" pinned at top
+0:45 t pressed: tag prompt, typed "shopping"
+0:50 tag filter "shopping": 1 note
+0:55 ? pressed: help overlay with keys
+1:00 help overlay still
+1:05 help overlay still
+1:10 Esc: list view
+1:15 d pressed: "Delete groceries? y/n"
+1:20 y: note gone; toast "Deleted (u to undo)"
+1:25 u: note back
+1:30 :theme light typed
+1:35 light theme list view
+1:40 list view idle
+1:45 list view idle
+1:50 list view idle
+1:55 list view idle
+2:00 q: shell prompt alice.meyer@acme-laptop:~/acme-corp$

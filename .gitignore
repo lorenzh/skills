@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+
+# eval run output
+evals/**/results/
+
+.DS_Store

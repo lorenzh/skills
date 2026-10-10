@@ -1,0 +1,15 @@
+{
+  "name": "lorenzh-skills",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Agent skills by lorenzh, installable with the skills CLI",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "validate": "node scripts/validate-skills.mjs",
+    "new-skill": "node scripts/new-skill.mjs",
+    "test": "node --test scripts/*.test.mjs skills/*/*/tests/*.test.mjs && bash skills/video/directing-videos/scripts/test.sh"
+  }
+}

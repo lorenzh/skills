@@ -1,0 +1,68 @@
+{
+  "note": "Each prompt runs in a fresh agent session in an empty scratch dir. Control: without the skill. Grade only from files and command output in the run dir.",
+  "scenarios": [
+    {
+      "id": "htop-screenshot",
+      "prompt": "Start htop in a terminal you control, sort it by memory, and give me a colored screenshot image of it as shot.gif or shot.png in the current folder. Leave nothing running.",
+      "expected": [
+        "app runs in its own tmux server (tmux -L <name>), not the default socket",
+        "the list is visibly sorted by MEM% (rows, not only the header) in the image",
+        "waits on screen content (not only fixed sleeps) before the screenshot",
+        "image keeps colours (capture-pane -e or a recorder), shot.gif/png exists and shows htop",
+        "afterwards no htop process and no tmux server or socket from the run remains"
+      ]
+    },
+    {
+      "id": "vim-recording",
+      "prompt": "Record a short video (GIF or MP4) of someone opening vim, typing a three-line poem, and saving it as poem.txt, in the current folder. Leave nothing running.",
+      "expected": [
+        "recording made with asciinema (or equivalent) and rendered to a GIF or MP4 in the current folder without a display server",
+        "poem.txt contains the three lines (text typed literally, not via keys that vim or tmux reinterpret)",
+        "idle time trimmed or pauses short enough to watch",
+        "if ffmpeg is missing, delivers GIF and says MP4 needs ffmpeg instead of failing",
+        "cleanup: own tmux server killed and its socket gone",
+        "captions/status lines in English (C locale), not the user locale"
+      ]
+    },
+    {
+      "id": "repl-test",
+      "prompt": "Test that python3's interactive REPL prints 'hello' after typing print('hello'), driving it like a user would in a terminal. Report pass/fail with the screen evidence, and leave nothing running.",
+      "expected": [
+        "waits for the >>> prompt before typing (does not type into a starting app)",
+        "verdict quotes captured screen text",
+        "cleanup: own tmux server killed and its socket gone"
+      ]
+    }
+  ],
+  "baseline": {
+    "model": "claude-opus-5-5",
+    "date": "2026-10-10",
+    "failures": {
+      "htop-screenshot": [
+        "left 2 stale tmux sockets (htopshot*) although it reported clean",
+        "first GIF came out blank (hand-built cast timing), needed a retry",
+        "42s, $0.29"
+      ],
+      "vim-recording": [
+        "first attempt hung and left vim + asciinema running",
+        "could only view the first frame of the GIF, no way to check frames mid-video",
+        "user's locale leaked into the video (German vim status line)",
+        "117s, 16 turns, $0.48"
+      ],
+      "repl-test": [
+        "left a stale tmux socket (repltest-*) although it reported none",
+        "22s, $0.19; otherwise passed"
+      ]
+    }
+  },
+  "withSkill": {
+    "model": "claude-opus-5-5",
+    "date": "2026-10-10",
+    "results": {
+      "htop-screenshot": "pass; no socket left; GIF (no ffmpeg) stated; first shot taken before rows re-sorted, retaken; 48s, $0.38",
+      "vim-recording": "pass; checked start/middle/end frames with tui frame; English locale; no socket left; 68s, 11 turns, $0.41",
+      "repl-test": "pass after fixing the example's trailing-space prompt regex; 19s, $0.29",
+      "codex-portability": "gpt-6.1-sol found the skill from ~/.agents/skills unprompted and passed repl-test"
+    }
+  }
+}
