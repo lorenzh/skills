@@ -28,6 +28,8 @@ printf '# Video plan: x\n' > "$tmp/m.md"; has "title only" "no '## Beats'" "$tmp
 has "scope line without id" "scope line 'S4ab: x'" "$(mk 's/^- S1: list/- S1: list\n- S4ab: x/' n)"
 has "partial id not counted" "scope: S3a" "$(mk 's/| S3a |/| S3ab |/' o)"
 has "negative budget" "positive number" "$(mk 's/Budget: 15 to 20 s/Budget: -20 s/' p)"
+has "hyphen range upper bound" "budget 35 s" "$(mk 's/Budget: 15 to 20 s/Budget: 25-35 s/; s/| 3 s |/| 40 |/' r)"
+t 0 "hyphen range is not negative" python3 $C "$(mk 's/Budget: 15 to 20 s/Budget: 15-20 s/' s)"
 has "empty stage field" "Stage 'Reset' is empty" "$(mk 's#- Reset: ./reset.sh#- Reset:#' q)"
 cp ../templates/plan.md "$tmp/tpl.md"; t 1 "raw template fails" python3 $C "$tmp/tpl.md"
 exit $fail

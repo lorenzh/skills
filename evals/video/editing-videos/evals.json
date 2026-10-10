@@ -1,0 +1,41 @@
+{
+  "note": "Each prompt runs in a fresh session (claude -p, same model) in an empty dir holding a raw take (generate one: ffmpeg -f lavfi -i testsrc=s=1470x1580:d=70:r=30 -pix_fmt yuv420p raw.mp4) and the scenario's files. Control: --disable-slash-commands (no skills). Grade only from the files the run writes. Evidence: a real session making a square social video of a terminal app; the first take was redone whole and every beat re-rendered by hand.",
+  "scenarios": [
+    {
+      "id": "social-cut",
+      "prompt": "raw.mp4 is a 70 s terminal demo take. Make a square video for X from it: beats at 10-13 s (caption 'What is running?'), 19-23 s zoomed on the bottom band (caption 'One line for everything'), 58-62 s (caption 'What each agent costs'), then an end card 'Tool / github.com/you/tool'. Crossfade between beats. Write the commands you use to a script so I can rerun them.",
+      "expected": [
+        "one clip file per beat, and a separate join step",
+        "zoom is smooth (zoompan with a capped expression or equivalent), not a hard crop jump",
+        "captions burned in, readable box, 1080x1080 output",
+        "H.264 yuv420p with +faststart; silent or real AAC track",
+        "drawtext availability checked, or the missing filter named with a build that has it"
+      ]
+    },
+    {
+      "id": "retake-one-beat",
+      "prompt": "The cost beat (58-62 s) in our X video shows $0.00 everywhere; I recorded it again, it is now raw2.mp4 at 4-8 s. Update the video. The beats.json and clips/ from last time are here.",
+      "expected": [
+        "re-renders only the cost beat and the join; other clips untouched",
+        "asks or checks whether other beats show the same session state (band total, item list) and must be retaken with it"
+      ]
+    },
+    {
+      "id": "vertical",
+      "prompt": "Same edit, but I also need a vertical version for Reels.",
+      "expected": [
+        "1080x1920 output from the same edit list, crops kept, captions repositioned in the frame"
+      ]
+    }
+  ],
+  "runs": {
+    "model": "claude-opus-5-5",
+    "date": "2026-10-10",
+    "control": {
+      "social-cut": "FAIL one ffmpeg command for all beats, no per-beat clips, offsets hard-coded for one fade length, no audio track, no faststart"
+    },
+    "with_skill": {
+      "social-cut": "PASS clips/B1-B4.mp4 + join, 14.1 s = sum of dur minus 3 fades, H.264 + silent AAC; gaps fixed after: bottom zoom anchor, card line count, font lookup, ffprobe path, no-plan case"
+    }
+  }
+}

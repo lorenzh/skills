@@ -27,7 +27,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | Category | Holds |
 |---|---|
 | `terminal` | Terminal app control, captures and recordings |
-| `video` | Video planning, scripting, pacing and coverage checks |
+| `video` | Video planning, scripting, pacing, coverage checks and editing |
 
 ## Skills
 
@@ -35,6 +35,7 @@ No build and no dependencies — the deliverables are the skill folders.
 |---|---|
 | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | `terminal` |
 | [directing-videos](skills/video/directing-videos/SKILL.md) | `video` |
+| [editing-videos](skills/video/editing-videos/SKILL.md) | `video` |
 
 ## Conventions
 
