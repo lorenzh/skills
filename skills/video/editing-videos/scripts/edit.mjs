@@ -32,22 +32,31 @@ const fail = (msg, code = 2) => { console.error(msg); process.exit(code); };
 export function load(file) {
   let cfg;
   try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { fail(`cannot read ${file}: ${e.message}`); }
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) fail('beats.json is not a JSON object');
   const base = dirname(resolve(file));
   const m = /^(\d+)x(\d+)$/.exec(cfg.size ?? '1080x1080');
   if (!m || m[1] % 2 || m[2] % 2) fail(`size '${cfg.size}' is not <even w>x<even h>, e.g. 1080x1080`);
-  if (!cfg.font) fail('beats.json has no "font": give the path of a bold .ttf (fc-list : file | grep -i bold)');
+  if (typeof cfg.font !== 'string' || !cfg.font) fail('beats.json has no "font": give the path of a bold .ttf (fc-list : file | grep -i bold)');
+  const font = resolve(base, cfg.font);
+  if (/['\\]/.test(font)) fail(`font path '${font}' contains a quote or backslash: copy the font to a plain path`);
+  const fade = cfg.fade ?? 0.3;
+  if (!(fade >= 0)) fail('"fade" must be 0 or more seconds');
   if (!Array.isArray(cfg.beats) || !cfg.beats.length) fail('beats.json has no "beats" list');
   const ids = new Set();
   for (const b of cfg.beats) {
-    if (!b.id || ids.has(b.id)) fail(`beat id '${b.id}' is missing or repeated`);
+    if (!b || typeof b !== 'object') fail('every beat must be a JSON object');
+    if (!/^[A-Za-z0-9_-]+$/.test(b.id ?? '') || ids.has(b.id)) fail(`beat id '${b.id}' is missing, repeated, or not letters, digits, - and _`);
     ids.add(b.id);
     if (!(b.dur > 0)) fail(`${b.id}: "dur" must be a positive number of seconds`);
+    if (cfg.beats.length > 1 && !(b.dur > fade)) fail(`${b.id}: "dur" ${b.dur} must be longer than the fade ${fade}`);
+    if (b.card !== undefined && (!Array.isArray(b.card) || !b.card.length || b.card.some((t) => typeof t !== 'string'))) fail(`${b.id}: "card" must be a list of text lines`);
+    if (b.caption !== undefined && typeof b.caption !== 'string') fail(`${b.id}: "caption" must be text`);
     if (!b.card && (!b.src || !(b.start >= 0))) fail(`${b.id}: give "src" and "start", or "card"`);
     if (b.crop && !/^\d+:\d+:\d+:\d+$/.test(b.crop)) fail(`${b.id}: crop '${b.crop}' is not w:h:x:y in pixels`);
   }
   return {
-    W: +m[1], H: +m[2], fps: cfg.fps ?? 30, fade: cfg.fade ?? 0.3, bg: cfg.bg ?? '0x202020',
-    audio: cfg.audio ?? true, font: cfg.font, beats: cfg.beats,
+    W: +m[1], H: +m[2], fps: cfg.fps ?? 30, fade, bg: cfg.bg ?? '0x202020',
+    audio: cfg.audio ?? true, font, beats: cfg.beats,
     clips: resolve(base, cfg.clips ?? 'clips'), out: resolve(base, cfg.out ?? 'final.mp4'), base,
   };
 }
@@ -63,7 +72,7 @@ export function beatArgs(c, b) {
     const lines = b.card.map((t, i) => ({ t, size: i ? Math.round(fs * 0.85) : Math.round(fs * 1.5) }));
     let y = Math.round(c.H / 3);
     const vf = lines.map((l, i) => {
-      const f = join(c.clips, `${b.id}.${i}.txt`);
+      const f = `${b.id}.${i}.txt`;
       const s = text(c, f, l.size, y); y += Math.round(l.size * 2.2); return { f, t: l.t, s };
     });
     return { out, files: vf.map(({ f, t }) => [f, t]), args: ['-y', '-v', 'error', '-f', 'lavfi', '-i',
@@ -84,7 +93,7 @@ export function beatArgs(c, b) {
     `pad=${c.W}:${c.H}:(ow-iw)/2:${band}+(${c.H - band}-ih)/2:color=${c.bg}`);
   const files = [];
   if (b.caption) {
-    const tf = join(c.clips, `${b.id}.txt`);
+    const tf = `${b.id}.txt`;
     files.push([tf, b.caption]);
     f.push(text(c, tf, fs, Math.round(band * 0.33), `:box=1:boxcolor=black@0.8:boxborderw=${Math.round(fs * 0.45)}`));
   }
@@ -130,8 +139,9 @@ function main(argv) {
   if (!/\bdrawtext\b/.test(probe.stdout) && what !== 'join') fail(`${ff} has no drawtext filter: use a build with libfreetype (see the skill's ffmpeg note)`);
   mkdirSync(c.clips, { recursive: true });
   for (const j of jobs) {
-    for (const [f, t] of j.files) writeFileSync(f, t);
-    const r = spawnSync(ff, j.args, { stdio: 'inherit' });
+    for (const [f, t] of j.files) writeFileSync(join(c.clips, f), t);
+    // Text files are named by basename and ffmpeg runs in the clips folder, so no path reaches the filter parser.
+    const r = spawnSync(ff, j.args, { stdio: 'inherit', cwd: c.clips });
     if (r.status !== 0) fail(`ffmpeg failed on ${j.args.at(-1)}`, 1);
     console.log(j.args.at(-1));
   }

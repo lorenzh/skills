@@ -23,7 +23,7 @@ Every number this skill uses (length, hook, hold time, idle limit, formats, capt
    Done when Stage is filled and the reset has run twice.
 
 4. **Beats.** One row per idea: what is in frame, the action, the end state that proves it worked, the hold (Reading time), the text on screen. Beat 1 meets the Hook rule. Order wide before detail. A scope item you cannot show moves to Out of scope only with the requester's yes: ask, giving the reason and what showing it would cost.
-   Done when `python3 <skill dir>/scripts/coverage.py plan.md` reports only `cut:` findings.
+   Done when `python3 <skill dir>/scripts/coverage.py plan.md` reports only `cut:` findings and the Shared state `slot:` finding that step 5 fills.
 
 5. **Check the demo data.** Before the first take, run the reset and drive the demo to each beat's end state once. Compare the screen with the beat's end state and text on screen: every number, name and state the caption claims must be visible (a cost column at `$0.00`, a timeline where nothing ends, a caption naming a feature that never ran). Fix the data or the setup, not the caption; a take recorded on wrong data is redone whole. Under Shared state in plan.md, list the beats that show the same session state (the same totals, the same items), so they come from one take: a retake of one of them retakes the group.
    Done when every beat has a dry-run frame that shows its end state, and Shared state lists every beat group or says `none`.

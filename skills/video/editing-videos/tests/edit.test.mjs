@@ -26,7 +26,7 @@ test('beat: crop, smooth zoompan at crop size, caption from a text file, yuv420p
   const [a] = dry(setup(), 'B1');
   const vf = a[a.indexOf('-vf') + 1];
   assert.match(vf, /crop=320:180:0:0,zoompan=z='min\(1\+0\.2\*on\/30,1\.2\)':.*:d=1:s=320x180/);
-  assert.match(vf, /drawtext=.*textfile='[^']*B1\.txt'.*box=1/);
+  assert.match(vf, /drawtext=.*textfile='B1\.txt'.*box=1/);
   assert.deepEqual(a.slice(a.indexOf('-ss'), a.indexOf('-ss') + 4), ['-ss', '0.5', '-t', '1.2']);
   assert.ok(a.includes('yuv420p') && a.at(-1).endsWith('/clips/B1.mp4'));
 });
@@ -49,6 +49,13 @@ test('misuse exits 2 with the fix', () => {
   assert.match(run(join(dir, 'beats.json'), 'B9').stderr, /unknown beat 'B9'.*B1, B2, B3/);
   assert.equal(run(join(dir, 'beats.json'), 'B9').status, 2);
   assert.match(run(join(setup({ size: '1081x1080' }), 'beats.json'), 'all').stderr, /even/);
+  for (const bad of [{ beats: [{ id: '../x', dur: 1, card: ['t'] }] }, { beats: [null] }, { beats: [{ id: 'B1', dur: 1, card: 'x' }] },
+    { beats: [{ id: 'B1', dur: 0.2, card: ['a'] }, { id: 'B2', dur: 1, card: ['b'] }] }]) {
+    const r = run(join(setup(bad), 'beats.json'), 'all', '--dry-run');
+    assert.equal(r.status, 2, JSON.stringify(bad) + r.stderr);
+  }
+  const n = mkdtempSync(join(tmpdir(), 'edit-')); writeFileSync(join(n, 'beats.json'), 'null');
+  assert.equal(run(join(n, 'beats.json'), 'all').status, 2);
   assert.equal(run().status, 2);
   assert.equal(run('--help').status, 0);
 });
@@ -57,7 +64,9 @@ const ff = process.env.FFMPEG || 'ffmpeg';
 const filters = spawnSync(ff, ['-hide_banner', '-filters'], { encoding: 'utf8' });
 const canRender = !filters.error && /\bdrawtext\b/.test(filters.stdout) && existsSync(FONT);
 test('renders and joins real clips', { skip: !canRender && 'needs ffmpeg with drawtext and a bold font' }, () => {
-  const dir = setup();
+  const dir = join(setup(), "editor's demo");
+  spawnSync('mkdir', [dir]);
+  spawnSync('cp', [join(dir, '..', 'beats.json'), dir]);
   spawnSync(ff, ['-v', 'error', '-f', 'lavfi', '-i', 'testsrc=s=640x360:d=3:r=30', '-pix_fmt', 'yuv420p', join(dir, 'raw.mp4')]);
   for (const w of ['all', 'join']) { const r = run(join(dir, 'beats.json'), w); assert.equal(r.status, 0, r.stderr); }
   const p = spawnSync(ff.replace(/ffmpeg$/, 'ffprobe'), ['-v', 'error', '-show_entries', 'stream=codec_name,width,height,pix_fmt:format=duration', '-of', 'json', join(dir, 'final.mp4')], { encoding: 'utf8' });
