@@ -38,20 +38,21 @@ export function load(file) {
   if (!m || m[1] % 2 || m[2] % 2) fail(`size '${cfg.size}' is not <even w>x<even h>, e.g. 1080x1080`);
   if (typeof cfg.font !== 'string' || !cfg.font) fail('beats.json has no "font": give the path of a bold .ttf (fc-list : file | grep -i bold)');
   const font = resolve(base, cfg.font);
-  if (/['\\]/.test(font)) fail(`font path '${font}' contains a quote or backslash: copy the font to a plain path`);
+  if (/['\\:,;\[\]]/.test(font)) fail(`font path '${font}' contains one of ' \\ : , ; [ ]: copy the font to a plain path`);
+  for (const k of ['clips', 'out']) if (cfg[k] !== undefined && typeof cfg[k] !== 'string') fail(`"${k}" must be a path`);
   const fade = cfg.fade ?? 0.3;
   if (!(fade >= 0)) fail('"fade" must be 0 or more seconds');
   if (!Array.isArray(cfg.beats) || !cfg.beats.length) fail('beats.json has no "beats" list');
   const ids = new Set();
   for (const b of cfg.beats) {
     if (!b || typeof b !== 'object') fail('every beat must be a JSON object');
-    if (!/^[A-Za-z0-9_-]+$/.test(b.id ?? '') || ids.has(b.id)) fail(`beat id '${b.id}' is missing, repeated, or not letters, digits, - and _`);
+    if (typeof b.id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(b.id) || ids.has(b.id)) fail(`beat id '${b.id}' is missing, repeated, or not letters, digits, - and _`);
     ids.add(b.id);
     if (!(b.dur > 0)) fail(`${b.id}: "dur" must be a positive number of seconds`);
     if (cfg.beats.length > 1 && !(b.dur > fade)) fail(`${b.id}: "dur" ${b.dur} must be longer than the fade ${fade}`);
     if (b.card !== undefined && (!Array.isArray(b.card) || !b.card.length || b.card.some((t) => typeof t !== 'string'))) fail(`${b.id}: "card" must be a list of text lines`);
     if (b.caption !== undefined && typeof b.caption !== 'string') fail(`${b.id}: "caption" must be text`);
-    if (!b.card && (!b.src || !(b.start >= 0))) fail(`${b.id}: give "src" and "start", or "card"`);
+    if (!b.card && (typeof b.src !== 'string' || !b.src || !(b.start >= 0))) fail(`${b.id}: give "src" and "start", or "card"`);
     if (b.crop && !/^\d+:\d+:\d+:\d+$/.test(b.crop)) fail(`${b.id}: crop '${b.crop}' is not w:h:x:y in pixels`);
   }
   return {
@@ -133,7 +134,7 @@ function main(argv) {
     jobs = [beatArgs(c, b)];
   }
   if (dry) { for (const j of jobs) console.log(JSON.stringify(j.args)); return 0; }
-  const ff = process.env.FFMPEG || 'ffmpeg';
+  const ff = process.env.FFMPEG?.includes('/') ? resolve(process.env.FFMPEG) : process.env.FFMPEG || 'ffmpeg';
   const probe = spawnSync(ff, ['-hide_banner', '-filters'], { encoding: 'utf8' });
   if (probe.error) fail(`${ff} not found: set FFMPEG to an ffmpeg binary (see the skill's ffmpeg note)`);
   if (!/\bdrawtext\b/.test(probe.stdout) && what !== 'join') fail(`${ff} has no drawtext filter: use a build with libfreetype (see the skill's ffmpeg note)`);

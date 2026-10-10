@@ -49,7 +49,7 @@ test('misuse exits 2 with the fix', () => {
   assert.match(run(join(dir, 'beats.json'), 'B9').stderr, /unknown beat 'B9'.*B1, B2, B3/);
   assert.equal(run(join(dir, 'beats.json'), 'B9').status, 2);
   assert.match(run(join(setup({ size: '1081x1080' }), 'beats.json'), 'all').stderr, /even/);
-  for (const bad of [{ beats: [{ id: '../x', dur: 1, card: ['t'] }] }, { beats: [null] }, { beats: [{ id: 'B1', dur: 1, card: 'x' }] },
+  for (const bad of [{ beats: [{ id: '../x', dur: 1, card: ['t'] }] }, { beats: [null] }, { beats: [{ id: 'B1', dur: 1, card: 'x' }] }, { beats: [{ id: ['B1'], dur: 1, card: ['t'] }] }, { clips: 12 }, { out: 12 }, { beats: [{ id: 'B1', src: 12, start: 0, dur: 1 }] }, { font: '/x/font:demo.ttf' },
     { beats: [{ id: 'B1', dur: 0.2, card: ['a'] }, { id: 'B2', dur: 1, card: ['b'] }] }]) {
     const r = run(join(setup(bad), 'beats.json'), 'all', '--dry-run');
     assert.equal(r.status, 2, JSON.stringify(bad) + r.stderr);
