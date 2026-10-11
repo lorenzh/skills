@@ -1,6 +1,6 @@
 ---
 name: landing-parallel-prs
-description: Landing several open pull requests that touch the same file. Use when two or more PRs each add to a shared list, index, README table or changelog and must all be merged, when merging one PR made the next one conflict, or when the user asks to land, merge or ship a batch of PRs.
+description: Merging a batch of independent pull requests that touch the same file, none built on another's branch. Use when two or more PRs each add to a shared list, index, README table or changelog and must all be merged, when merging one PR made the next one conflict, or when the user asks to merge or ship a batch of parallel PRs.
 ---
 
 # Landing parallel PRs
@@ -60,6 +60,8 @@ gh run list --commit "$sha" --json workflowName,status,conclusion,createdAt
 ```
 
 Checks count only when their runs belong to `$sha` and started after the push. A green result from before the update ran on the old main.
+
+For waits that hang, time out or need another approach, see the `waiting-for-ci` skill.
 
 Done when every required check for `$sha` passed, or the report names the failing check and stops the batch.
 
