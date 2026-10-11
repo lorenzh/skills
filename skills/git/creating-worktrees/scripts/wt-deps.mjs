@@ -57,6 +57,8 @@ function git(cwd, ...args) {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 
+const shellQuote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
+
 function hash(file) {
   try {
     return createHash("sha256").update(fs.readFileSync(file)).digest("hex").slice(0, 16);
@@ -70,7 +72,7 @@ function context(dir) {
   const gitDir = path.resolve(root, git(root, "rev-parse", "--git-dir"));
   // The first entry of `git worktree list` is the main checkout.
   const main = git(root, "worktree", "list", "--porcelain").split("\n")[0].replace(/^worktree /, "");
-  const files = git(root, "ls-files", "--cached", "--others", "--exclude-standard").split("\n").filter(Boolean);
+  const files = git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0").filter(Boolean);
   return { root, main, marker: path.join(gitDir, MARKER), files };
 }
 
@@ -100,7 +102,7 @@ function check({ root, main, marker, files }) {
     else if (!depDir) action = "cache";
     else if (!fs.existsSync(path.join(dir, depDir)) && !(eco === "yarn" && fs.existsSync(path.join(dir, ".pnp.cjs")))) action = "install";
     else action = installed[rel] === here ? "ok" : "reinstall";
-    items.push({ ecosystem: eco, lockfile: rel, hash: here, mainHash: inMain, sameAsMain: here === inMain, action, command: path.dirname(rel) === "." ? cmd : `cd ${path.dirname(rel)} && ${cmd}` });
+    items.push({ ecosystem: eco, lockfile: rel, hash: here, mainHash: inMain, sameAsMain: here === inMain, action, command: path.dirname(rel) === "." ? cmd : `cd -- ${shellQuote(path.dirname(rel))} && ${cmd}` });
   }
   return items;
 }
@@ -115,10 +117,33 @@ function locate(projectDir, name) {
   }
 }
 
+// The nearest .pnp.cjs from the project directory up to the checkout root, loaded once.
+function pnpFor(projectDir, root, cache) {
+  for (let dir = projectDir; ; dir = path.dirname(dir)) {
+    const file = path.join(dir, ".pnp.cjs");
+    if (fs.existsSync(file)) {
+      if (!cache.has(file)) cache.set(file, createRequire(file)(file));
+      return cache.get(file);
+    }
+    if (dir === root || dir === path.dirname(dir)) return null;
+  }
+}
+
+// Plug'n'Play maps a package into a zip in the Yarn cache (or an unplugged folder);
+// the package is available only if that file exists.
+function pnpLocate(pnp, name, projectDir) {
+  try {
+    const where = pnp.resolveToUnqualified(name, `${projectDir}/`);
+    const zip = where?.match(/^(.*?\.zip)(?:[\\/]|$)/);
+    return where && fs.existsSync(zip ? zip[1] : where) ? where : null;
+  } catch {
+    return null;
+  }
+}
+
 function resolve({ root, files }) {
   const real = fs.realpathSync(root) + path.sep;
-  const pnpFile = path.join(root, ".pnp.cjs");
-  const pnp = fs.existsSync(pnpFile) ? createRequire(pnpFile)(pnpFile) : null;
+  const loaders = new Map();
   const results = [];
   for (const rel of files.filter((f) => path.basename(f) === "package.json" && !f.includes("node_modules/"))) {
     const projectDir = path.join(root, path.dirname(rel));
@@ -129,14 +154,10 @@ function resolve({ root, files }) {
       results.push({ project: rel, error: `cannot read ${rel}: ${e.message}` });
       continue;
     }
+    const pnp = pnpFor(projectDir, root, loaders);
     const optional = new Set(Object.keys(pkg.optionalDependencies ?? {}));
     for (const name of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies })) {
-      let where = null;
-      if (pnp) {
-        try {
-          where = pnp.resolveToUnqualified(name, `${projectDir}/`);
-        } catch {}
-      } else where = locate(projectDir, name);
+      const where = pnp ? pnpLocate(pnp, name, projectDir) : locate(projectDir, name);
       if (where === null && optional.has(name)) continue;
       // Plug'n'Play packages live in the Yarn cache; the worktree's own loader is the isolation.
       const inside = where !== null && (pnp !== null || `${where}${path.sep}`.startsWith(real));
@@ -190,7 +211,7 @@ let results;
 try {
   results = resolve(ctx);
 } catch (e) {
-  console.error(`Cannot load ${path.join(ctx.root, ".pnp.cjs")}: ${e.message}. Run the Yarn install, then resolve again.`);
+  console.error(`Cannot load a .pnp.cjs in ${ctx.root}: ${e.message}. Run the Yarn install, then resolve again.`);
   process.exit(1);
 }
 const bad = results.filter((r) => r.error || !r.inside);

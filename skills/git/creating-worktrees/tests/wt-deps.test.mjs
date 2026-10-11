@@ -112,7 +112,7 @@ test("nested projects are found from the worktree root; hoisted deps count as in
   const items = JSON.parse(run("check", wt, "--json").stdout).items;
   const app = items.find((i) => i.lockfile === "packages/app/package-lock.json");
   assert.equal(app.mainHash, null);
-  assert.equal(app.command, "cd packages/app && npm ci --prefer-offline");
+  assert.equal(app.command, "cd -- 'packages/app' && npm ci --prefer-offline");
 });
 
 test("marking keeps every project's record", () => {
@@ -162,11 +162,29 @@ test("Yarn Plug'n'Play resolves through the worktree's loader", () => {
   const { wt } = repo();
   fs.rmSync(path.join(wt, "package-lock.json"));
   write(path.join(wt, "yarn.lock"), "x");
-  write(path.join(wt, ".pnp.cjs"), 'exports.resolveToUnqualified=(n)=>n==="pad"?"/yarn/cache/pad":null');
+  const zip = path.join(wt, ".yarn/cache/pad-1.zip");
+  write(zip, "");
+  write(path.join(wt, ".pnp.cjs"), `exports.resolveToUnqualified=(n)=>n==="pad"?${JSON.stringify(`${zip}/node_modules/pad`)}:null`);
   assert.equal(JSON.parse(run("check", wt, "--json").stdout).items[0].action, "reinstall");
   run("mark", wt);
   assert.equal(run("check", wt).status, 0);
   assert.equal(run("resolve", wt).status, 0);
+  fs.rmSync(zip);
+  assert.equal(run("resolve", wt).status, 1, "a deleted cache zip is missing");
+  write(zip, "");
+  write(path.join(wt, "packages/app/package.json"), '{"dependencies":{"lib":"1"}}');
+  write(path.join(wt, "packages/app/.pnp.cjs"), 'exports.resolveToUnqualified=(n)=>__dirname');
+  assert.equal(run("resolve", wt).status, 0, "a nested project uses its own loader");
   write(path.join(wt, "package.json"), '{"dependencies":{"pad":"1","lib":"1"}}');
   assert.equal(run("resolve", wt).status, 1);
+});
+
+test("unicode and shell-hostile project paths are found and quoted", () => {
+  const { wt } = repo();
+  const dir = "packages/café; echo x";
+  write(path.join(wt, dir, "package.json"), '{"dependencies":{"lib":"1"}}');
+  write(path.join(wt, dir, "package-lock.json"), "{}");
+  assert.equal(run("resolve", wt).status, 1);
+  const app = JSON.parse(run("check", wt, "--json").stdout).items.find((i) => i.lockfile.startsWith("packages/"));
+  assert.equal(app.command, "cd -- 'packages/café; echo x' && npm ci --prefer-offline");
 });
