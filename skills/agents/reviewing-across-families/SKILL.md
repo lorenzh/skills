@@ -67,11 +67,11 @@ Done when the log ends in APPROVE, or in a round-limit entry handed to the user.
 Shipping fails halfway in practice (a lost network, a text-substitution error after the PR already exists), so it runs as a script that checks each step's state and resumes on rerun. Decide the issue link first: `fixes` only when the change closes the whole issue, otherwise `refs` — a `Fixes #N` in the PR body, a commit message or the squash body closes the issue on merge.
 
 ```
-node scripts/ship.mjs --dir <worktree> --issue <n> --link fixes|refs --title "<title>" \
+node <skill dir>/scripts/ship.mjs --dir <worktree> --issue <n> --link fixes|refs --title "<title>" \
   --body-file <pr-body.md> [--changelog "- <line> (#PR)"] [--merge]
 ```
 
-Run it; `--help` prints the options. It fetches and rebases onto fresh `origin/<base>` (a fetch failure stops it: ship from a machine with network), pushes, reuses an open PR or creates one, adds the changelog line with the real PR link, watches CI, squash-merges with `Fixes|Refs #N` as the squash body, and checks that a `refs` issue is still open. It refuses a `refs` branch whose commit messages close the issue. If it rebased, rerun the tests; if the rebase changed the diff, run step 4 once more. On failure it names the step: fix that, then rerun the same command. Without Node, do the same steps by hand in that order and check each before the next.
+Run it from anywhere, with `<skill dir>` the folder holding this file; `--help` prints the options. It fetches and rebases onto fresh `origin/<base>` (a fetch failure stops it: ship from a machine with network), pushes, reuses an open PR or creates one, rewrites the PR body, adds the changelog line with the real PR link, watches CI, squash-merges with `Fixes|Refs #N` as the squash body, and checks the issue state. It refuses a `refs` run whose title, body or commit messages close the issue. A run that had to rebase stops before the merge: rerun the tests, run step 4 once more if the rebase changed the diff, then rerun the command. On failure it names the step: fix that, then rerun the same command. Without Node, do the same steps by hand in that order and check each before the next.
 
 Put in the PR body the reviewer's runtime model, the round count, and the review's NOT CHECKED line, so the reader knows what no reviewer verified.
 

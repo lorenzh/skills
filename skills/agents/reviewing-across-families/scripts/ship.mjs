@@ -15,7 +15,9 @@ const USAGE = `usage: node ship.mjs --dir <worktree> --issue <n> --link fixes|re
   --body-file  PR body; the script adds the "Fixes #n" / "Refs #n" line
   --changelog  line to add under "## [Unreleased]" in CHANGELOG.md; "(#PR)" is replaced
                by the PR link once the PR exists
-  --merge      squash-merge after CI passes; without it the script stops at green CI
+  --merge      squash-merge after CI passes; without it the script stops at green CI.
+               A run that had to rebase stops before the merge: rerun the tests (and
+               re-review if the diff changed), then rerun the same command
 
 Steps, each skipped when already done: fetch, rebase on origin/<base>, push,
 PR (reused if open), changelog line, CI watch, merge, issue state check.
@@ -37,6 +39,7 @@ function args(argv) {
   for (const k of ['dir', 'issue', 'link', 'title', 'bodyFile']) if (!o[k]) fail(`missing --${k === 'bodyFile' ? 'body-file' : k}\n\n${USAGE}`, 2);
   if (!/^\d+$/.test(o.issue)) fail(`--issue '${o.issue}' is not a number`, 2);
   if (!['fixes', 'refs'].includes(o.link)) fail(`--link must be fixes or refs, not '${o.link}'`, 2);
+  if (o.changelog && !o.changelog.includes('(#PR)')) fail('--changelog needs the (#PR) placeholder, e.g. "- Fix the parser (#PR)"', 2);
   if (!existsSync(o.bodyFile)) fail(`--body-file ${o.bodyFile} does not exist`, 2);
   return o;
 }
@@ -49,13 +52,15 @@ const sh = (cmd, a, step) => {
 const say = (m) => console.log(m);
 const keyword = o.link === 'fixes' ? 'Fixes' : 'Refs';
 const ref = `${keyword} #${o.issue}`;
-const closing = new RegExp(`\\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\\b:?\\s+#${o.issue}\\b`, 'i');
+const closing = new RegExp(`\\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\\b:?\\s+([\\w.-]+\\/[\\w.-]+)?#${o.issue}\\b`, 'i');
 
 const branch = sh('git', ['rev-parse', '--abbrev-ref', 'HEAD'], 'branch');
 if (branch === 'HEAD' || branch === o.base) fail(`${o.dir} is on '${branch}'; check out the reviewed branch`, 2);
-if (sh('git', ['status', '--porcelain'], 'status')) fail('worktree has uncommitted changes; commit or stash them first');
+const dirty = sh('git', ['status', '--porcelain'], 'status').split('\n').filter((l) => l && !(o.changelog && l.endsWith(' CHANGELOG.md')));
+if (dirty.length) fail('worktree has uncommitted changes; commit or stash them first');
 
 let body = readFileSync(o.bodyFile, 'utf8').trim();
+if (o.link === 'refs' && closing.test(o.title)) fail(`--title closes #${o.issue}; a partial fix uses "${ref}"`);
 if (o.link === 'refs' && closing.test(body)) fail(`body file closes #${o.issue}; a partial fix uses "${ref}"`);
 if (!body.includes(ref)) body += `\n\n${ref}`;
 if (o.link === 'refs') {
@@ -63,17 +68,24 @@ if (o.link === 'refs') {
   if (closing.test(msgs)) fail(`a commit message closes #${o.issue}; reword it to "${ref}" before shipping`);
 }
 
+const prs = JSON.parse(sh('gh', ['pr', 'list', '--head', branch, '--base', o.base, '--state', 'all', '--json', 'number,url,state'], 'pr lookup') || '[]');
+const merged = prs.find((p) => p.state === 'MERGED');
+if (merged && !prs.some((p) => p.state === 'OPEN')) { say(`PR ${merged.url} is already merged`); verify(merged); }
+
 sh('git', ['fetch', 'origin', o.base], 'fetch (no network? ship from a machine that can reach origin)');
 if (sh('git', ['rev-list', '--count', `HEAD..origin/${o.base}`], 'behind check') !== '0') {
   sh('git', ['rebase', `origin/${o.base}`], 'rebase (resolve conflicts, rerun tests, get a re-review, rerun)');
-  say(`rebased on origin/${o.base}: rerun the tests before CI does`);
+  if (o.merge) { o.merge = false; say(`rebased on origin/${o.base}: merge skipped; rerun the tests, re-review if the diff changed, then rerun`); }
+  else say(`rebased on origin/${o.base}: rerun the tests`);
 }
 sh('git', ['push', '--force-with-lease', '-u', 'origin', branch], 'push');
 say(`pushed ${branch}`);
 
-let pr = JSON.parse(sh('gh', ['pr', 'list', '--head', branch, '--state', 'open', '--json', 'number,url'], 'pr lookup') || '[]')[0];
-if (pr) say(`reusing PR ${pr.url}`);
-else {
+let pr = prs.find((p) => p.state === 'OPEN');
+if (pr) {
+  sh('gh', ['pr', 'edit', String(pr.number), '--body', body], 'pr body update');
+  say(`reusing PR ${pr.url} (body updated)`);
+} else {
   const url = sh('gh', ['pr', 'create', '--base', o.base, '--head', branch, '--title', o.title, '--body', body], 'pr create');
   pr = { url, number: Number(url.split('/').pop()) };
   say(`opened PR ${url}`);
@@ -82,15 +94,17 @@ else {
 if (o.changelog) {
   const file = join(o.dir, 'CHANGELOG.md');
   const text = existsSync(file) ? readFileSync(file, 'utf8') : '';
-  const line = o.changelog.replace('(#PR)', `([#${pr.number}](${pr.url}))`);
   if (text.includes(pr.url)) say('changelog already links the PR');
   else {
     const at = text.search(/^## \[?Unreleased\]?.*$/m);
     if (at < 0) fail('CHANGELOG.md has no "## [Unreleased]" heading; add it and rerun');
     const end = text.indexOf('\n', at);
-    const head = end < 0 ? text + '\n' : text.slice(0, end + 1);
+    const head = end < 0 ? `${text}\n` : text.slice(0, end + 1);
+    const line = o.changelog.replace('(#PR)', `([#${pr.number}](${pr.url}))`);
     writeFileSync(file, `${head}\n${line}${end < 0 ? '\n' : text.slice(end + 1).replace(/^\n?/, '\n')}`);
-    sh('git', ['commit', '-am', `docs: add changelog line for #${pr.number}`], 'changelog commit');
+  }
+  if (sh('git', ['status', '--porcelain', '--', 'CHANGELOG.md'], 'status')) {
+    sh('git', ['commit', '-m', `docs: add changelog line for #${pr.number}`, '--', 'CHANGELOG.md'], 'changelog commit');
     sh('git', ['push', 'origin', branch], 'changelog push');
     say('changelog line added with the PR link');
   }
@@ -101,8 +115,14 @@ say('CI green');
 if (!o.merge) { say('stopped before merge (no --merge)'); process.exit(0); }
 
 sh('gh', ['pr', 'merge', String(pr.number), '--squash', '--subject', `${o.title} (#${pr.number})`, '--body', ref], 'merge');
-const state = sh('gh', ['pr', 'view', String(pr.number), '--json', 'state', '--jq', '.state'], 'merge check');
-if (state !== 'MERGED') fail(`PR state is ${state}, not MERGED (auto-merge queued or blocked?)`);
-const issue = sh('gh', ['issue', 'view', o.issue, '--json', 'state', '--jq', '.state'], 'issue check');
-if (o.link === 'refs' && issue !== 'OPEN') fail(`issue #${o.issue} is ${issue} after a partial fix; reopen it`);
-say(`merged ${pr.url}; issue #${o.issue} is ${issue}`);
+verify(pr);
+
+function verify(p) {
+  const state = sh('gh', ['pr', 'view', String(p.number), '--json', 'state', '--jq', '.state'], 'merge check');
+  if (state !== 'MERGED') fail(`PR state is ${state}, not MERGED (auto-merge queued or blocked?)`);
+  const issue = sh('gh', ['issue', 'view', o.issue, '--json', 'state', '--jq', '.state'], 'issue check');
+  const want = o.link === 'refs' ? 'OPEN' : 'CLOSED';
+  if (issue !== want) fail(`PR merged, but issue #${o.issue} is ${issue}, expected ${want}: ${o.link === 'refs' ? 'reopen it' : `close it by hand (closing keywords act only on the default branch)`}`);
+  say(`merged ${p.url}; issue #${o.issue} is ${issue}`);
+  process.exit(0);
+}

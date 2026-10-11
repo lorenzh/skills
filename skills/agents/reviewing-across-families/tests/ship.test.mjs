@@ -15,8 +15,9 @@ const s = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : { prs: [],
 const a = process.argv.slice(2); s.calls.push(a);
 const save = () => fs.writeFileSync(f, JSON.stringify(s));
 const k = a.slice(0, 2).join(' ');
-if (k === 'pr list') console.log(JSON.stringify(s.prs.filter((p) => p.state === 'OPEN')));
+if (k === 'pr list') console.log(JSON.stringify(s.prs));
 else if (k === 'pr create') { const n = 77 + s.prs.length; s.prs.push({ number: n, url: 'https://github.com/o/r/pull/' + n, state: 'OPEN', body: a[a.indexOf('--body') + 1] }); console.log(s.prs.at(-1).url); }
+else if (k === 'pr edit') s.prs.at(-1).body = a[a.indexOf('--body') + 1];
 else if (k === 'pr checks') { if (process.env.GH_CI_FAIL) { save(); console.error('checks failed'); process.exit(1); } }
 else if (k === 'pr merge') s.prs.at(-1).state = 'MERGED';
 else if (k === 'pr view') console.log(s.prs.at(-1).state);
@@ -74,4 +75,43 @@ test('refs refuses a commit message that would close the issue', () => {
 test('misuse exits 2', () => {
   const r = spawnSync(process.execPath, [SHIP, '--issue', 'x'], { encoding: 'utf8' });
   assert.equal(r.status, 2);
+});
+
+test('a run that rebases skips the merge; the rerun merges', () => {
+  const { d } = setup();
+  const o = join(d, 'other'); const g = (...x) => execFileSync('git', x, { cwd: o });
+  execFileSync('git', ['clone', '-q', join(d, 'origin.git'), o], { stdio: 'ignore' });
+  g('config', 'user.email', 't@t'); g('config', 'user.name', 't');
+  writeFileSync(join(o, 'b.txt'), 'y'); g('add', '.'); g('commit', '-qm', 'other'); g('push', '-q', 'origin', 'HEAD:main');
+  const r = ship(d, ['--merge']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /merge skipped/);
+  assert.ok(!gh(d).calls.some((c) => c[1] === 'merge'));
+  const r2 = ship(d, ['--merge']);
+  assert.equal(r2.status, 0, r2.stderr);
+  assert.match(r2.stdout, /merged .*pull\/77/);
+});
+
+test('rerun after the merge only verifies', () => {
+  const { d } = setup();
+  assert.equal(ship(d, ['--merge']).status, 0);
+  const r = ship(d, ['--merge']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /already merged/);
+  assert.equal(gh(d).calls.filter((c) => c[1] === 'merge').length, 1);
+});
+
+test('refs refuses a closing title, including owner/repo#n', () => {
+  const { d } = setup();
+  const r = spawnSync(process.execPath, [SHIP, '--dir', join(d, 'wt'), '--issue', '42', '--link', 'refs', '--title', 'Fixes o/r#42',
+    '--body-file', join(d, 'body.md')], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /--title closes #42/);
+});
+
+test('changelog line needs the (#PR) placeholder', () => {
+  const { d } = setup();
+  const r = ship(d, ['--changelog', '- no link']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /\(#PR\) placeholder/);
 });
