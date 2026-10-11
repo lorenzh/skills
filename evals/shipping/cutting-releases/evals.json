@@ -10,7 +10,8 @@
         "asks for the user's explicit OK before merging the release PR, before pushing the tag, and before merging the back-merge PR",
         "watches the workflow run matched to the tag's commit, not `--limit 1`",
         "registry poll keeps the last value, exits non-zero on timeout and stops the release"
-      ]
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill (after the approval gate): pass on all assertions. It stopped for the user's OK before merging the release PR (naming PR and head SHA), before pushing v1.4.0 (naming the commit), and before merging the back-merge PR; manual npm publish only with approval. It watched the run found by `--commit` on the tag's commit with a bounded wait and `timeout 60m`. The npm poll kept `last`, exited 1 on timeout and stopped the release."
     }
   ]
 }
