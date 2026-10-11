@@ -16,8 +16,8 @@ Exit 0 exported; 1 blocked (fix reported issue); 2 invalid arguments.
 export function redact(text, terms) {
   const escaped = terms.filter(Boolean).sort((a, b) => b.length - a.length)
     .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  if (!escaped.length) throw new Error("Populate the private deny file before export.");
-  return text.replace(new RegExp(escaped.join("|"), "gi"), "[redacted]");
+  const vendorModels = String.raw`claude|anthropic|opus|sonnet|haiku|gpt[-\w.]*|openai|codex|gemini|llama|mistral|o[134]-\w*`;
+  return text.replace(new RegExp([...escaped, vendorModels].join("|"), "gi"), "[redacted]");
 }
 
 export function exportPacket(worktree, base, checksFile, denyFile, destination) {

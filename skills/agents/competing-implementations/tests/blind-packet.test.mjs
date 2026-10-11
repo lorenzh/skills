@@ -9,7 +9,13 @@ import { exportPacket, redact } from "../scripts/blind-packet.mjs";
 test("literal identities are redacted case-insensitively, longest first", () => {
   assert.equal(redact("m1+high /work/m1 M1 [vendor]", ["m1", "m1+high", "/work/m1", "[vendor]"]),
     "[redacted] [redacted] [redacted] [redacted]");
-  assert.throws(() => redact("text", []), /Populate/);
+  assert.equal(redact("text", []), "text");
+});
+
+test("vendor/model backstop works with an empty deny file", () => {
+  const identities = "Claude ANTHROPIC Opus Sonnet Haiku gpt-6.1-sol OpenAI Codex Gemini Llama Mistral o1-mini o3-pro o4-mini";
+  assert.equal(redact(identities, []), Array(14).fill("[redacted]").join(" "));
+  assert.equal(redact("gpt-6.1-sol private-branch", ["private-branch"]), "[redacted] [redacted]");
 });
 
 test("exports staged, unstaged and new code, preserving failed check evidence", (t) => {
@@ -43,5 +49,12 @@ test("exports staged, unstaged and new code, preserving failed check evidence", 
   const binaryDestination = path.join(root, "binary");
   assert.throws(() => exportPacket(repo, base, checks, deny, binaryDestination), /Binary changes/);
   assert.equal(fs.existsSync(binaryDestination), false);
+  fs.rmSync(path.join(repo, "asset.bin"));
+  git("reset", "--", "asset.bin");
+  fs.writeFileSync(deny, "");
+  fs.writeFileSync(checks, "Command: codex check\nExit: 0\n");
+  const emptyDenyDestination = path.join(root, "empty-deny");
+  exportPacket(repo, base, checks, deny, emptyDenyDestination);
+  assert.equal(fs.readFileSync(path.join(emptyDenyDestination, "checks.txt"), "utf8"), "Command: [redacted] check\nExit: 0\n");
   assert.equal(git("rev-parse", "HEAD"), base);
 });
