@@ -30,6 +30,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | `research` | Research workflows with several models and evidence checks |
 | `agents` | Dispatching, reviewing and shipping work between coding agents |
 | `git` | Git workflows: worktrees, branches |
+| `github` | GitHub issue and milestone work |
 | `terminal` | Terminal app control, captures and recordings |
 | `shipping` | Releases, CI waits and landing pull requests |
 | `video` | Video planning, scripting, pacing, coverage checks and editing |
@@ -51,6 +52,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [retargeting-stacked-prs](skills/shipping/retargeting-stacked-prs/SKILL.md) | `shipping` |
 | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | `shipping` |
 | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | `shipping` |
+| [triaging-issues](skills/github/triaging-issues/SKILL.md) | `github` |
 
 ## Conventions
 

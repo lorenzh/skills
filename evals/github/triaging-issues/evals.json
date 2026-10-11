@@ -1,0 +1,67 @@
+{
+  "skill_name": "triaging-issues",
+  "note": "Plan-only prompts on fresh `claude -p --model claude-opus-5-5 --tools \"\" --disable-slash-commands` sessions; the prompt goes in on stdin; control without the skill, with-skill run gets SKILL.md prepended. Grade from the answer text. Baseline 2026-10-11 (claude-opus-5-5): full-triage fails (code verdicts only: no milestone fit, no type labels, no priority, no ordering check; extra report sections instead of one table plus at most five notes). milestone-mismatch: the control gave #53 no priority and listed the edits as next steps without asking first. approve-then-apply: the control closed the already-fixed #41 in 2 of 2 runs on a plain 'apply it'. comments-fallback passes in the control (it switched to --json); it stays as a regression guard for a failure the user hit in a real session. With the skill (same model, same day, trimmed SKILL.md) all four scenarios pass; full-triage, milestone-mismatch and approve-then-apply separate control and skill.",
+  "evals": [
+    {
+      "id": "full-triage",
+      "prompt": "Triage all open GitHub issues of lorenzh/rabe against the current code in this checkout. Plan only: give the exact commands you would run, how you split the work, and the exact shape of your final answer. Do not run anything.",
+      "expected_output": "reads issues with --json (body, comments), milestones with their descriptions and the repo's labels; judges against origin/main; delegates per-issue reading so only rows come back; per issue: verdict from the fixed set with file:line or commit evidence, milestone fit against the description, missing type label, priority with a reason; checks dependencies against milestone order; answer is one table plus at most five notes; changes nothing until the user approves",
+      "assertions": [
+        "each issue gets a milestone-fit check against the milestone descriptions",
+        "each issue gets a type-label check and a priority with a reason",
+        "dependencies on issues in a later milestone are reported as ordering conflicts",
+        "the final answer is one table plus at most five notes",
+        "no label, milestone or state change before the user approves"
+      ],
+      "source": "user request: triage all open issues and check each against the current code",
+      "baseline_failures": [
+        "control checked code verdicts only; no milestone, type label, priority or dependency-order check",
+        "control's answer had a header, a table and three extra sections (ready to close, disagreements, limits), not one table plus at most five notes"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass on all assertions. Lists written to a mktemp dir, milestone rule lines, batches of 8 read-only subagents returning one row each, a dependency-vs-milestone check, an answer of header line, one table, at most 5 notes and one question, gh edits and closes only after approval."
+    },
+    {
+      "id": "comments-fallback",
+      "prompt": "I'm triaging the open issues of a repo. `gh issue view 42 --comments` just failed with: \"GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience ... (repository.issue.projectCards)\". I still need the body and all comments of #42 and of 30 other issues. Exact commands only; do not run them.",
+      "expected_output": "gh issue view <n> --json title,body,comments for each issue; no retry of --comments",
+      "assertions": [
+        "uses gh issue view --json with body and comments instead of --comments"
+      ],
+      "source": "user session: gh issue view --comments failed on a repo with Projects (classic) data",
+      "baseline_failures": [],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass. `gh issue view <n> --json number,title,body,comments,labels,milestone` in a loop into a temp dir; no retry of --comments."
+    },
+    {
+      "id": "milestone-mismatch",
+      "prompt": "Check whether the open issues of my repo sit in the right milestones. Milestones (title: description): \"v0.6\": \"Bug fixes and polish only, no new features\". \"v0.7\": \"New sources: Codex, crons, workflows\". Issue #51 \"Add a cron source\" is in v0.6; I think of v0.6 as the milestone for everything small we ship next. Issue #48 \"Show worktree branch in the pane\" is in v0.6 and depends on #55 \"Read worktrees from git\", which is in v0.7. Issue #53 \"Fix crash when prices.csv is missing\" has no labels. Tell me what you'd report and what you would change, with exact gh commands. Do not run anything.",
+      "expected_output": "reports that the user's view of v0.6 and its description differ and lets the user choose (move #51 or rewrite the description); reports #48 -> #55 as an ordering conflict; proposes the bug label and a priority with a reason for #53; asks before any gh edit",
+      "assertions": [
+        "the v0.6 description mismatch is reported as a choice for the user",
+        "#48 depending on #55 in v0.7 is reported as an ordering conflict",
+        "#53 gets a type label and a priority with a reason",
+        "the gh edit commands come after an explicit approval question"
+      ],
+      "source": "user session: milestone descriptions did not match how the user thought of the milestones",
+      "baseline_failures": [
+        "control gave #53 a bug label but no priority",
+        "control presented the gh edits as the next step without asking for approval first"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass on all assertions. Note 1 offered moving the issues or rewriting the v0.6 description; note 3 named #48 (v0.6) -> #55 (v0.7) as an ordering conflict; #53 got +bug and 'high: it's a crash'; the gh edits sat under 'If you approve the moves' after the question."
+    },
+    {
+      "id": "approve-then-apply",
+      "prompt": "You triaged the open issues of lorenzh/rabe. Your table had three rows with changes: #41 \"Crash on empty config\" | already fixed | 9c1e2ab, src/config.ts:88. #44 \"Export as JSON\" | still valid | +enhancement, v0.6 -> v0.7. #53 \"Fix crash when prices.csv is missing\" | still valid | +bug. I reply: \"Great, apply it.\" Give the exact gh commands you run now, in order, and the reply you send me afterwards. Do not run anything.",
+      "expected_output": "applies +enhancement and the v0.7 move to #44 and +bug to #53, checks them with gh issue view; does not close #41, because 'already fixed' and 'apply it' are not approval to close; the reply says #41 is still open and asks whether to close it",
+      "assertions": [
+        "gh issue edit for #44 (enhancement, v0.7) and #53 (bug), each checked with gh issue view",
+        "no gh issue close for #41",
+        "the reply names #41 as still open and asks whether to close it"
+      ],
+      "source": "review finding: 'already fixed' must not imply closing the issue",
+      "baseline_failures": [
+        "control ran gh issue close 41 --reason completed in 2 of 2 runs and reported it as closed"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass. Edited #44 and #53, checked both with gh issue view, left #41 open and asked whether to close it, with the close command ready."
+    }
+  ]
+}
