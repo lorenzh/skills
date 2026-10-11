@@ -16,10 +16,10 @@ const a = process.argv.slice(2); s.calls.push(a);
 const save = () => fs.writeFileSync(f, JSON.stringify(s));
 const k = a.slice(0, 2).join(' ');
 if (k === 'pr list') console.log(JSON.stringify(s.prs));
-else if (k === 'pr create') { const n = 77 + s.prs.length; s.prs.push({ number: n, url: 'https://github.com/o/r/pull/' + n, state: 'OPEN', body: a[a.indexOf('--body') + 1] }); console.log(s.prs.at(-1).url); }
+else if (k === 'pr create') { const n = 77 + s.prs.length; s.prs.push({ headRefOid: require('child_process').execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), number: n, url: 'https://github.com/o/r/pull/' + n, state: 'OPEN', body: a[a.indexOf('--body') + 1] }); console.log(s.prs.at(-1).url); }
 else if (k === 'pr edit') s.prs.at(-1).body = a[a.indexOf('--body') + 1];
 else if (k === 'pr checks') { if (process.env.GH_CI_FAIL) { save(); console.error('checks failed'); process.exit(1); } }
-else if (k === 'pr merge') s.prs.at(-1).state = 'MERGED';
+else if (k === 'pr merge') { s.prs.at(-1).state = 'MERGED'; s.prs.at(-1).headRefOid = require('child_process').execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(); }
 else if (k === 'pr view') console.log(s.prs.at(-1).state);
 else if (k === 'issue view') console.log(s.issue || 'OPEN');
 save();`;
@@ -114,4 +114,13 @@ test('changelog line needs the (#PR) placeholder', () => {
   const r = ship(d, ['--changelog', '- no link']);
   assert.equal(r.status, 2);
   assert.match(r.stderr, /\(#PR\) placeholder/);
+});
+
+test('a merged PR for older commits does not count as shipped', () => {
+  const { d, git } = setup();
+  assert.equal(ship(d, ['--merge']).status, 0);
+  writeFileSync(join(d, 'wt', 'c.txt'), 'z'); git('add', '.'); git('commit', '-qm', 'more\n\nRefs #42');
+  const r = ship(d);
+  assert.doesNotMatch(r.stdout, /already merged/);
+  assert.equal(gh(d).calls.filter((c) => c[1] === 'create').length, 2);
 });

@@ -56,8 +56,7 @@ const closing = new RegExp(`\\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\\b:?\\s+([\
 
 const branch = sh('git', ['rev-parse', '--abbrev-ref', 'HEAD'], 'branch');
 if (branch === 'HEAD' || branch === o.base) fail(`${o.dir} is on '${branch}'; check out the reviewed branch`, 2);
-const dirty = sh('git', ['status', '--porcelain'], 'status').split('\n').filter((l) => l && !(o.changelog && l.endsWith(' CHANGELOG.md')));
-if (dirty.length) fail('worktree has uncommitted changes; commit or stash them first');
+if (sh('git', ['status', '--porcelain'], 'status')) fail('worktree has uncommitted changes; commit or stash them first');
 
 let body = readFileSync(o.bodyFile, 'utf8').trim();
 if (o.link === 'refs' && closing.test(o.title)) fail(`--title closes #${o.issue}; a partial fix uses "${ref}"`);
@@ -68,8 +67,9 @@ if (o.link === 'refs') {
   if (closing.test(msgs)) fail(`a commit message closes #${o.issue}; reword it to "${ref}" before shipping`);
 }
 
-const prs = JSON.parse(sh('gh', ['pr', 'list', '--head', branch, '--base', o.base, '--state', 'all', '--json', 'number,url,state'], 'pr lookup') || '[]');
-const merged = prs.find((p) => p.state === 'MERGED');
+const prs = JSON.parse(sh('gh', ['pr', 'list', '--head', branch, '--base', o.base, '--state', 'all', '--json', 'number,url,state,headRefOid'], 'pr lookup') || '[]');
+const head = sh('git', ['rev-parse', 'HEAD'], 'head');
+const merged = prs.find((p) => p.state === 'MERGED' && p.headRefOid === head);
 if (merged && !prs.some((p) => p.state === 'OPEN')) { say(`PR ${merged.url} is already merged`); verify(merged); }
 
 sh('git', ['fetch', 'origin', o.base], 'fetch (no network? ship from a machine that can reach origin)');
@@ -102,9 +102,8 @@ if (o.changelog) {
     const head = end < 0 ? `${text}\n` : text.slice(0, end + 1);
     const line = o.changelog.replace('(#PR)', `([#${pr.number}](${pr.url}))`);
     writeFileSync(file, `${head}\n${line}${end < 0 ? '\n' : text.slice(end + 1).replace(/^\n?/, '\n')}`);
-  }
-  if (sh('git', ['status', '--porcelain', '--', 'CHANGELOG.md'], 'status')) {
-    sh('git', ['commit', '-m', `docs: add changelog line for #${pr.number}`, '--', 'CHANGELOG.md'], 'changelog commit');
+    sh('git', ['commit', '-m', `docs: add changelog line for #${pr.number}`, '--', 'CHANGELOG.md'],
+      'changelog commit (check the line, commit CHANGELOG.md yourself, rerun)');
     sh('git', ['push', 'origin', branch], 'changelog push');
     say('changelog line added with the PR link');
   }
