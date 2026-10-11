@@ -37,7 +37,15 @@ If `gh pr edit` fails (some `gh` versions fail on repos with classic projects), 
 gh api -X PATCH repos/{owner}/{repo}/pulls/<n> -f base=<main>
 ```
 
-If the diff now shows the base PR's commits again (the base was squash-merged), rebase the branch onto `<main>` and push it with `git push --force-with-lease`. That push also starts CI, so skip step 3.
+If the diff now shows the base PR's commits again (the base was squash-merged), merge `<main>` into the branch and push normally:
+
+```bash
+git fetch origin
+git switch <branch> && git merge origin/<main>   # resolve conflicts, then commit
+git push
+```
+
+Keep the branch history as it is: no rebase, no force-push. A force-push rewrites history others may have pulled and drops review context. The merge commit removes the duplicate changes from the diff, and the push starts CI, so skip step 3.
 
 Done when `gh pr view <n> --json baseRefName` shows `<main>`.
 
