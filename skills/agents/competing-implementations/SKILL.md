@@ -16,9 +16,10 @@ Read repository instructions, acceptance criteria, checks and loser policy. Stor
 Call the router version the installed plugin's launcher pins, e.g. `bunx @spatz/cli@<version from the plugin's launcher>`; a stale global CLI can fail on a newer database. Use that executable for suggestions and reports; retain raw JSON privately:
 
 ```sh
-spatz "Implement <task summary>" --models '<available-model:effort-list>' --json
-spatz "Implement <task summary>" --models '<available-model:effort-list>' --json
-spatz "Review two blind implementations of <task summary>" --models '<available-review-model:effort-list>' --json
+ROUTER="bunx @spatz/cli@0.4.0" # Use the version from the installed plugin's launcher.
+$ROUTER "Implement <task summary>" --models '<available-model:effort-list>' --json
+$ROUTER "Implement <task summary>" --models '<available-model:effort-list>' --json
+$ROUTER "Review two blind implementations of <task summary>" --models '<available-review-model:effort-list>' --json
 ```
 
 Take each ranking's first pair and suggestion ID. If the second repeats the first model, remove that model at every effort and reroute; disclose if only one is dispatchable. Prefer a reviewer from another family; disclose overlap without identifying its slot. Load dispatcher instructions, preserve selected effort and verify the answering model from runtime evidence. On routing/dispatch failure, report the actual error and stop that dispatch without substitution.
@@ -66,7 +67,13 @@ Done when the PR or prepared body contains the Competition section.
 
 ## 7. Report verified outcomes
 
-Use the same plugin-pinned executable privately: `spatz report <suggestion-id> --model <actual-model> --effort <selected-effort> --result pass|partial|fail`, separately for winner, loser and reviewer with their own IDs. Base results on verification: pass is complete success, partial incomplete success, fail failed verification. Losing a ranking is not itself failure; report outcomes even if no PR opened.
+Use the same `ROUTER` value from step 1 privately, separately for winner, loser and reviewer with their own IDs:
+
+```sh
+$ROUTER report <suggestion-id> --model <actual-model> --effort <selected-effort> --result pass|partial|fail
+```
+
+Base results on verification: pass is complete success, partial incomplete success, fail failed verification. Losing a ranking is not itself failure; report outcomes even if no PR opened.
 Done when all three router reports have recorded outcomes.
 
 ## 8. Resolve the loser at the end
