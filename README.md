@@ -53,6 +53,17 @@ npx skills update
 
 To install without the CLI, copy a skill folder into your agent's skills folder, for example `~/.claude/skills/<name>/` for Claude Code.
 
+### Install as a Claude plugin
+
+In Claude Code, add this repo as a plugin marketplace, then install the `lorenzh` plugin. It holds all skills:
+
+```text
+/plugin marketplace add lorenzh/skills
+/plugin install lorenzh@lorenzh-skills
+```
+
+In Claude Desktop, open the Code tab, choose "+" > Plugins > Add plugin and enter `lorenzh/skills`.
+
 ## Requirements per skill
 
 | Skill | Needs |

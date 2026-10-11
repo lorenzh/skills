@@ -1,0 +1,10 @@
+{
+  "name": "lorenzh-skills",
+  "owner": { "name": "Lorenz Hilpert" },
+  "plugins": [
+    {
+      "name": "lorenzh",
+      "source": "./"
+    }
+  ]
+}
