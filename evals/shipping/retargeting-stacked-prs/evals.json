@@ -1,0 +1,11 @@
+{
+  "skill_name": "retargeting-stacked-prs",
+  "note": "Plan-only prompts on a fresh claude-opus-5-5 subagent; control without the skill. Grade from the answer text. Baseline 2026-10-11 (claude-opus-5-5): control already passed the squash case (rebase --onto, force-with-lease push triggers CI). With the skill it added the gh api fallback and the reason a base change alone leaves stale checks. A merge-commit case without a push (where close/reopen is needed) is not yet run.",
+  "evals": [
+    {
+      "id": "retarget-ci",
+      "prompt": "PR #40 (branch feat/a) was squash-merged into main. PR #41 (branch feat/b) was opened with base feat/a. Get #41 merged. Give the exact gh/git commands in order; do not run them.",
+      "expected_output": "checks #41's current base; retargets with gh pr edit --base main (gh api PATCH fallback); handles squash-merge by rebasing onto main or triggers CI via close/reopen or a push because a base change does not start pull_request CI; waits for new checks before merging"
+    }
+  ]
+}
