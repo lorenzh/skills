@@ -1,0 +1,191 @@
+import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "../scripts/wt-deps.mjs");
+const run = (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: "utf8" });
+const sh = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { stdio: "ignore" });
+const write = (file, text) => {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+};
+
+// Main checkout with an installed dependency "pad"; branch `feat` gets a worktree.
+function repo({ changeLock = false } = {}) {
+  const main = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "wt-deps-")));
+  sh(main, "init", "-q", "-b", "main");
+  sh(main, "config", "user.email", "t@t");
+  sh(main, "config", "user.name", "t");
+  write(path.join(main, "package.json"), JSON.stringify({ name: "app", dependencies: { pad: "1.0.0" } }));
+  write(path.join(main, "package-lock.json"), '{"v":1}');
+  write(path.join(main, ".gitignore"), "node_modules/\n.worktrees/\n");
+  sh(main, "add", "-A");
+  sh(main, "commit", "-qm", "init");
+  sh(main, "branch", "feat");
+  if (changeLock) {
+    sh(main, "checkout", "-q", "feat");
+    write(path.join(main, "package-lock.json"), '{"v":2}');
+    sh(main, "commit", "-qam", "lock");
+    sh(main, "checkout", "-q", "main");
+  }
+  write(path.join(main, "node_modules/pad/package.json"), '{"name":"pad","version":"1.0.0"}');
+  write(path.join(main, "node_modules/pad/index.js"), "module.exports=1");
+  const wt = path.join(main, ".worktrees/feat");
+  sh(main, "worktree", "add", "-q", wt, "feat");
+  return { main, wt };
+}
+
+test("--help exits 0, unknown command exits 2, non-repo exits 2", () => {
+  assert.equal(run("--help").status, 0);
+  assert.equal(run("nope").status, 2);
+  assert.equal(run("check", os.tmpdir()).status, 2);
+});
+
+test("check: missing node_modules in a fresh worktree needs an install", () => {
+  const { wt } = repo({ changeLock: true });
+  const r = run("check", wt, "--json");
+  assert.equal(r.status, 1);
+  const [item] = JSON.parse(r.stdout).items;
+  assert.equal(item.ecosystem, "npm");
+  assert.equal(item.action, "install");
+  assert.equal(item.sameAsMain, false);
+});
+
+test("resolve: without an install, pad resolves to the main checkout (upward resolution)", () => {
+  const { main, wt } = repo();
+  const r = run("resolve", wt, "--json");
+  assert.equal(r.status, 1);
+  const [pad] = JSON.parse(r.stdout).results;
+  assert.ok(pad.path.startsWith(path.join(main, "node_modules")));
+  assert.equal(pad.inside, false);
+});
+
+test("symlinked node_modules counts as outside the worktree", () => {
+  const { main, wt } = repo();
+  fs.symlinkSync(path.join(main, "node_modules"), path.join(wt, "node_modules"));
+  assert.equal(run("resolve", wt).status, 1);
+});
+
+test("install, mark, then a lockfile change asks for a reinstall", () => {
+  const { wt } = repo();
+  fs.cpSync(path.join(path.dirname(wt), "../node_modules"), path.join(wt, "node_modules"), { recursive: true });
+  assert.equal(run("resolve", wt).status, 0);
+  assert.equal(JSON.parse(run("check", wt, "--json").stdout).items[0].action, "reinstall");
+  const m = run("mark", wt, "--json");
+  assert.equal(m.status, 0);
+  assert.match(JSON.parse(m.stdout).marker, /\.git\/worktrees\/feat\/creating-worktrees\.json$/);
+  assert.equal(run("check", wt).status, 0);
+  write(path.join(wt, "package-lock.json"), '{"v":3}');
+  const after = JSON.parse(run("check", wt, "--json").stdout).items[0];
+  assert.equal(after.action, "reinstall");
+});
+
+test("global-cache ecosystems need nothing copied", () => {
+  const { wt } = repo();
+  fs.rmSync(path.join(wt, "package-lock.json"));
+  write(path.join(wt, "go.sum"), "x");
+  const r = run("check", wt, "--json");
+  assert.equal(r.status, 0);
+  assert.equal(JSON.parse(r.stdout).items[0].action, "cache");
+});
+
+// Defects found in review.
+test("an ESM-only package installed in the worktree resolves inside", () => {
+  const { wt } = repo();
+  write(path.join(wt, "node_modules/pad/package.json"), '{"name":"pad","exports":{"import":"./i.mjs"}}');
+  assert.equal(run("resolve", wt).status, 0);
+});
+
+test("nested projects are found from the worktree root; hoisted deps count as inside", () => {
+  const { wt } = repo();
+  write(path.join(wt, "packages/app/package.json"), '{"dependencies":{"lib":"1","pad":"1"}}');
+  write(path.join(wt, "packages/app/package-lock.json"), "{}");
+  const res = JSON.parse(run("resolve", wt, "--json").stdout).results;
+  assert.deepEqual(res.filter((r) => !r.inside).map((r) => r.name).sort(), ["lib", "pad", "pad"]);
+  fs.cpSync(path.join(path.dirname(wt), "../node_modules"), path.join(wt, "node_modules"), { recursive: true });
+  write(path.join(wt, "packages/app/node_modules/lib/package.json"), "{}");
+  assert.equal(run("resolve", wt).status, 0);
+  const items = JSON.parse(run("check", wt, "--json").stdout).items;
+  const app = items.find((i) => i.lockfile === "packages/app/package-lock.json");
+  assert.equal(app.mainHash, null);
+  assert.equal(app.command, "cd -- 'packages/app' && npm ci --prefer-offline");
+});
+
+test("marking keeps every project's record", () => {
+  const { wt } = repo();
+  fs.cpSync(path.join(path.dirname(wt), "../node_modules"), path.join(wt, "node_modules"), { recursive: true });
+  write(path.join(wt, "packages/app/package-lock.json"), "{}");
+  write(path.join(wt, "packages/app/node_modules/.keep"), "");
+  run("mark", wt);
+  assert.equal(run("check", wt).status, 0);
+  write(path.join(wt, "packages/app/package-lock.json"), '{"v":9}');
+  const items = JSON.parse(run("check", wt, "--json").stdout).items;
+  assert.deepEqual(items.map((i) => i.action).sort(), ["ok", "reinstall"]);
+});
+
+test("a missing optional dependency is allowed", () => {
+  const { wt } = repo();
+  fs.cpSync(path.join(path.dirname(wt), "../node_modules"), path.join(wt, "node_modules"), { recursive: true });
+  write(path.join(wt, "package.json"), '{"dependencies":{"pad":"1"},"optionalDependencies":{"fsevents":"2"}}');
+  assert.equal(run("resolve", wt).status, 0);
+});
+
+test("Poetry keeps its environment outside: verify, not ok", () => {
+  const { wt } = repo();
+  fs.rmSync(path.join(wt, "package-lock.json"));
+  write(path.join(wt, "poetry.lock"), "x");
+  run("mark", wt);
+  const r = run("check", wt, "--json");
+  assert.equal(JSON.parse(r.stdout).items[0].action, "verify");
+});
+
+test("npm-shrinkwrap.json takes precedence over package-lock.json", () => {
+  const { wt } = repo();
+  write(path.join(wt, "npm-shrinkwrap.json"), "{}");
+  const items = JSON.parse(run("check", wt, "--json").stdout).items;
+  assert.deepEqual(items.map((i) => i.lockfile), ["npm-shrinkwrap.json"]);
+});
+
+test("an unreadable package.json fails instead of passing", () => {
+  const { wt } = repo();
+  write(path.join(wt, "package.json"), "{oops");
+  const r = run("resolve", wt);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /cannot read package\.json/);
+});
+
+test("Yarn Plug'n'Play resolves through the worktree's loader", () => {
+  const { wt } = repo();
+  fs.rmSync(path.join(wt, "package-lock.json"));
+  write(path.join(wt, "yarn.lock"), "x");
+  // Stand-in loader: the real one's setup() makes fs read inside cache zips.
+  const pad = path.join(wt, ".yarn/unplugged/pad/node_modules/pad");
+  write(path.join(pad, "package.json"), "{}");
+  write(path.join(wt, ".pnp.cjs"), `exports.setup=()=>{};exports.resolveToUnqualified=(n)=>n==="pad"?${JSON.stringify(pad)}:null`);
+  assert.equal(JSON.parse(run("check", wt, "--json").stdout).items[0].action, "reinstall");
+  run("mark", wt);
+  assert.equal(run("check", wt).status, 0);
+  assert.equal(run("resolve", wt).status, 0);
+  fs.rmSync(path.join(pad, "package.json"));
+  assert.equal(run("resolve", wt).status, 1, "a deleted cache entry is missing");
+  write(path.join(pad, "package.json"), "{}");
+  write(path.join(wt, "packages/app/package.json"), '{"dependencies":{"lib":"1"}}');
+  write(path.join(wt, "packages/app/.pnp.cjs"), 'exports.resolveToUnqualified=(n)=>__dirname');
+  assert.equal(run("resolve", wt).status, 0, "a nested project uses its own loader");
+  write(path.join(wt, "package.json"), '{"dependencies":{"pad":"1","lib":"1"}}');
+  assert.equal(run("resolve", wt).status, 1);
+});
+
+test("unicode and shell-hostile project paths are found and quoted", () => {
+  const { wt } = repo();
+  const dir = "\u00a0packages/café; echo x";
+  write(path.join(wt, dir, "package.json"), '{"dependencies":{"lib":"1"}}');
+  write(path.join(wt, dir, "package-lock.json"), "{}");
+  assert.equal(run("resolve", wt).status, 1);
+  const app = JSON.parse(run("check", wt, "--json").stdout).items.find((i) => i.lockfile.startsWith("\u00a0"));
+  assert.equal(app.command, "cd -- '\u00a0packages/café; echo x' && npm ci --prefer-offline");
+});
