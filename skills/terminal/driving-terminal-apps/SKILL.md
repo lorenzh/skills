@@ -38,7 +38,7 @@ All commands go through `node scripts/tui.mjs` in this skill's folder (run it; `
    - check a video: `node "$T" frame <file>.cast <secs> f.gif` renders the screen at a time; look at two or three such frames before handing the video over.
    Done when each file exists and you looked at it (open the image) or quoted it.
 
-6. **Stop and clean up.** `node "$T" stop <name>` kills the session `<name>`, the app and its child processes; the server and its socket go with the last session, and other sessions on that socket keep running. Then check with a bracketed pattern, e.g. `pgrep -fa '[s]leep 300'`, so `pgrep` does not match itself. Ignore the agent's own wrapper shell, which may still contain the command. A process that detached or was reparented survives `stop`; kill only leftover processes that belong to this run.
+6. **Stop and clean up.** `node "$T" stop <name>` kills the session `<name>`, the app and its child processes; the server and its socket go with the last session, and other sessions on that socket keep running; it refuses a session that `start` did not create. Then check with a bracketed pattern, e.g. `pgrep -fa '[s]leep 300'`, so `pgrep` does not match itself. Ignore the agent's own wrapper shell, which may still contain the command. A process that detached or was reparented survives `stop`; kill only leftover processes that belong to this run.
    Done when `stop` exits 0 and `pgrep` shows no remaining app processes from this run.
 
 7. **Report.** Give the file paths, size and length of videos, what each capture shows, and any fallback (GIF instead of MP4). If the harness can send files to the user (in Claude Code, `SendUserFile`), send the images or video; otherwise give the paths.

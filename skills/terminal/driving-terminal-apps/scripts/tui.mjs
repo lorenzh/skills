@@ -47,14 +47,17 @@ function seconds(value) {
 function regex(value) {
   try { return new RegExp(value); } catch (error) { fail(`invalid regex: ${error.message}`, 2); }
 }
+// A grapheme cluster (ZWJ sequence, flag pair, skin tone, base + combining mark) is as wide as its widest code point.
 // ponytail: main East Asian Wide/Fullwidth blocks plus emoji presentation; rare wide code points count 1.
+const graphemes = new Intl.Segmenter('en', { granularity: 'grapheme' });
 function cells(text) {
   let width = 0;
-  for (const char of text) {
-    if (/[\p{Mn}\p{Me}\p{Cf}]/u.test(char)) continue;
-    width += /[\p{Emoji_Presentation}\u1100-\u115f\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6\u{20000}-\u{3fffd}]/u.test(char) ? 2 : 1;
-  }
+  for (const { segment } of graphemes.segment(text)) width += Math.max(0, ...Array.from(segment, codeWidth));
   return width;
+}
+function codeWidth(char) {
+  if (/[\p{Mn}\p{Me}\p{Cf}]/u.test(char)) return 0;
+  return /[\p{Emoji_Presentation}\u1100-\u115f\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6\u{20000}-\u{3fffd}]/u.test(char) ? 2 : 1;
 }
 function quote(value) { return `'${value.replaceAll("'", "'\\''")}'`; }
 async function temporary(extension, action) {
@@ -133,7 +136,7 @@ async function main([command, ...args]) {
       const [width, height] = size.split('x');
       const launch = ['env', 'TERM=xterm-256color', 'COLORTERM=truecolor', `LANG=${process.env.TUI_LANG || 'C.UTF-8'}`, 'LC_ALL=', 'LANGUAGE=', 'LC_MESSAGES=', ...args].map(quote).join(' ');
       tmux(['new-session', '-d', '-s', name, '-x', width, '-y', height, launch,
-        ';', 'set', '-g', 'status', 'off', ';', 'set', '-g', 'escape-time', '10', ';', 'set', '-g', 'focus-events', 'on', ';', 'set', '-g', 'remain-on-exit', 'on']);
+        ';', 'set', '@tui', '1', ';', 'set', '-g', 'status', 'off', ';', 'set', '-g', 'escape-time', '10', ';', 'set', '-g', 'focus-events', 'on', ';', 'set', '-g', 'remain-on-exit', 'on']);
       break;
     }
     case 'type':
@@ -189,6 +192,7 @@ async function main([command, ...args]) {
     }
     case 'stop': {
       check(args.length === 0);
+      if (tmux(['has-session', '-t', `=${name}`], true).status === 0 && tmux(['show-options', '-t', `=${name}:`, '-v', '@tui'], true).stdout?.trim() !== '1') fail(`session ${name} was not started by tui start; left running`);
       const roots = tmux(['list-panes', '-s', '-t', `=${name}`, '-F', '#{pane_pid}'], true).stdout?.trim().split(/\s+/).filter(Boolean).map(Number) || [];
       function descendants() {
         const rows = run('ps', ['-eo', 'pid=,ppid=']).stdout.trim().split('\n').map(line => line.trim().split(/\s+/).map(Number));

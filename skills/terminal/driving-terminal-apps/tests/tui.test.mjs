@@ -56,6 +56,7 @@ const command = process.argv[6];
 if (command === 'list-panes') console.log('100');
 if (command === 'kill-session') appendFileSync(process.env.TUI_TEST_CALLS, JSON.stringify(['kill-session', process.argv[8]]) + '\\n');
 if (command === 'has-session') process.exitCode = 1;
+if (command === 'show-options') console.log('1');
 `, { mode: 0o755 });
     writeFileSync(join(dir, 'ps'), `#!${process.execPath}
 import {existsSync, writeFileSync} from 'node:fs';
@@ -213,6 +214,13 @@ test('find counts terminal cells: wide CJK and emoji 2, combining marks 0', { sk
     ok(['wait', name, 'x', 5]);
     assert.equal(ok(['find', name, 'x']).trim(), '12 1');
   } finally { tui(['stop', name]); }
+  for (const cluster of ['👩‍💻', '🇩🇪', '👍🏽', '☀️']) {
+    try {
+      ok(['start', name, '-s', '20x3', '--', 'sh', '-c', 'printf "%s x" "$1"; sleep 30', 'sh', cluster]);
+      ok(['wait', name, 'x', 5]);
+      assert.equal(ok(['find', name, 'x']).trim(), '4 1', cluster);
+    } finally { tui(['stop', name]); }
+  }
 });
 
 test('a refused start and its stop leave the sessions already on that socket running', { skip: !have('tmux') }, () => {
@@ -223,5 +231,9 @@ test('a refused start and its stop leave the sessions already on that socket run
     assert.equal(tui(['start', name, '--', 'sleep', '60']).status, 1);
     ok(['stop', name]);
     assert.equal(tmux(['has-session', '-t', '=mine']).status, 0);
-  } finally { tmux(['kill-session', '-t', '=mine']); }
+    assert.equal(tmux(['new-session', '-d', '-s', name, 'sleep', '60']).status, 0);
+    assert.equal(tui(['start', name, '--', 'sleep', '60']).status, 1);
+    assert.equal(tui(['stop', name]).status, 1, 'stop refuses a session start did not create');
+    assert.equal(tmux(['has-session', '-t', `=${name}`]).status, 0);
+  } finally { tmux(['kill-server']); }
 });
