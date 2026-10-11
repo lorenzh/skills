@@ -100,14 +100,47 @@ test("an ESM-only package installed in the worktree resolves inside", () => {
   assert.equal(run("resolve", wt).status, 0);
 });
 
-test("a nested project is checked in its own directory", () => {
+test("nested projects are found from the worktree root; hoisted deps count as inside", () => {
   const { wt } = repo();
-  write(path.join(wt, "packages/app/package.json"), '{"dependencies":{"lib":"1"}}');
+  write(path.join(wt, "packages/app/package.json"), '{"dependencies":{"lib":"1","pad":"1"}}');
   write(path.join(wt, "packages/app/package-lock.json"), "{}");
-  assert.equal(run("resolve", path.join(wt, "packages/app")).status, 1);
-  const item = JSON.parse(run("check", path.join(wt, "packages/app"), "--json").stdout).items[0];
-  assert.equal(item.action, "install");
-  assert.equal(item.mainHash, null);
+  const res = JSON.parse(run("resolve", wt, "--json").stdout).results;
+  assert.deepEqual(res.filter((r) => !r.inside).map((r) => r.name).sort(), ["lib", "pad", "pad"]);
+  fs.cpSync(path.join(path.dirname(wt), "../node_modules"), path.join(wt, "node_modules"), { recursive: true });
+  write(path.join(wt, "packages/app/node_modules/lib/package.json"), "{}");
+  assert.equal(run("resolve", wt).status, 0);
+  const items = JSON.parse(run("check", wt, "--json").stdout).items;
+  const app = items.find((i) => i.lockfile === "packages/app/package-lock.json");
+  assert.equal(app.mainHash, null);
+  assert.equal(app.command, "cd packages/app && npm ci --prefer-offline");
+});
+
+test("marking keeps every project's record", () => {
+  const { wt } = repo();
+  fs.cpSync(path.join(path.dirname(wt), "../node_modules"), path.join(wt, "node_modules"), { recursive: true });
+  write(path.join(wt, "packages/app/package-lock.json"), "{}");
+  write(path.join(wt, "packages/app/node_modules/.keep"), "");
+  run("mark", wt);
+  assert.equal(run("check", wt).status, 0);
+  write(path.join(wt, "packages/app/package-lock.json"), '{"v":9}');
+  const items = JSON.parse(run("check", wt, "--json").stdout).items;
+  assert.deepEqual(items.map((i) => i.action).sort(), ["ok", "reinstall"]);
+});
+
+test("a missing optional dependency is allowed", () => {
+  const { wt } = repo();
+  fs.cpSync(path.join(path.dirname(wt), "../node_modules"), path.join(wt, "node_modules"), { recursive: true });
+  write(path.join(wt, "package.json"), '{"dependencies":{"pad":"1"},"optionalDependencies":{"fsevents":"2"}}');
+  assert.equal(run("resolve", wt).status, 0);
+});
+
+test("Poetry keeps its environment outside: verify, not ok", () => {
+  const { wt } = repo();
+  fs.rmSync(path.join(wt, "package-lock.json"));
+  write(path.join(wt, "poetry.lock"), "x");
+  run("mark", wt);
+  const r = run("check", wt, "--json");
+  assert.equal(JSON.parse(r.stdout).items[0].action, "verify");
 });
 
 test("npm-shrinkwrap.json takes precedence over package-lock.json", () => {
@@ -122,16 +155,18 @@ test("an unreadable package.json fails instead of passing", () => {
   write(path.join(wt, "package.json"), "{oops");
   const r = run("resolve", wt);
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /Cannot read/);
+  assert.match(r.stdout, /cannot read package\.json/);
 });
 
-test("Yarn Plug'n'Play counts as installed", () => {
+test("Yarn Plug'n'Play resolves through the worktree's loader", () => {
   const { wt } = repo();
   fs.rmSync(path.join(wt, "package-lock.json"));
   write(path.join(wt, "yarn.lock"), "x");
-  write(path.join(wt, ".pnp.cjs"), "");
+  write(path.join(wt, ".pnp.cjs"), 'exports.resolveToUnqualified=(n)=>n==="pad"?"/yarn/cache/pad":null');
   assert.equal(JSON.parse(run("check", wt, "--json").stdout).items[0].action, "reinstall");
   run("mark", wt);
   assert.equal(run("check", wt).status, 0);
   assert.equal(run("resolve", wt).status, 0);
+  write(path.join(wt, "package.json"), '{"dependencies":{"pad":"1","lib":"1"}}');
+  assert.equal(run("resolve", wt).status, 1);
 });

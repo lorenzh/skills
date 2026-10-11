@@ -21,7 +21,7 @@ git rev-parse --show-superproject-working-tree
 git branch --show-current
 ```
 
-- The two paths differ and the superproject line is empty: you are already in a linked worktree. Use it and go to step 4. A second worktree duplicates the isolation the user already has and branches from the wrong base.
+- The two paths differ and the superproject line is empty: you are already in a linked worktree. Use it and go to step 3. A second worktree duplicates the isolation the user already has and branches from the wrong base.
 - The paths differ and the superproject line prints a path: you are in a submodule. Treat it as a normal checkout.
 - The paths are equal: a normal checkout. Go on.
 
@@ -60,10 +60,11 @@ Done when `git worktree list` shows `<wt>` on the intended branch and `.worktree
 
 ## 3. Keep tools out of the worktree directory
 
-The worktree directory is the parent of `<wt>` inside `<root>`: `.worktrees/`, or `.claude/worktrees/` for Claude Code's native tool. Run this step for an existing in-repo worktree from step 1 too. Git, `rg`, `fd`, `tsc`, pytest and Bun's test runner skip a dot directory or follow `.gitignore`. These scan it unless told:
+The worktree directory is the parent of `<wt>` inside `<root>`: `.worktrees/`, or `.claude/worktrees/` for Claude Code's native tool. Git, `rg`, `fd`, `tsc`, pytest and Bun's test runner skip a dot directory or follow `.gitignore`. These scan it unless told:
 
 | Tool | Exclude |
 |---|---|
+| Git | `<dir>/` in `.gitignore`; check with `git -C <root> check-ignore -q <dir>/x` (step 2 did this for a new `.worktrees/`) |
 | Docker build context | `.worktrees/` in `.dockerignore` (Docker does not read `.gitignore`) |
 | ESLint 9 flat config | `ignores: ["**/.worktrees/**"]`, or `includeIgnoreFile` for `.gitignore` |
 | Jest | `testPathIgnorePatterns: ["/\\.worktrees/"]` (regular expressions) |
@@ -71,9 +72,9 @@ The worktree directory is the parent of `<wt>` inside `<root>`: `.worktrees/`, o
 | Biome | `vcs.useIgnoreFile: true` |
 | IDE file watchers | `files.watcherExclude` (VS Code), "Excluded" folder (JetBrains) |
 
-Use the actual directory name in each entry. Add an entry only for a tool whose config file exists in `<root>`, and report each added line as uncommitted.
+Use the actual directory name in each entry. Add the Git entry always, and the others only for a tool whose config file exists in `<root>`; and report each added line as uncommitted.
 
-Done when every tool in the table with a config file in `<root>` excludes the worktree directory, or the report lists it as not added.
+Done when the worktree directory is ignored by git and by every tool in the table with a config file in `<root>`, or the report lists it as not added.
 
 ## 4. Provide dependencies
 
@@ -85,13 +86,14 @@ Run the check:
 node <skill>/scripts/wt-deps.mjs check <wt>
 ```
 
-It names each ecosystem by its lockfile, compares the lockfile hash with `<root>`'s, reads the marker of the last install, and prints one action per ecosystem. Exit 1 means an install is due.
+It finds every project in `<wt>` by its lockfiles (nested ones too), compares the lockfile hash with `<root>`'s, reads the marker of the last install, and prints one action per ecosystem. Exit 1 means an install is due.
 
 | Action | Do |
 |---|---|
 | `install` | Run the printed command in `<wt>`, also when the lockfile equals main's: npm, pnpm, Bun, Yarn and uv install from their global cache, so it is cheap. |
 | `reinstall` | The lockfile changed since the last install, or no marker exists. Run the printed command. |
 | `ok` | Nothing to do. |
+| `verify` | Poetry, Pipenv, Bundler keep the environment outside the worktree, so the marker cannot see it. Run the printed command; it is idempotent. |
 | `cache` | Go, Cargo, NuGet, Gradle, Maven: one global cache serves every worktree; the build fetches what it needs. |
 
 A symlink to `<root>`'s dependency directory is the last resort, made only when the user asks for it after hearing the cost: Node resolves the real path, so packages load relative to `<root>`; bundlers and test runners treat symlinks differently; postinstall output (native builds, generated clients) belongs to `<root>`; and a delete through the link (`rm -rf node_modules/`, trailing slash) wipes `<root>`'s install. A request to "not reinstall" is answered with the cache install above, which takes seconds.
@@ -105,7 +107,7 @@ node <skill>/scripts/wt-deps.mjs mark <wt>
 node <skill>/scripts/wt-deps.mjs resolve <wt>
 ```
 
-`mark` writes the lockfile hashes to `<wt>`'s git dir, outside the work tree, so a later `check` reports a lockfile change as `reinstall`. `resolve` exits 1 for every `package.json` dependency whose real path does not start with `<wt>` and names where it resolved. In a nested project, pass its directory (`<wt>/packages/app`) to all three commands. For Python, check by hand through the project's runner (`uv run`, `poetry run`, `pipenv run`): `<runner> python -c "import sys; print(sys.prefix)"` in `<wt>` prints a different prefix than in `<root>` (uv: one starting with `<wt>`).
+`mark` writes the lockfile hashes to `<wt>`'s git dir, outside the work tree, so a later `check` reports a lockfile change as `reinstall`. `resolve` exits 1 for every dependency of every `package.json` in `<wt>` that is missing or whose real path does not start with `<wt>`, and names where it resolved; with Yarn Plug'n'Play it asks the worktree's `.pnp.cjs`. For Python, check by hand through the project's runner (`uv run`, `poetry run`, `pipenv run`): `<runner> python -c "import sys; print(sys.prefix)"` in `<wt>` prints a different prefix than in `<root>` (uv: one starting with `<wt>`).
 
 Done when `check` and `resolve` both exit 0, or the report names the symlink the user asked for.
 

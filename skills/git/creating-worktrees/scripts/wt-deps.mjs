@@ -5,23 +5,31 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 const USAGE = `Usage: node wt-deps.mjs <check|mark|resolve> [worktree] [--json]
 
-  check    Per ecosystem: lockfile hash in the worktree and in the main checkout,
-           and the action: install, reinstall (lockfile changed since the marker),
-           ok, or cache (global cache; the build fetches what it needs).
+Finds every project in the worktree by its tracked lockfiles and package.json files,
+including nested ones (packages/app).
+
+  check    Per lockfile: its hash in the worktree and in the main checkout, and the
+           action: install, reinstall (lockfile changed since the marker), ok,
+           verify (Poetry, Pipenv, Bundler keep their environment outside the
+           worktree: run the idempotent command), or cache (global cache; the build
+           fetches what it needs).
   mark     Record the current lockfile hashes as installed (run after installing).
            The marker lives in the worktree's git dir, never in the work tree.
-  resolve  Resolve each dependency in package.json from the worktree and report
-           any that resolve outside it (for example to the main checkout).
+  resolve  Locate each dependency of every package.json and report any that is
+           missing or whose real path lies outside the worktree (for example in the
+           main checkout). Missing optionalDependencies are allowed. With Yarn
+           Plug'n'Play, resolves through the worktree's .pnp.cjs.
 
-worktree defaults to the current directory. Pass a subdirectory to check a nested
-project (for example packages/app); the main checkout's same subdirectory is compared.
+worktree defaults to the current directory.
 
 Exit 0  nothing to do / all resolve inside the worktree / marker written
-Exit 1  action needed: an install, a reinstall, or a dependency resolving outside
+Exit 1  action needed: an install, a reinstall, a missing or outside dependency, or
+        an unreadable package.json
 Exit 2  misuse: unknown command, or the path is not a git work tree`;
 
 // [lockfile, ecosystem, install command, per-worktree dependency dir or null]
@@ -61,9 +69,9 @@ function context(dir) {
   const root = git(dir, "rev-parse", "--show-toplevel");
   const gitDir = path.resolve(root, git(root, "rev-parse", "--git-dir"));
   // The first entry of `git worktree list` is the main checkout.
-  const mainRoot = git(root, "worktree", "list", "--porcelain").split("\n")[0].replace(/^worktree /, "");
-  const rel = path.relative(fs.realpathSync(root), fs.realpathSync(dir));
-  return { root: path.join(root, rel), main: path.join(mainRoot, rel), marker: path.join(gitDir, MARKER) };
+  const main = git(root, "worktree", "list", "--porcelain").split("\n")[0].replace(/^worktree /, "");
+  const files = git(root, "ls-files", "--cached", "--others", "--exclude-standard").split("\n").filter(Boolean);
+  return { root, main, marker: path.join(gitDir, MARKER), files };
 }
 
 function readMarker(file) {
@@ -74,44 +82,68 @@ function readMarker(file) {
   }
 }
 
-function check({ root, main, marker }) {
+function check({ root, main, marker, files }) {
   const installed = readMarker(marker);
   const items = [];
-  for (const [lock, eco, cmd, depDir] of LOCKFILES) {
-    const here = hash(path.join(root, lock));
-    if (!here) continue;
+  for (const rel of files) {
+    const entry = LOCKFILES.find(([lock]) => lock === path.basename(rel));
+    if (!entry) continue;
+    const [, eco, cmd, depDir] = entry;
+    const dir = path.join(root, path.dirname(rel));
     // npm ignores package-lock.json when npm-shrinkwrap.json exists.
-    if (lock === "package-lock.json" && fs.existsSync(path.join(root, "npm-shrinkwrap.json"))) continue;
-    const inMain = root === main ? here : hash(path.join(main, lock));
+    if (entry[0] === "package-lock.json" && fs.existsSync(path.join(dir, "npm-shrinkwrap.json"))) continue;
+    const here = hash(path.join(root, rel));
+    if (!here) continue;
+    const inMain = hash(path.join(main, rel));
     let action;
-    if (!depDir && !["poetry", "pipenv", "bundler"].includes(eco)) action = "cache";
-    else if (depDir && !fs.existsSync(path.join(root, depDir)) && !(eco === "yarn" && fs.existsSync(path.join(root, ".pnp.cjs")))) action = "install";
-    else if (!installed[lock]) action = depDir ? "reinstall" : "install";
-    else action = installed[lock] === here ? "ok" : "reinstall";
-    items.push({ ecosystem: eco, lockfile: lock, hash: here, mainHash: inMain, sameAsMain: here === inMain, action, command: cmd });
+    if (["poetry", "pipenv", "bundler"].includes(eco)) action = "verify";
+    else if (!depDir) action = "cache";
+    else if (!fs.existsSync(path.join(dir, depDir)) && !(eco === "yarn" && fs.existsSync(path.join(dir, ".pnp.cjs")))) action = "install";
+    else action = installed[rel] === here ? "ok" : "reinstall";
+    items.push({ ecosystem: eco, lockfile: rel, hash: here, mainHash: inMain, sameAsMain: here === inMain, action, command: path.dirname(rel) === "." ? cmd : `cd ${path.dirname(rel)} && ${cmd}` });
   }
   return items;
 }
 
-// Finds each dependency the way Node's lookup does: node_modules/<name> in the project
-// directory, then in every parent. Independent of a package's exports map.
-function resolve(root) {
-  const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+// Locates each dependency the way Node's lookup does: node_modules/<name> in the
+// project directory, then in every parent. Independent of a package's exports map.
+function locate(projectDir, name) {
+  for (let dir = projectDir; ; dir = path.dirname(dir)) {
+    const candidate = path.join(dir, "node_modules", name);
+    if (fs.existsSync(candidate)) return fs.realpathSync(candidate);
+    if (dir === path.dirname(dir)) return null;
+  }
+}
+
+function resolve({ root, files }) {
   const real = fs.realpathSync(root) + path.sep;
-  const names = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies });
-  return names.map((name) => {
-    let where = null;
-    for (let dir = root; ; dir = path.dirname(dir)) {
-      const candidate = path.join(dir, "node_modules", name);
-      if (fs.existsSync(candidate)) {
-        where = fs.realpathSync(candidate);
-        break;
-      }
-      if (dir === path.dirname(dir)) break;
+  const pnpFile = path.join(root, ".pnp.cjs");
+  const pnp = fs.existsSync(pnpFile) ? createRequire(pnpFile)(pnpFile) : null;
+  const results = [];
+  for (const rel of files.filter((f) => path.basename(f) === "package.json" && !f.includes("node_modules/"))) {
+    const projectDir = path.join(root, path.dirname(rel));
+    let pkg;
+    try {
+      pkg = JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
+    } catch (e) {
+      results.push({ project: rel, error: `cannot read ${rel}: ${e.message}` });
+      continue;
     }
-    // A file: or workspace dependency may resolve to tracked source inside the worktree.
-    return { name, path: where, inside: where !== null && (where + path.sep).startsWith(real) };
-  });
+    const optional = new Set(Object.keys(pkg.optionalDependencies ?? {}));
+    for (const name of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies })) {
+      let where = null;
+      if (pnp) {
+        try {
+          where = pnp.resolveToUnqualified(name, `${projectDir}/`);
+        } catch {}
+      } else where = locate(projectDir, name);
+      if (where === null && optional.has(name)) continue;
+      // Plug'n'Play packages live in the Yarn cache; the worktree's own loader is the isolation.
+      const inside = where !== null && (pnp !== null || `${where}${path.sep}`.startsWith(real));
+      results.push({ project: rel, name, path: where, inside });
+    }
+  }
+  return results;
 }
 
 const args = process.argv.slice(2);
@@ -141,37 +173,30 @@ if (cmd === "check") {
   else
     for (const i of items) {
       const vs = i.sameAsMain ? "same lockfile as main" : i.mainHash ? "lockfile differs from main" : "main has no such lockfile";
-      const what = { install: `install: ${i.command}`, reinstall: `lockfile changed since last install: ${i.command}`, ok: "ok, installed for this lockfile", cache: `global cache, nothing to copy (${i.command} if offline later)` }[i.action];
+      const what = { verify: `environment outside the worktree: run ${i.command}`, install: `install: ${i.command}`, reinstall: `lockfile changed since last install: ${i.command}`, ok: "ok, installed for this lockfile", cache: `global cache, nothing to copy (${i.command} if offline later)` }[i.action];
       console.log(`${i.ecosystem} (${i.lockfile}, ${vs}): ${what}`);
     }
   process.exit(todo.length ? 1 : 0);
 }
 
 if (cmd === "mark") {
-  const lockfiles = Object.fromEntries(check(ctx).map((i) => [i.lockfile, i.hash]));
+  const lockfiles = { ...readMarker(ctx.marker), ...Object.fromEntries(check(ctx).map((i) => [i.lockfile, i.hash])) };
   fs.writeFileSync(ctx.marker, `${JSON.stringify({ lockfiles, at: new Date().toISOString() }, null, 2)}\n`);
   console.log(json ? JSON.stringify({ marker: ctx.marker, lockfiles }) : `Marker written: ${ctx.marker}`);
   process.exit(0);
 }
 
-if (!fs.existsSync(path.join(ctx.root, "package.json"))) {
-  console.log(json ? JSON.stringify({ worktree: ctx.root, results: [] }) : "No package.json here: nothing to resolve.");
-  process.exit(0);
-}
-if (fs.existsSync(path.join(ctx.root, ".pnp.cjs"))) {
-  console.log(json ? JSON.stringify({ worktree: ctx.root, pnp: true, results: [] }) : "Yarn Plug'n'Play: packages resolve through this worktree's .pnp.cjs.");
-  process.exit(0);
-}
 let results;
 try {
-  results = resolve(ctx.root);
+  results = resolve(ctx);
 } catch (e) {
-  console.error(`Cannot read ${path.join(ctx.root, "package.json")}: ${e.message}. Fix the file, then run resolve again.`);
+  console.error(`Cannot load ${path.join(ctx.root, ".pnp.cjs")}: ${e.message}. Run the Yarn install, then resolve again.`);
   process.exit(1);
 }
-const outside = results.filter((r) => !r.inside);
+const bad = results.filter((r) => r.error || !r.inside);
 if (json) console.log(JSON.stringify({ worktree: ctx.root, results }, null, 2));
+else if (!results.length) console.log("No package.json found: nothing to resolve.");
 else
-  for (const r of outside)
-    console.log(`${r.name} ${r.path ? `resolves outside the worktree: ${r.path}` : "is not installed"}. Install dependencies in the worktree.`);
-process.exit(outside.length ? 1 : 0);
+  for (const r of bad)
+    console.log(r.error ? `${r.error}. Fix the file, then run resolve again.` : `${r.project}: ${r.name} ${r.path ? `resolves outside the worktree: ${r.path}` : "is not installed"}. Install dependencies in the worktree.`);
+process.exit(bad.length ? 1 : 0);
