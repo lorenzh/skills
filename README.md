@@ -69,7 +69,7 @@ To install without the CLI, copy a skill folder into your agent's skills folder,
 | retargeting-stacked-prs | `gh`, `git`. |
 | waiting-for-ci | `gh` for CI waits. |
 | landing-parallel-prs | `gh`, `git`. |
-| triaging-issues | `gh`, `git`. Subagents for the per-issue reading when the harness has them. |
+| triaging-issues | `gh`, `git`. |
 
 ## Layout
 
