@@ -16,7 +16,7 @@ Read repository instructions, acceptance criteria, checks and loser policy. Stor
 Call the router version the installed plugin's launcher pins, e.g. `bunx @spatz/cli@<version from the plugin's launcher>`; a stale global CLI can fail on a newer database. Use that executable for suggestions and reports; retain raw JSON privately:
 
 ```sh
-ROUTER="bunx @spatz/cli@0.4.0" # Use the version from the installed plugin's launcher.
+ROUTER="bunx @spatz/cli@<version from the plugin's launcher>"
 $ROUTER "Implement <task summary>" --models '<available-model:effort-list>' --json
 $ROUTER "Implement <task summary>" --models '<available-model:effort-list>' --json
 $ROUTER "Review two blind implementations of <task summary>" --models '<available-review-model:effort-list>' --json
