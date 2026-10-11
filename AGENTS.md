@@ -45,6 +45,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | `terminal` |
 | [directing-videos](skills/video/directing-videos/SKILL.md) | `video` |
 | [editing-videos](skills/video/editing-videos/SKILL.md) | `video` |
+| [suggesting-skills](skills/agents/suggesting-skills/SKILL.md) | `agents` |
 
 ## Conventions
 
