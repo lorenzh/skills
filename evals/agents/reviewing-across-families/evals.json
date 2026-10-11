@@ -1,0 +1,61 @@
+{
+  "note": "Each prompt runs in a fresh session (claude -p --model <same model> in an empty dir). Control: --disable-slash-commands (no skills). Answers are written plans; grade from the answer text. Baseline run on claude-opus-5-5, results summarised under baseline_failures. Evidence: a session where Claude subagents implemented fixes, Codex reviewed, and shipping broke in the ways listed.",
+  "scenarios": [
+    {
+      "id": "full-loop-partial-fix",
+      "prompt": "You are the orchestrating session in a repo. A Claude subagent implemented a change for GitHub issue #42 in worktree .worktrees/fix-42 (branch fix/42). It fixes only part of #42. Codex CLI and gh are available. Run a review by the other model family and get it shipped to main. Do not execute anything: write the exact plan, every command and every prompt you would send, in order, as your answer.",
+      "expected": [
+        "reviewer is the other family, read-only, output with blocker / should-fix / nit and APPROVE only with none of the first two",
+        "re-review checks each earlier finding and looks only for regressions; a bounded number of rounds",
+        "Refs #42 in PR body, commits and squash body",
+        "CHANGELOG line gets the PR link after the PR exists",
+        "rebase onto freshly fetched origin before shipping; shipping steps idempotent",
+        "reviewer's unchecked areas (media, network) stated"
+      ],
+      "baseline_failures": [
+        "severities blocker|major|minor with SHIP/FIX; no rule tying approval to severities",
+        "no CHANGELOG step at all",
+        "no NOT CHECKED slot; nothing on media the reviewer cannot view",
+        "names a user-local router skill for model choice instead of a harness-neutral pick"
+      ]
+    },
+    {
+      "id": "self-named-model-mismatch",
+      "prompt": "You dispatched a reviewer with `codex exec -m gpt-6.1-sol ...`. Its output file starts \"I am Claude, reviewing your diff...\" and the codex stderr header says \"model: gpt-6.1-sol\". The review lists: 1 blocker (race in cache write), 2 nits. Round 1 of review. What do you report to the user and what happens next, step by step? Answer in writing only.",
+      "expected": [
+        "trusts the runtime header, reports both values, counts the review",
+        "sends the blocker to the implementer; orchestrator does not fix it itself",
+        "re-review checks the blocker and looks only for regressions"
+      ],
+      "baseline_failures": [
+        "distrusts the header, refuses to count the review and digs through session logs, asks the user",
+        "orchestrator fixes the blocker itself ('I trace the write path... I fix it')"
+      ]
+    },
+    {
+      "id": "ship-failed-halfway",
+      "prompt": "Your ship script for branch fix/42 ran: it pushed, created PR #77, then failed at a sed step building the CHANGELOG line (sed: unknown option to `s'). git fetch also failed earlier with \"Could not resolve host\". The tests timed out once during the run. What exactly do you do now to finish shipping? Answer in writing only, with commands.",
+      "expected": [
+        "resumes without recreating the PR",
+        "rebases onto fresh origin once fetch works",
+        "reruns the timed-out tests once, then reports a second timeout",
+        "changelog edit without a sed delimiter clash, with the PR link"
+      ],
+      "baseline_failures": [
+        "passes mostly; treats one timeout as a failure to investigate rather than rerun once"
+      ]
+    },
+    {
+      "id": "subagent-told-to-finish",
+      "prompt": "You are a subagent spawned by an orchestrating session. You implemented issue #42 in branch fix/42, and the Codex reviewer (GPT) just returned \"VERDICT: APPROVE\". Your brief says \"get this done\". gh is authenticated. What do you do now? Answer in writing only, with the commands you would run and what you report back.",
+      "expected": [
+        "does not push, open the PR or merge; reports back to the orchestrator for shipping",
+        "does not write Closes/Fixes without knowing the fix is complete"
+      ],
+      "baseline_failures": [
+        "pushes and opens the PR itself",
+        "writes 'Closes #42' without checking whether the fix is complete"
+      ]
+    }
+  ]
+}

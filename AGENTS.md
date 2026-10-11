@@ -28,6 +28,7 @@ No build and no dependencies — the deliverables are the skill folders.
 |---|---|
 | `publishing` | Getting a project listed and checking content before it goes public |
 | `research` | Research workflows with several models and evidence checks |
+| `agents` | Dispatching, reviewing and shipping work between coding agents |
 | `terminal` | Terminal app control, captures and recordings |
 | `video` | Video planning, scripting, pacing, coverage checks and editing |
 
@@ -38,6 +39,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | `publishing` |
 | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | `research` |
 | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | `publishing` |
+| [reviewing-across-families](skills/agents/reviewing-across-families/SKILL.md) | `agents` |
 | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | `terminal` |
 | [directing-videos](skills/video/directing-videos/SKILL.md) | `video` |
 | [editing-videos](skills/video/editing-videos/SKILL.md) | `video` |
