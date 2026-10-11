@@ -102,8 +102,12 @@ if (o.changelog) {
     const head = end < 0 ? `${text}\n` : text.slice(0, end + 1);
     const line = o.changelog.replace('(#PR)', `([#${pr.number}](${pr.url}))`);
     writeFileSync(file, `${head}\n${line}${end < 0 ? '\n' : text.slice(end + 1).replace(/^\n?/, '\n')}`);
-    sh('git', ['commit', '-m', `docs: add changelog line for #${pr.number}`, '--', 'CHANGELOG.md'],
-      'changelog commit (check the line, commit CHANGELOG.md yourself, rerun)');
+    try {
+      execFileSync('git', ['commit', '-m', `docs: add changelog line for #${pr.number}`, '--', 'CHANGELOG.md'], { cwd: o.dir, stdio: 'pipe' });
+    } catch (e) {
+      sh('git', ['checkout', '--', 'CHANGELOG.md'], 'changelog restore');
+      fail(`changelog commit failed (line removed again; fix the cause and rerun)\n${String(e.stderr || e.message).trim()}`);
+    }
     sh('git', ['push', 'origin', branch], 'changelog push');
     say('changelog line added with the PR link');
   }

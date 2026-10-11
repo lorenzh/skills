@@ -124,3 +124,16 @@ test('a merged PR for older commits does not count as shipped', () => {
   assert.doesNotMatch(r.stdout, /already merged/);
   assert.equal(gh(d).calls.filter((c) => c[1] === 'create').length, 2);
 });
+
+test('a failed changelog commit leaves a clean tree, and the rerun adds the line', () => {
+  const { d, git } = setup();
+  const hook = join(d, 'wt', '.git', 'hooks', 'pre-commit');
+  writeFileSync(hook, '#!/bin/sh\nexit 1\n'); chmodSync(hook, 0o755);
+  const r = ship(d);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /changelog commit failed/);
+  assert.equal(git('status', '--porcelain'), '');
+  writeFileSync(hook, '#!/bin/sh\nexit 0\n');
+  assert.equal(ship(d).status, 0);
+  assert.match(readFileSync(join(d, 'wt', 'CHANGELOG.md'), 'utf8'), /pull\/77/);
+});
