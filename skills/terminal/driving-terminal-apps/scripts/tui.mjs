@@ -48,7 +48,8 @@ function regex(value) {
   try { return new RegExp(value); } catch (error) { fail(`invalid regex: ${error.message}`, 2); }
 }
 // A grapheme cluster (ZWJ sequence, flag pair, skin tone, base + combining mark) is as wide as its widest code point.
-// ponytail: main East Asian Wide/Fullwidth blocks plus emoji presentation; rare wide code points count 1.
+// ponytail: main East Asian Wide/Fullwidth blocks plus emoji presentation; rare wide code points count 1, and
+// tmux's width for some ZWJ sequences (🏳️‍🌈, 👨‍👩‍👧‍👦) differs by tmux version, so columns after them can be off.
 const graphemes = new Intl.Segmenter('en', { granularity: 'grapheme' });
 function cells(text) {
   let width = 0;
