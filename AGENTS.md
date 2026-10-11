@@ -26,9 +26,8 @@ No build and no dependencies — the deliverables are the skill folders.
 
 | Category | Holds |
 |---|---|
-| `publishing` | Getting a project listed and found |
+| `publishing` | Getting a project listed and checking content before it goes public |
 | `research` | Research workflows with several models and evidence checks |
-| `publishing` | Checks before content goes public |
 | `terminal` | Terminal app control, captures and recordings |
 | `video` | Video planning, scripting, pacing, coverage checks and editing |
 
