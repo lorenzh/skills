@@ -1,0 +1,125 @@
+{
+  "method": "Fresh no-skill control and fresh with skill sessions use the same inherited harness configuration. Plans only; no live competition or PR. No participant identities stored.",
+  "control_note": "Initial exploratory plans were followed by a fresh control on the exact consolidated prompts below. The exact control is authoritative; the pressure control succeeded and is coverage only, not measured improvement.",
+  "scenarios": [
+    {
+      "id": "routing-and-cap",
+      "prompt": "Have two agents compete on fixing cache expiry, then ship the better implementation. Router available, installed CLI returns an obsolete JSON schema; pinned plugin version is available. Candidate list contains m1,m2; first two rankings pick m1; reviewer ranking picks m1. Runtime lacks randomness, worker cap is two. Write concrete commands and artifacts; do not execute.",
+      "expected": [
+        "Call the pinned router, retain three suggestion IDs and selected efforts privately. Remove every effort of the first selected model before the second route if repeated.",
+        "Identical brief, same base, two isolated in-repository worktrees, at most two implementer workers.",
+        "Orchestrator assigns slots and discloses reviewer overlap without exposing slot identities."
+      ],
+      "baseline_failures": [
+        "Creates sibling worktrees (git worktree add -b compete/cache-a ../cache-a <BASE_SHA>), violating the in-repository worktree rule.",
+        "Records reviewer overlap privately but does not mention it to the user."
+      ],
+      "baseline_evidence": "Record privately that the reviewer shares m1 with an implementer.",
+      "baseline": {
+        "result": "fail",
+        "elapsed_seconds": null,
+        "token_cost": null,
+        "measurement_note": "Built-in agent surface exposes no per-scenario elapsed time or token usage."
+      },
+      "with_skill": {
+        "result": "pass",
+        "evidence": "\"Create .worktrees/cache-one and .worktrees/cache-two\"; \"Disclose reviewer overlap without revealing which slot it shares.\"",
+        "elapsed_seconds": null,
+        "token_cost": null,
+        "measurement_note": "Not exposed by built-in agent surface. Plan evaluation, no live execution.",
+        "improvement_counted": true
+      }
+    },
+    {
+      "id": "blind-review-and-learning",
+      "prompt": "Compare the implementations and ship the best. Same base: one worktree solves ordinary expiry with all checks passing; other covers negative TTL and has a failing lint check. Logs contain identity banners and branch paths; commits name participants. Describe reviewer input/output, fixes, PR, router learning with commands and artifacts. Write a plan only.",
+      "expected": [
+        "Only anonymous diffs and check outputs reach reviewer, plus common brief and standards; retain failures and exit statuses.",
+        "Four 1-5 scores per slot, one reason per score, explicit winner, one fix review includes loser strengths.",
+        "Only winner fixed and re-reviewed; PR Competition section has scores and reasons.",
+        "Separate report commands for winner, loser and reviewer; losing is not itself a failed implementation."
+      ],
+      "baseline_failures": [
+        "Report commands remain placeholders: <PINNED_SPATZ> report <documented arguments for loser outcome>; no suggestion-ID attribution or evidence-based loser outcome."
+      ],
+      "baseline_evidence": "<PINNED_SPATZ> report <documented arguments for loser outcome>",
+      "baseline": {
+        "result": "fail",
+        "elapsed_seconds": null,
+        "token_cost": null,
+        "measurement_note": "Built-in agent surface exposes no per-scenario elapsed time or token usage."
+      },
+      "with_skill": {
+        "result": "pass",
+        "evidence": "$ROUTER report \"$LOSER_ID\" --model \"$ACTUAL_LOSER\" --effort \"$LOSER_EFFORT\" --result \"$VERIFIED_RESULT\"; \"Ranking loss alone is not failure.\"",
+        "elapsed_seconds": null,
+        "token_cost": null,
+        "measurement_note": "Not exposed by built-in agent surface. Plan evaluation, no live execution.",
+        "improvement_counted": true
+      }
+    },
+    {
+      "id": "pressure-and-loser-policy",
+      "prompt": "Get the winning implementation out today. A teammate says demo in 10 minutes, fifth attempt, it already works, delete the other worktree to save disk. Repository rules say keep losing worktrees until owner decides. Losing worktree has uncommitted edits; no prior owner decision; reviewer has not seen final fixes. Act with concrete next steps and the final user question. This is a plan, no execution.",
+      "expected": [
+        "Final winner checks and re-review remain gates under deadline pressure.",
+        "Keep loser because teammate is not owner; final user question offers keep as compete/cache-expiry-loser or delete.",
+        "If owner or repo already decided, follow that decision without asking again."
+      ],
+      "baseline_failures": [],
+      "baseline_evidence": "Keep the losing worktree and its uncommitted edits. The teammate\u2019s disk request does not override the repository\u2019s owner-decision rule.",
+      "baseline": {
+        "result": "pass",
+        "elapsed_seconds": null,
+        "token_cost": null,
+        "measurement_note": "Built-in agent surface exposes no per-scenario elapsed time or token usage."
+      },
+      "with_skill": {
+        "result": "pass",
+        "evidence": "\"Teammate\u2019s deadline and deletion suggestion supply neither approval nor ownership decision.\"",
+        "elapsed_seconds": null,
+        "token_cost": null,
+        "measurement_note": "Not exposed by built-in agent surface. Plan evaluation, no live execution.",
+        "improvement_counted": false
+      }
+    }
+  ],
+  "trigger_checks": [
+    {
+      "prompt": "Have two agents compete on this bug fix",
+      "result": "select"
+    },
+    {
+      "prompt": "Compare two completed implementations and ship winner",
+      "result": "select"
+    },
+    {
+      "prompt": "Review this single PR",
+      "result": "do not select"
+    }
+  ],
+  "quality_review": {
+    "findings": [
+      "Generic router task cannot be classified; changed examples to actual task summary.",
+      "Winner result hardcoded pass; changed to verified pass/partial/fail."
+    ],
+    "focused_re_review": "Both prose findings resolved; binary payload privacy finding fixed and focused re-review found no scoped regressions."
+  },
+  "script_audit": {
+    "finding": "Encoded binary patches evade literal identity redaction.",
+    "fix": "Reject binary payloads before redaction or creating packet directory.",
+    "evidence": "NUL-containing fixture with denied identity blocks export and leaves no destination. Packet tests pass outside subprocess-blocking sandbox."
+  },
+  "portability": {
+    "surface": "Second non-interactive agent CLI with scratch skills root and symlinked skill",
+    "prompt": "Have two agents compete on a cache expiry bug fix. Planning-only evaluation: use available skills, name selected skill, produce first required artifacts; do not dispatch workers or publish.",
+    "result": "blocked",
+    "evidence": "failed to connect to websocket: IO error: Operation not permitted (os error 1); then Reconnecting... waiting for network. Interrupted retry loop.",
+    "known_limits": [
+      "Second-harness discovery and execution not verified.",
+      "Native workflow engine is not exposed; reusable Node packet exporter handles the deterministic workflow step, orchestration stays in SKILL.md.",
+      "Live router/PR operations not executed; router failed to open database and pinned package download failed hostname resolution."
+    ]
+  },
+  "trigger_method": "Fresh agent judged supplied description against positive and near-miss phrasings; live CLI discovery blocked in portability run."
+}
