@@ -80,9 +80,13 @@ for f in answer-a.md answer-b.md report.md; do [ -s "$f" ] && echo "ok $f" || ec
 For each `MISSING` file, recover the content from the agent's transcript instead of re-running the agent: the content of its last `Write` to that path, or its final message. In Claude Code the subagent transcript is `~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl`:
 
 ```bash
-jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Write") | .input.content' <transcript> | tail -n +1
-jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' <transcript> | tail -60
+# the last Write to this file; an agent may write several files, or the same file twice
+jq -rs --arg f report.md '[.[] | select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Write" and (.input.file_path | endswith("/" + $f)))] | last | .input.content // empty' <transcript>
+# fallback: the complete final text message
+jq -rs '[.[] | select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text] | last // empty' <transcript>
 ```
+
+Use the file name you are recovering in place of `report.md`. Take the whole message; a cut-off report loses its last sections.
 
 For a CLI runtime, the `-o <file>` output or its session log holds the final message. Write the recovered text to the file and say in the report that it was recovered.
 
