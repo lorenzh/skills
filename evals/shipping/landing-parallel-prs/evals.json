@@ -1,0 +1,22 @@
+{
+  "skill_name": "landing-parallel-prs",
+  "note": "Plan-only prompt on a fresh claude-opus-5-5 subagent; control without the skill. Evidence: in a real session three PRs adding rows to the same README and AGENTS.md tables conflicted twice in a row, because each merge broke the next.",
+  "evals": [
+    {
+      "id": "shared-index",
+      "prompt": "PRs #21, #22 and #23 each add one row to the skills table in README.md and AGENTS.md. All three are approved by review. Land all three. Give the exact commands in order; do not run them.",
+      "expected_output": "merges one PR at a time; before each next merge, merges origin/main into that branch keeping both rows, pushes normally, waits with a deadline for checks on the new head SHA, asks the user's OK before each merge",
+      "assertions": [
+        "no rebase and no force-push",
+        "updates each PR from main right before its own merge, not all three up front",
+        "asks for the user's explicit OK before each gh pr merge",
+        "waits for checks with a timeout on the new head SHA"
+      ],
+      "baseline_failures": [
+        "control rebased #22 and #23 onto main and pushed with --force-with-lease",
+        "control merged each PR right after checks, with no user OK per merge"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5: pass. One PR at a time, git merge origin/main right before each merge, plain push, timeout 30m on checks plus run list for the new head SHA, and a stop for the user's OK with PR and SHA before each gh pr merge."
+    }
+  ]
+}

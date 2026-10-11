@@ -50,6 +50,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [cutting-releases](skills/shipping/cutting-releases/SKILL.md) | `shipping` |
 | [retargeting-stacked-prs](skills/shipping/retargeting-stacked-prs/SKILL.md) | `shipping` |
 | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | `shipping` |
+| [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | `shipping` |
 
 ## Conventions
 
