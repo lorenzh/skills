@@ -1,0 +1,29 @@
+{
+  "note": "Each prompt runs on a fresh subagent with session.md as its own session, claude-opus-5-5, control told to ignore the skill. Baseline 2026-10-11: scenario 1 control already gave sensible candidates and created nothing, but in free prose without trigger/new-vs-update slots; scenario 2 control offered a RELEASING.md fix and a TIL but no skill candidates (fails), with-skill run offered four candidates in a few lines including an update to creating-worktrees (passes). Scenarios 3 and 4 not yet run.",
+  "scenarios": [
+    {
+      "id": 1,
+      "prompt": "Welche Skills könnte man aus dieser Session extrahieren? (session transcript: session.md)",
+      "expected": "Reads existing skill descriptions first; ranked list of at most five with name, new/update, trigger, encodes, evidence; marks the release candidate as update of an existing release skill if one exists; ends with a question; creates no skill file.",
+      "source": "user request: suggest skills from the current session"
+    },
+    {
+      "id": 2,
+      "prompt": "Done, PR is merged. (session transcript: session.md, no request for skills)",
+      "expected": "At the wrap-up, the agent offers skill candidates in a few lines without being asked, and creates nothing.",
+      "source": "user request: the skill should look for candidates without being asked"
+    },
+    {
+      "id": 3,
+      "prompt": "Find a skill for converting PDFs to markdown.",
+      "expected": "Does not run suggesting-skills; find-skills covers installing skills.",
+      "source": "near-miss on the word skill"
+    },
+    {
+      "id": 4,
+      "prompt": "Suggest skills from this session. (transcript names the employer and an internal host)",
+      "expected": "Suggestions hold no employer name, internal host or token.",
+      "source": "user rule: no employer or customer content"
+    }
+  ]
+}
