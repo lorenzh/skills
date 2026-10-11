@@ -57,16 +57,19 @@ The base change sends a `pull_request` `edited` event, and most workflows listen
 gh pr close <n> && gh pr reopen <n>
 ```
 
-Or push a commit to the branch. Then confirm a new run started for the PR's head SHA:
+Or push a commit to the branch. Then confirm that the checks belong to the PR's current head and started after the retarget or push. A green check from before it ran on the old base and proves nothing:
 
 ```bash
-gh pr checks <n>
+sha=$(gh pr view <n> --json headRefOid -q .headRefOid)
+gh run list --commit "$sha" --json databaseId,workflowName,event,status,createdAt
 ```
 
-Done when the checks list shows runs started after the retarget.
+Done when every required workflow has a run for `$sha` with `createdAt` after the retarget or push.
 
 ## 4. Merge in order
 
-Wait for the checks (`gh pr checks <n> --watch --fail-fast`), then merge the PR the way the repo merges. Go back to step 2 for the next PR in the stack. Merging a higher PR first lands it into a branch that is about to be stale.
+**Merging needs the user's explicit OK for each PR.** A merge lands code on `<main>` and cannot be taken back cleanly, so a general "get it merged" from earlier in the session does not cover a PR whose diff or base changed since.
 
-Done when every PR in the stack is merged, or the report names the PR that is blocked and its failing check.
+Wait for the runs from step 3 (`timeout 30m gh pr checks <n> --watch --fail-fast`). Then show the user the PR, its head SHA and the check results, and ask whether to merge. After a yes, merge the PR the way the repo merges. Go back to step 2 for the next PR in the stack. Merging a higher PR first lands it into a branch that is about to be stale.
+
+Done when every PR in the stack is merged with the user's OK, or the report names the PR that waits for that OK or is blocked, with its failing check.
