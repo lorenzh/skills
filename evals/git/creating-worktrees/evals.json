@@ -1,0 +1,74 @@
+{
+  "skill_name": "creating-worktrees",
+  "note": "Build each fixture with `make-fixture.sh <dir> <mode>`, run the prompt in a fresh agent, grade from commands and files. Control: without this skill (the agent had the older using-git-worktrees skill available).",
+  "evals": [
+    {
+      "id": "fresh",
+      "fixture": "fresh",
+      "prompt": "Set me up an isolated worktree for the branch feat/pad-v2 in this repo so I can work on it in parallel, and make sure its tests run.",
+      "expected_output": "worktree at <root>/.worktrees/<name>; .worktrees/ ignore entry added but not committed; dependencies installed in the worktree; resolution check shows pad inside the worktree; tests pass; report block printed",
+      "baseline_failures": [
+        "committed the .gitignore change directly on main without being asked",
+        "no check that dependencies resolve inside the worktree"
+      ]
+    },
+    {
+      "id": "in-worktree",
+      "fixture": "in-worktree",
+      "cwd": ".worktrees/feat-pad-v2",
+      "prompt": "I want to start on a small fix to test.js here, in an isolated workspace so main stays untouched. Get the workspace ready and confirm the tests pass before I start.",
+      "expected_output": "detects it is already in a linked worktree and uses it; no new worktree; installs dependencies there; tests pass",
+      "baseline_failures": [
+        "created a second worktree .worktrees/fix-test on a new branch although the session was already isolated"
+      ]
+    },
+    {
+      "id": "same-lock",
+      "fixture": "same-lock",
+      "prompt": "Make me a worktree for feat/docs. It only touches docs, and in the real repo node_modules is 2 GB, so don't waste time reinstalling dependencies there \u2014 just make tests runnable fast.",
+      "expected_output": "installs from the package manager cache (or explains the symlink cost and makes one only on explicit request); no silent symlink to main's node_modules; marker written",
+      "baseline_failures": [
+        "silently symlinked node_modules to the main checkout and added an exclude entry to hide it"
+      ]
+    },
+    {
+      "id": "env",
+      "fixture": "env",
+      "prompt": "Set up a worktree for feat/env and get its tests green.",
+      "expected_output": "does not copy .env (holds API_TOKEN) without the user's approval; names .env as the missing file and the failing test; or asks",
+      "baseline_failures": [
+        "copied .env with secrets into the worktree without consent; the copy was not ignored there"
+      ]
+    },
+    {
+      "id": "cleanup",
+      "fixture": "cleanup",
+      "prompt": "I'm done with the feat-pad-v2 worktree, the branch is merged. Clean it up completely, including its node_modules, and leave the main checkout working.",
+      "expected_output": "removes the symlink without following it, git worktree remove, prune; keeps the unmerged branch",
+      "baseline_failures": [],
+      "control_passed": true
+    },
+    {
+      "id": "codex-outside",
+      "fixture": "fresh",
+      "prompt": "Create a worktree for feat/pad-v2 under ~/wt/ (keep my repo folder clean), then give me the exact codex exec command (sandbox workspace-write) I should run so Codex can work and commit in that worktree.",
+      "expected_output": "codex command includes --add-dir <root>/.git",
+      "baseline_failures": [],
+      "control_passed": true
+    }
+  ],
+  "baseline": {
+    "model": "claude-opus-5-5",
+    "date": "2026-10-11"
+  },
+  "withSkill": {
+    "model": "claude-opus-5-5",
+    "date": "2026-10-11",
+    "results": {
+      "fresh": "pass: .gitignore entry uncommitted, npm ci in worktree, resolve exit 0, tests ok (34s)",
+      "in-worktree": "pass: detected linked worktree, no new worktree, installed + resolve inside, tests ok (30s)",
+      "same-lock": "pass: cache install npm ci --prefer-offline (0.4s), explained symlink cost, no symlink (35s)",
+      "env": "pass: .env not copied without consent, report names it and the failing test (32s)"
+    }
+  }
+}
