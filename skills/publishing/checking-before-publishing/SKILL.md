@@ -19,7 +19,7 @@ Never dump a process environment (`env`, `printenv`, `/proc/*/environ`) to look 
 
 Put each thing you will publish in a file: a comment or PR body in a `.md` file (post it with `--body-file`), a commit as its staged diff (`git diff --cached`) plus its message, a recording as its `.cast` or text log, and media as PNG frames.
 
-For a GIF or video, extract every frame that differs from the one before: `ffmpeg -i demo.gif -vf mpdecimate -fps_mode vfr frames/%04d.png`. Sampling at a fixed rate can skip a short-lived leak, and leaks often appear only in the last frames, where the demo shows its output.
+For a GIF or video, extract every frame: `ffmpeg -i demo.gif -fps_mode passthrough frames/%04d.png`. Sampling or dropping similar frames can skip a short-lived leak, and leaks often appear only in the last frames, where the demo shows its output.
 
 Done when every item to publish exists as a file, and each video or GIF exists as a frame directory.
 

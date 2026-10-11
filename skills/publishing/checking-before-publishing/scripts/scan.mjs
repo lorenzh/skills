@@ -26,10 +26,10 @@ const PATTERNS = [
   ['tmp-path', /\/(?:tmp|private\/var\/folders|var\/folders)\/[\w.-]*(?:claude|codex|scratch|tmp\.)[\w.\/-]*/g, 'drop the local scratch path'],
   ['token', /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|sk-(?:live-|proj-|ant-)?[A-Za-z0-9_-]{20,}|xox[abpr]-[\w-]{10,}|AKIA[0-9A-Z]{16}|AIza[\w-]{30,}|eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,})/g, 'remove it, and rotate it if real'],
   ['private-key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/g, 'remove it, and rotate it'],
-  ['secret-assign', /\b[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY|_KEY)\s*=\s*["']?(?![<$*]|x{3}|your|redacted|changeme|placeholder)[^\s"'<]{8,}/gi, 'replace the value with a placeholder'],
+  ['secret-assign', /\b[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY|_KEY)\s*=\s*["']?(?![<$*]|x{3,}["'\s]|x{3,}$|redacted["'\s]|redacted$)[^\s"'<]{8,}/gi, 'replace the value with a placeholder'],
   ['email', /\b[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}\b/gi, 'remove it, unless it is a public noreply address', [PUBLIC_EMAIL]],
   ['private-ip', /\b(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2})\b/g, 'remove the internal address'],
-  ['internal-host', /\b[\w-]+(?:\.[\w-]+)*\.(?:internal|corp|intranet|lan)\b/gi, 'remove the internal host or URL'],
+  ['internal-host', /\b[\w-]+(?:\.[\w-]+)*\.(?:internal|corp|intranet|lan)\b|(?<=\/\/|@)[\w-]+(?:\.[\w-]+)*\.local\b/gi, 'remove the internal host or URL'],
   ['user-at-host', /\b[a-z_][\w-]*@[\w-]+(?:\.[\w-]+)*:[~\/]/g, 'set a neutral prompt (PS1)', [/^git@/]],
   ['session-id', /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, 'drop the id unless it is public'],
 ];

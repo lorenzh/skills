@@ -58,3 +58,8 @@ test('review findings: split cast events, scoped allow lists, quiet placeholders
 test('cli: unreadable deny file is misuse, not a finding', () => {
   assert.equal(run(['-'], 'x\n', { PUBLISH_DENY_FILE: '.' }).status, 2);
 });
+
+test('re-review: real passwords and .local hosts stay findings', () => {
+  assert.deepEqual(kinds('PASSWORD=yourActualPassword123 PASSWORD=changeme2026 TOKEN="xxxxxxxx" KEY=redacted'), ['secret-assign', 'secret-assign']);
+  assert.deepEqual(kinds('https://buildbox.local/dashboard'), ['internal-host']);
+});
