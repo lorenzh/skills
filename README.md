@@ -10,6 +10,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 |---|---|---|
 | terminal | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | Drives, tests, screenshots and records terminal apps (CLIs, TUIs, REPLs) through tmux, like a person at the keyboard. |
 | video | [directing-videos](skills/video/directing-videos/SKILL.md) | Plans, scripts and paces a video (demo, screencast, tutorial, launch video), then checks the finished cut against the plan. |
+| publishing | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | Finds active awesome lists and directories for a project, follows each one's submission rules, and submits only with the owner's consent per target. |
 | video | [editing-videos](skills/video/editing-videos/SKILL.md) | Crops, zooms and captions recordings into per-beat clips, joins them with crossfades, and exports square, vertical or landscape MP4s with ffmpeg. |
 
 ## Install
@@ -47,6 +48,7 @@ To install without the CLI, copy a skill folder into your agent's skills folder,
 |---|---|
 | driving-terminal-apps | Node.js 18+ and `tmux`. For recordings: `asciinema` and `agg`. For PNG and MP4: `ffmpeg` (without it, the skill makes GIFs). |
 | directing-videos | Python 3 for the coverage check. It hands recording to a recorder skill, such as `driving-terminal-apps` or a browser automation skill. |
+| listing-a-project | `gh` CLI, authenticated. |
 | editing-videos | Node.js 18+ and `ffmpeg` with the `drawtext` and `xfade` filters (for example the BtbN static build; the johnvansickle 7.0.2 static build has no `drawtext`). |
 
 ## Layout
