@@ -5,7 +5,12 @@
     {
       "id": "full-release",
       "prompt": "Cut release 1.4.0 of our npm CLI `mycli`. Releases are made from branch release/1.x; a workflow publishes to npm when a v* tag is pushed. The CLI is also installed as a Claude Code plugin on this machine. Give the full plan with exact commands; do not run them.",
-      "expected_output": "reads RELEASING.md first; bounded npm poll; back-merge release/1.x into main via PR; updates the installed plugin/CLI and verifies --version; notes a running session may keep the old plugin bin on PATH; done only after back-merge and version check"
+      "expected_output": "reads RELEASING.md first; bounded npm poll; back-merge release/1.x into main via PR; updates the installed plugin/CLI and verifies --version; notes a running session may keep the old plugin bin on PATH; done only after back-merge and version check",
+      "assertions": [
+        "asks for the user's explicit OK before merging the release PR, before pushing the tag, and before merging the back-merge PR",
+        "watches the workflow run matched to the tag's commit, not `--limit 1`",
+        "registry poll keeps the last value, exits non-zero on timeout and stops the release"
+      ]
     }
   ]
 }
