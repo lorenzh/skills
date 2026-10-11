@@ -162,16 +162,17 @@ test("Yarn Plug'n'Play resolves through the worktree's loader", () => {
   const { wt } = repo();
   fs.rmSync(path.join(wt, "package-lock.json"));
   write(path.join(wt, "yarn.lock"), "x");
-  const zip = path.join(wt, ".yarn/cache/pad-1.zip");
-  write(zip, "");
-  write(path.join(wt, ".pnp.cjs"), `exports.resolveToUnqualified=(n)=>n==="pad"?${JSON.stringify(`${zip}/node_modules/pad`)}:null`);
+  // Stand-in loader: the real one's setup() makes fs read inside cache zips.
+  const pad = path.join(wt, ".yarn/unplugged/pad/node_modules/pad");
+  write(path.join(pad, "package.json"), "{}");
+  write(path.join(wt, ".pnp.cjs"), `exports.setup=()=>{};exports.resolveToUnqualified=(n)=>n==="pad"?${JSON.stringify(pad)}:null`);
   assert.equal(JSON.parse(run("check", wt, "--json").stdout).items[0].action, "reinstall");
   run("mark", wt);
   assert.equal(run("check", wt).status, 0);
   assert.equal(run("resolve", wt).status, 0);
-  fs.rmSync(zip);
-  assert.equal(run("resolve", wt).status, 1, "a deleted cache zip is missing");
-  write(zip, "");
+  fs.rmSync(path.join(pad, "package.json"));
+  assert.equal(run("resolve", wt).status, 1, "a deleted cache entry is missing");
+  write(path.join(pad, "package.json"), "{}");
   write(path.join(wt, "packages/app/package.json"), '{"dependencies":{"lib":"1"}}');
   write(path.join(wt, "packages/app/.pnp.cjs"), 'exports.resolveToUnqualified=(n)=>__dirname');
   assert.equal(run("resolve", wt).status, 0, "a nested project uses its own loader");
@@ -181,10 +182,10 @@ test("Yarn Plug'n'Play resolves through the worktree's loader", () => {
 
 test("unicode and shell-hostile project paths are found and quoted", () => {
   const { wt } = repo();
-  const dir = "packages/café; echo x";
+  const dir = "\u00a0packages/café; echo x";
   write(path.join(wt, dir, "package.json"), '{"dependencies":{"lib":"1"}}');
   write(path.join(wt, dir, "package-lock.json"), "{}");
   assert.equal(run("resolve", wt).status, 1);
-  const app = JSON.parse(run("check", wt, "--json").stdout).items.find((i) => i.lockfile.startsWith("packages/"));
-  assert.equal(app.command, "cd -- 'packages/café; echo x' && npm ci --prefer-offline");
+  const app = JSON.parse(run("check", wt, "--json").stdout).items.find((i) => i.lockfile.startsWith("\u00a0"));
+  assert.equal(app.command, "cd -- '\u00a0packages/café; echo x' && npm ci --prefer-offline");
 });

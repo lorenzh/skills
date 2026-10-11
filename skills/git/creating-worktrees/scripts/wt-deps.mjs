@@ -53,9 +53,10 @@ const LOCKFILES = [
 ];
 const MARKER = "creating-worktrees.json";
 
-function git(cwd, ...args) {
-  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+function gitRaw(cwd, ...args) {
+  return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
+const git = (cwd, ...args) => gitRaw(cwd, ...args).trim();
 
 const shellQuote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
 
@@ -72,7 +73,7 @@ function context(dir) {
   const gitDir = path.resolve(root, git(root, "rev-parse", "--git-dir"));
   // The first entry of `git worktree list` is the main checkout.
   const main = git(root, "worktree", "list", "--porcelain").split("\n")[0].replace(/^worktree /, "");
-  const files = git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0").filter(Boolean);
+  const files = gitRaw(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0").filter(Boolean);
   return { root, main, marker: path.join(gitDir, MARKER), files };
 }
 
@@ -122,7 +123,12 @@ function pnpFor(projectDir, root, cache) {
   for (let dir = projectDir; ; dir = path.dirname(dir)) {
     const file = path.join(dir, ".pnp.cjs");
     if (fs.existsSync(file)) {
-      if (!cache.has(file)) cache.set(file, createRequire(file)(file));
+      if (!cache.has(file)) {
+        const api = createRequire(file)(file);
+        // setup() lets fs read inside the Yarn cache zips.
+        api.setup?.();
+        cache.set(file, api);
+      }
       return cache.get(file);
     }
     if (dir === root || dir === path.dirname(dir)) return null;
@@ -130,12 +136,11 @@ function pnpFor(projectDir, root, cache) {
 }
 
 // Plug'n'Play maps a package into a zip in the Yarn cache (or an unplugged folder);
-// the package is available only if that file exists.
+// it is available only if its package.json can be read there.
 function pnpLocate(pnp, name, projectDir) {
   try {
     const where = pnp.resolveToUnqualified(name, `${projectDir}/`);
-    const zip = where?.match(/^(.*?\.zip)(?:[\\/]|$)/);
-    return where && fs.existsSync(zip ? zip[1] : where) ? where : null;
+    return where && fs.existsSync(path.join(where, "package.json")) ? where : null;
   } catch {
     return null;
   }
