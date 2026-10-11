@@ -1,6 +1,6 @@
 ---
 name: waiting-for-ci
-description: Waiting on CI runs, PR checks, package registries and background processes without hanging. Use when an agent must wait for a GitHub Actions run or PR checks to finish, wait until a published version appears on npm or another registry, wait for a background job or another agent, or when a wait loop never ends or an agent has gone silent.
+description: Waiting on CI runs, PR checks, package registries and background processes without hanging. Use when an agent must wait for a GitHub Actions run or PR checks to finish, wait until a published version appears on npm or another registry, wait for a background job or another agent, or when a wait loop never ends or an agent has gone silent or finished without a completion notice.
 ---
 
 # Waiting for CI
@@ -76,3 +76,19 @@ A silent agent may have finished, crashed or be stuck in a loop. Report what the
 If a job failed with a timeout or a network error on a step that passed before, rerun it once with `gh run rerun <run-id> --failed`. A second failure is real: report it with the failing step's log.
 
 Done when the report states the observed status (passed, failed with the step, still running with its last log line) for every wait.
+
+## 5. A background agent with no completion notice
+
+An agent can finish without the harness telling you. Once its expected time has passed (a tunable default: twice the time similar tasks took, at least 10 minutes), stop waiting for the notice and look:
+
+1. Read its last messages from its transcript. Claude Code keeps one per subagent at `~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl`:
+
+   ```bash
+   jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' <transcript> | tail -40
+   ```
+
+   Other harnesses keep similar logs (Codex: `~/.codex/sessions/`); the CLI's `-o <file>` output is the final message.
+2. Check the result the agent was meant to produce: the PR state (`gh pr view <n> --json state,headRefOid`), the output file, the pushed commit.
+3. If the transcript ends in a final answer and the result exists, treat the agent as done and use that result. If the transcript is still growing, it is working. If it stopped without a result, report it as failed with its last message.
+
+Done when each silent agent is reported as done (with its result), still working (with its last message time) or failed.

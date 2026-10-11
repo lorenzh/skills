@@ -20,6 +20,20 @@
         "the poll keeps the last value and exits non-zero on timeout"
       ],
       "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass on all assertions. pgrep-wait: run found by `--commit` and workflow with a bounded wait, `timeout 60m gh run watch`, PID from `pgrep -f '[b]un run build'` waited with `timeout 30m` around a kill -0 loop, both in the background with logs. registry-poll: kept `last`, exited 1 on timeout. Compared with the control, only registry-poll differs."
+    },
+    {
+      "id": "silent-agent",
+      "prompt": "45 minutes ago you started a background subagent to open a PR for issue #12. Such tasks take about 15 minutes. No completion notice has arrived. What do you do now? Give exact commands; do not run them.",
+      "expected_output": "stops waiting for the notice; reads the agent's last assistant messages from its transcript (Claude Code subagents/agent-<id>.jsonl, jq on assistant text); checks the real result (gh pr list/view for the PR); reports done, working or failed from what it saw",
+      "assertions": [
+        "reads the agent transcript instead of only waiting or re-dispatching",
+        "checks the PR state directly"
+      ],
+      "source": "three agents in one session finished without a completion notice; the user once waited about 40 minutes",
+      "baseline_failures": [
+        "control (with the current skill) checked the PR, branch and processes and asked the agent via a message, but never read the agent's transcript file"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5: pass. Read the last assistant messages from subagents/agent-<id>.jsonl with jq, checked the PR with gh pr list/view, and decided done / working / failed from what it saw."
     }
   ]
 }
