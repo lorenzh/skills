@@ -13,12 +13,26 @@ Wait for an external result with a command that ends on its own, and check real 
 
 | Waiting for | Command |
 |---|---|
-| One workflow run | `gh run watch <run-id> --exit-status` (exit code is the run's result) |
-| All checks on a PR | `gh pr checks <n> --watch --fail-fast` |
-| The run a push just started | `gh run list --branch <branch> --limit 1 --json databaseId,status` to get the id, then `gh run watch` |
-| A process you started | Its PID: `while kill -0 <pid> 2>/dev/null; do sleep 10; done` |
-| A process found by name | `pgrep -f '[p]attern'` (bracket the first letter) |
+| One workflow run | `timeout 60m gh run watch <run-id> --exit-status` (exit code is the run's result; 124 is the deadline) |
+| All checks on a PR | `timeout 30m gh pr checks <n> --watch --fail-fast` |
+| The run a push started | Find the run for that commit (below), then watch it as above |
+| A process you started | Its PID: `timeout 30m bash -c 'while kill -0 <pid> 2>/dev/null; do sleep 10; done'` |
+| A process found by name | `pgrep -f '[p]attern'` (bracket the first letter) to get the PID, then wait on the PID |
 | A version on a registry | The bounded loop in step 2 |
+
+The deadlines are tunable defaults; pick one per wait, never none.
+
+To find the run a push started, match it to the pushed commit and the workflow, not to "the latest run": an older or unrelated run on the same branch can be the latest. The run takes a few seconds to appear, so wait for it with a limit:
+
+```bash
+sha=$(git rev-parse HEAD)
+for i in $(seq 1 30); do
+  id=$(gh run list --workflow <workflow> --commit "$sha" --json databaseId -q '.[0].databaseId')
+  [ -n "$id" ] && break
+  sleep 10
+done
+[ -n "$id" ] || { echo "no run for $sha"; exit 1; }
+```
 
 Never wait with `while pgrep -f "<pattern>"; do ...; done`. The loop's own shell has `<pattern>` on its command line, so `pgrep` always finds it and the loop never ends. The bracket form `[p]attern` still matches the target process but not the literal `[p]attern` text in the shell's command line. A PID is better still.
 
@@ -29,13 +43,17 @@ Done when the wait command is chosen and it ends by itself when the result is in
 A poll without a limit hangs forever when the result never comes (a failed publish, a wrong version string). Use a fixed number of tries:
 
 ```bash
+ok=; last=
 for i in $(seq 1 30); do
-  [ "$(npm view <pkg>@<dist-tag> version 2>/dev/null)" = "<version>" ] && echo ready && break
+  last=$(npm view <pkg>@<dist-tag> version 2>/dev/null)
+  [ "$last" = "<version>" ] && ok=1 && break
   sleep 20
 done
+[ -n "$ok" ] || { echo "timeout: <pkg>@<dist-tag> is '$last', want <version>"; exit 1; }
+echo ready
 ```
 
-30 tries at 20 seconds is 10 minutes, a default you can tune. After the loop, check whether it printed `ready`; if not, report the timeout with the last value seen. Registry CDNs lag: `npm view` can show the old version for a few minutes after a successful publish.
+30 tries at 20 seconds is 10 minutes, a default you can tune. The loop keeps the last value and exits non-zero on a timeout, so a caller cannot mistake a timeout for success. Stop the work that depends on the result and report the last value. Registry CDNs lag: `npm view` can show the old version for a few minutes after a successful publish.
 
 Done when the loop printed `ready`, or the timeout is reported with the last observed value.
 
