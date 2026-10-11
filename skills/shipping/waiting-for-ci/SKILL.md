@@ -1,0 +1,60 @@
+---
+name: waiting-for-ci
+description: Waiting on CI runs, PR checks, package registries and background processes without hanging. Use when an agent must wait for a GitHub Actions run or PR checks to finish, wait until a published version appears on npm or another registry, wait for a background job or another agent, or when a wait loop never ends or an agent has gone silent.
+---
+
+# Waiting for CI
+
+Wait for an external result with a command that ends on its own, and check real state instead of guessing.
+
+**Every wait has an end condition the waiting command can see, and a timeout.**
+
+## 1. Pick the wait command
+
+| Waiting for | Command |
+|---|---|
+| One workflow run | `gh run watch <run-id> --exit-status` (exit code is the run's result) |
+| All checks on a PR | `gh pr checks <n> --watch --fail-fast` |
+| The run a push just started | `gh run list --branch <branch> --limit 1 --json databaseId,status` to get the id, then `gh run watch` |
+| A process you started | Its PID: `while kill -0 <pid> 2>/dev/null; do sleep 10; done` |
+| A process found by name | `pgrep -f '[p]attern'` (bracket the first letter) |
+| A version on a registry | The bounded loop in step 2 |
+
+Never wait with `while pgrep -f "<pattern>"; do ...; done`. The loop's own shell has `<pattern>` on its command line, so `pgrep` always finds it and the loop never ends. The bracket form `[p]attern` still matches the target process but not the literal `[p]attern` text in the shell's command line. A PID is better still.
+
+Done when the wait command is chosen and it ends by itself when the result is in.
+
+## 2. Bound every poll
+
+A poll without a limit hangs forever when the result never comes (a failed publish, a wrong version string). Use a fixed number of tries:
+
+```bash
+for i in $(seq 1 30); do
+  [ "$(npm view <pkg>@<dist-tag> version 2>/dev/null)" = "<version>" ] && echo ready && break
+  sleep 20
+done
+```
+
+30 tries at 20 seconds is 10 minutes, a default you can tune. After the loop, check whether it printed `ready`; if not, report the timeout with the last value seen. Registry CDNs lag: `npm view` can show the old version for a few minutes after a successful publish.
+
+Done when the loop printed `ready`, or the timeout is reported with the last observed value.
+
+## 3. Run long waits in the background
+
+A wait longer than about two minutes goes in the background (the harness's background mode, or `nohup ... > <log> 2>&1 &`), so the session stays responsive. Note the PID or job id and the log path.
+
+Done when the wait runs in the background and its PID or job id and log path are noted.
+
+## 4. Check state, do not assume it
+
+When a background wait, a run or another agent goes quiet, look before you report:
+
+- Run: `gh run view <run-id> --json status,conclusion,jobs`.
+- Process: `kill -0 <pid>` and the tail of its log.
+- Agent: its last output and whether its process or job still exists.
+
+A silent agent may have finished, crashed or be stuck in a loop. Report what the check showed, not what you expect.
+
+If a job failed with a timeout or a network error on a step that passed before, rerun it once with `gh run rerun <run-id> --failed`. A second failure is real: report it with the failing step's log.
+
+Done when the report states the observed status (passed, failed with the step, still running with its last log line) for every wait.

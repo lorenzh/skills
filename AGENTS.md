@@ -31,6 +31,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | `agents` | Dispatching, reviewing and shipping work between coding agents |
 | `git` | Git workflows: worktrees, branches |
 | `terminal` | Terminal app control, captures and recordings |
+| `shipping` | Releases, CI waits and landing pull requests |
 | `video` | Video planning, scripting, pacing, coverage checks and editing |
 
 ## Skills
@@ -45,6 +46,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | `terminal` |
 | [directing-videos](skills/video/directing-videos/SKILL.md) | `video` |
 | [editing-videos](skills/video/editing-videos/SKILL.md) | `video` |
+| [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | `shipping` |
 
 ## Conventions
 

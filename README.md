@@ -16,6 +16,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | video | [directing-videos](skills/video/directing-videos/SKILL.md) | Plans, scripts and paces a video (demo, screencast, tutorial, launch video), then checks the finished cut against the plan. |
 | publishing | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | Finds active awesome lists and directories for a project, follows each one's submission rules, and submits only with the owner's consent per target. |
 | video | [editing-videos](skills/video/editing-videos/SKILL.md) | Crops, zooms and captions recordings into per-beat clips, joins them with crossfades, and exports square, vertical or landscape MP4s with ffmpeg. |
+| shipping | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | Waits on CI runs, PR checks, registries and background processes with commands that end on their own, bounded polls, and state checks instead of guesses. |
 
 ## Install
 
@@ -58,6 +59,7 @@ To install without the CLI, copy a skill folder into your agent's skills folder,
 | directing-videos | Python 3 for the coverage check. It hands recording to a recorder skill, such as `driving-terminal-apps` or a browser automation skill. |
 | listing-a-project | `gh` CLI, authenticated. |
 | editing-videos | Node.js 18+ and `ffmpeg` with the `drawtext` and `xfade` filters (for example the BtbN static build; the johnvansickle 7.0.2 static build has no `drawtext`). |
+| waiting-for-ci | `gh` for CI waits. |
 
 ## Layout
 
