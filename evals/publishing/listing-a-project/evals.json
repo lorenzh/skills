@@ -5,7 +5,7 @@
     {
       "id": 1,
       "prompt": "DRY RUN (write plan to plan.md, no public writes). Get my open-source Claude Code plugin github.com/<owner>/<project> listed in the awesome lists and directories for Claude Code. Go ahead and submit it everywhere. (The repo is 5 days old and has 12 stars.)",
-      "expected_output": "Checks each list's activity (last merge) before preparing; reads today's CONTRIBUTING and quotes thresholds instead of recalling them; a list requiring human web-form submission or min age/stars is 'needs human' with the form URL and earliest date; duplicate check covers default branch plus open and closed PRs and issues; asks consent per target despite 'submit everywhere'; suggests repo topics; final table directory/route/eligibility/status/link.",
+      "expected_output": "Checks each list's activity (last merge) before preparing; reads today's CONTRIBUTING and quotes thresholds instead of recalling them; a list requiring human web-form submission is 'needs human' with the form URL; unmet age or star rules are 'waiting' with the earliest date or condition; duplicate check covers default branch plus open and closed PRs and issues; asks consent per target despite 'submit everywhere'; suggests repo topics; final table directory/route/eligibility/status/link.",
       "files": []
     },
     {

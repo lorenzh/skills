@@ -14,7 +14,7 @@ Track every target in one table, `listing.md` in the scratch area, and update it
 | Directory | Route | Eligibility | Status | Link or next action |
 |---|---|---|---|---|
 
-Status is one of: `skip: <reason>`, `already listed`, `crawler: <condition>`, `ready`, `submitted`, `needs human`, `waiting until <YYYY-MM-DD>`.
+Status is one of: `skip: <reason>`, `already listed`, `crawler: <condition>`, `ready`, `submitted`, `needs human`, `waiting until <YYYY-MM-DD>`, `waiting: <unmet condition>`.
 
 ## 1. Find candidates and check activity
 
@@ -22,11 +22,11 @@ Search for lists that fit the project's ecosystem and kind: GitHub search for `a
 
 ```bash
 gh repo view <owner>/<repo> --json nameWithOwner,isArchived,pushedAt
-gh pr list -R <owner>/<repo> --state merged -L 1 --json mergedAt
+gh api 'repos/<owner>/<repo>/pulls?state=closed&sort=updated&direction=desc&per_page=30' --jq '[.[].merged_at | select(.)] | max'
 ```
 
 - `nameWithOwner` differs from what you typed → the repo moved. Use the new owner from here on; the row names where a PR really lands.
-- Archived, or the last merged PR is older than 6 months (tunable) → `skip: inactive since <date>`. Prepare nothing for it.
+- Archived, or the newest merge is older than 6 months (tunable) or absent → `skip: inactive since <date>`. Prepare nothing for it. A crawler list (step 2) has no merges to check; judge it by `pushedAt`.
 - The list covers a different kind of project → `skip: no fit`.
 
 Done when `listing.md` has one row per candidate, and each row is skipped with a reason or names its current owner/repo.
@@ -37,7 +37,7 @@ Read `CONTRIBUTING.md`, the README's contributing section, `.github/ISSUE_TEMPLA
 
 - **Route**: PR, issue form, web form, or none. A list that says it is generated from topics, stars or a crawl is `crawler: <condition>`: it needs no submission, only the condition (step 6).
 - **Who may submit**: "web form only", "no CLI or bot submissions", "the author opens the issue" mean an agent never submits there. The row becomes `needs human` with the exact form URL.
-- **Eligibility**: minimum repo age, stars, licence, release, docs. Compute the earliest date it is met from `gh repo view <owner>/<project> --json createdAt,stargazerCount`. Not met → `waiting until <date>` or `waiting: needs <N> stars`.
+- **Eligibility**: minimum repo age, stars, licence, release, docs. Check it with `gh repo view <owner>/<project> --json createdAt,stargazerCount`. An unmet age rule → `waiting until <date>`; an unmet rule with no date (stars, licence, release) → `waiting: <condition>`.
 - **Format and ordering**: the entry line format, the section, and the sort order.
 
 Done when every non-skipped row has a route, an eligibility verdict with a date, and its rules quoted from the list's own files.
@@ -50,13 +50,13 @@ gh search prs --repo <owner>/<repo> '<project>' --json url,state
 gh search issues --repo <owner>/<repo> '<project>' --json url,state
 ```
 
-A hit on the default branch → `already listed`. An open PR or issue → `submitted` with its link. A closed, unmerged one → read why; that reason usually still applies.
+If the list keeps entries in other files (linked from the README, `data/`, `*.json`, `*.yml`), grep those too, and add `--limit 100` to the searches. A failed read is "unchecked", never "none". A hit on the default branch → `already listed`. An open PR or issue → `submitted` with its link. A closed, unmerged one → read why; that reason usually still applies.
 
 Done when each row records the three results (hit, link, or "none").
 
 ## 4. Prepare each entry
 
-Write the entry in the list's exact format into `listing.md` under its row: the line, the section heading, and the position. If the section's existing order breaks the stated rule (for example it is not alphabetical), append at the end of the section and say so in the PR body, so the reviewer sees why. For a form, write the answer to each field.
+Write the entry in the list's exact format into `listing.md` under its row: the line, the section heading, and the position. If the section's existing order breaks the stated rule (for example it is not alphabetical), no position follows the rule; append at the end of the section and say so in the PR body, so the maintainer can place it. For a form, write the answer to each field.
 
 Done when every `ready` or `needs human` row has its entry text, section and position.
 
@@ -66,7 +66,7 @@ A fork, PR, issue or comment on a third-party repo creates public surface under 
 
 If the harness or a permission classifier denies a fork, PR or issue, mark that target `needs human: denied by permission system` and tell the owner. Never retry it another way (another tool, command or the web UI); the denial is the owner's environment saying no, and only the owner can lift it.
 
-For each approved PR target: fork, branch, add the entry, open the PR with the list's template filled in, and record the link.
+Submit only to rows that are `ready` (eligibility met, a route the list allows an agent to use) and carry a recorded yes. For a PR: fork, branch, add the entry, open the PR with the list's template filled in. For an issue form that allows agents: fill every field of the form's template. Record the link.
 
 Done when every row is `submitted` with a link, or carries another status with its reason, and every public action has a recorded yes.
 
