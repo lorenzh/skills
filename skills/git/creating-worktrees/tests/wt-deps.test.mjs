@@ -92,3 +92,46 @@ test("global-cache ecosystems need nothing copied", () => {
   assert.equal(r.status, 0);
   assert.equal(JSON.parse(r.stdout).items[0].action, "cache");
 });
+
+// Defects found in review.
+test("an ESM-only package installed in the worktree resolves inside", () => {
+  const { wt } = repo();
+  write(path.join(wt, "node_modules/pad/package.json"), '{"name":"pad","exports":{"import":"./i.mjs"}}');
+  assert.equal(run("resolve", wt).status, 0);
+});
+
+test("a nested project is checked in its own directory", () => {
+  const { wt } = repo();
+  write(path.join(wt, "packages/app/package.json"), '{"dependencies":{"lib":"1"}}');
+  write(path.join(wt, "packages/app/package-lock.json"), "{}");
+  assert.equal(run("resolve", path.join(wt, "packages/app")).status, 1);
+  const item = JSON.parse(run("check", path.join(wt, "packages/app"), "--json").stdout).items[0];
+  assert.equal(item.action, "install");
+  assert.equal(item.mainHash, null);
+});
+
+test("npm-shrinkwrap.json takes precedence over package-lock.json", () => {
+  const { wt } = repo();
+  write(path.join(wt, "npm-shrinkwrap.json"), "{}");
+  const items = JSON.parse(run("check", wt, "--json").stdout).items;
+  assert.deepEqual(items.map((i) => i.lockfile), ["npm-shrinkwrap.json"]);
+});
+
+test("an unreadable package.json fails instead of passing", () => {
+  const { wt } = repo();
+  write(path.join(wt, "package.json"), "{oops");
+  const r = run("resolve", wt);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /Cannot read/);
+});
+
+test("Yarn Plug'n'Play counts as installed", () => {
+  const { wt } = repo();
+  fs.rmSync(path.join(wt, "package-lock.json"));
+  write(path.join(wt, "yarn.lock"), "x");
+  write(path.join(wt, ".pnp.cjs"), "");
+  assert.equal(JSON.parse(run("check", wt, "--json").stdout).items[0].action, "reinstall");
+  run("mark", wt);
+  assert.equal(run("check", wt).status, 0);
+  assert.equal(run("resolve", wt).status, 0);
+});

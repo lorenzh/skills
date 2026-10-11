@@ -54,25 +54,26 @@ git -C <root> worktree add .worktrees/<name> -b <branch>   # new branch
 git -C <root> worktree add .worktrees/<name> <branch>      # existing branch
 ```
 
-**Sandbox denial.** If creation fails with a permission or sandbox error, say so in one line ("The sandbox blocked worktree creation; working in the current checkout.") and work in place. Changing sandbox settings, picking another path to get around the denial, or running outside the sandbox is the user's decision.
+**Sandbox denial.** If creation fails with a permission or sandbox error, say so in one line ("The sandbox blocked worktree creation; working in the current checkout.") and work in place. If the user made isolation a condition ("main must stay untouched"), stop after that line and wait instead. Changing sandbox settings, picking another path to get around the denial, or running outside the sandbox is the user's decision.
 
 Done when `git worktree list` shows `<wt>` on the intended branch and `.worktrees/` is ignored, or the report records the sandbox denial.
 
-## 3. Keep tools out of `.worktrees/`
+## 3. Keep tools out of the worktree directory
 
-Git, `rg`, `fd`, `tsc`, pytest and Bun's test runner skip a dot directory or follow `.gitignore`. These scan it unless told:
+The worktree directory is the parent of `<wt>` inside `<root>`: `.worktrees/`, or `.claude/worktrees/` for Claude Code's native tool. Run this step for an existing in-repo worktree from step 1 too. Git, `rg`, `fd`, `tsc`, pytest and Bun's test runner skip a dot directory or follow `.gitignore`. These scan it unless told:
 
 | Tool | Exclude |
 |---|---|
 | Docker build context | `.worktrees/` in `.dockerignore` (Docker does not read `.gitignore`) |
 | ESLint 9 flat config | `ignores: ["**/.worktrees/**"]`, or `includeIgnoreFile` for `.gitignore` |
-| Jest, Vitest | `testPathIgnorePatterns` / `exclude` with `**/.worktrees/**` |
+| Jest | `testPathIgnorePatterns: ["/\\.worktrees/"]` (regular expressions) |
+| Vitest | `exclude: [...configDefaults.exclude, "**/.worktrees/**"]` (globs) |
 | Biome | `vcs.useIgnoreFile: true` |
 | IDE file watchers | `files.watcherExclude` (VS Code), "Excluded" folder (JetBrains) |
 
-Add an entry only for a tool whose config file exists in `<root>`, and report each added line as uncommitted.
+Use the actual directory name in each entry. Add an entry only for a tool whose config file exists in `<root>`, and report each added line as uncommitted.
 
-Done when every tool in the table with a config file in `<root>` excludes `.worktrees/`, or the report lists it as not added.
+Done when every tool in the table with a config file in `<root>` excludes the worktree directory, or the report lists it as not added.
 
 ## 4. Provide dependencies
 
@@ -104,7 +105,7 @@ node <skill>/scripts/wt-deps.mjs mark <wt>
 node <skill>/scripts/wt-deps.mjs resolve <wt>
 ```
 
-`mark` writes the lockfile hashes to `<wt>`'s git dir, outside the work tree, so a later `check` reports a lockfile change as `reinstall`. `resolve` exits 1 for every `package.json` dependency whose real path does not start with `<wt>` and names where it resolved. For Python, check the same rule by hand: `python -c "import sys; print(sys.prefix)"` run in `<wt>` starts with `<wt>`.
+`mark` writes the lockfile hashes to `<wt>`'s git dir, outside the work tree, so a later `check` reports a lockfile change as `reinstall`. `resolve` exits 1 for every `package.json` dependency whose real path does not start with `<wt>` and names where it resolved. In a nested project, pass its directory (`<wt>/packages/app`) to all three commands. For Python, check by hand through the project's runner (`uv run`, `poetry run`, `pipenv run`): `<runner> python -c "import sys; print(sys.prefix)"` in `<wt>` prints a different prefix than in `<root>` (uv: one starting with `<wt>`).
 
 Done when `check` and `resolve` both exit 0, or the report names the symlink the user asked for.
 
@@ -148,7 +149,7 @@ When the user is done with a worktree:
 
 1. Run `git -C <wt> status --short` and `git log <branch> --not --remotes --oneline`, and report uncommitted files and unpushed commits before deleting anything.
 2. Remove symlinks first with `rm <wt>/<link>` (no `-r`, no trailing slash).
-3. `git worktree remove <wt>`. It refuses a worktree with untracked or changed files; `--force` deletes them, so use it only after step 1 is reported. A locked worktree needs `git worktree unlock <wt>` first.
+3. `git worktree remove <wt>`. It refuses a worktree with untracked or changed files; `--force` deletes them, so use it only after the user, shown the list from step 1, says to discard them. Otherwise keep the worktree. A locked worktree needs `git worktree unlock <wt>` first.
 4. `git worktree prune` drops entries whose directory is already gone, for example after an `rm -rf <wt>`.
 5. Delete the branch with `git branch -d` only if `git branch --merged` lists it.
 

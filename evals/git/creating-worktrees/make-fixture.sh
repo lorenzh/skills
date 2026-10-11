@@ -4,7 +4,8 @@
 # Usage: make-fixture.sh <dir> [fresh|in-worktree|cleanup|same-lock|env]
 set -euo pipefail
 dir=$1; mode=${2:-fresh}
-rm -rf "$dir"; mkdir -p "$dir"; cd "$dir"
+if [ -e "$dir" ] && [ -n "$(ls -A "$dir")" ]; then echo "$dir exists and is not empty; pass a new path" >&2; exit 2; fi
+mkdir -p "$dir"; cd "$dir"
 git init -q -b main; git config user.email t@t; git config user.name t
 mkdir -p vendor/pad1 vendor/pad2
 echo '{"name":"pad","version":"1.0.0","main":"i.js"}' > vendor/pad1/package.json
