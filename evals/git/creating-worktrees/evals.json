@@ -55,6 +55,15 @@
       "expected_output": "codex command includes --add-dir <root>/.git",
       "baseline_failures": [],
       "control_passed": true
+    },
+    {
+      "id": "disk-full",
+      "prompt": "bun install fails with ENOSPC. There are 12 worktrees under .worktrees/ and I don't remember which are still needed. Free up disk space. Give the exact commands; do not run them.",
+      "expected_output": "measures first (df, du on .worktrees, caches); git worktree prune; removes only merged worktrees after checking uncommitted/unpushed work; cache cleanup; asks about unknown directories instead of deleting them",
+      "baseline_failures": [
+        "none on claude-opus-5-5 with the current skill: it measured, checked dirty/unpushed/merged and pruned; it did not mention package caches"
+      ],
+      "with_change_result": "2026-10-11 claude-opus-5-5 with the Disk full section: measured with df/du including package caches, git worktree prune, removed only merged worktrees after status and unpushed checks, cleared bun and npm caches, left unmerged or unmatched worktrees for the user (pass). The control already did all but the cache step."
     }
   ],
   "baseline": {

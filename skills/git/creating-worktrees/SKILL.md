@@ -1,6 +1,6 @@
 ---
 name: creating-worktrees
-description: Git worktree setup and cleanup for isolated parallel work. Use when the user asks to "work in a worktree", wants an isolated workspace or a parallel branch checkout, is about to execute an implementation plan that should not touch the current checkout, asks how to install dependencies or copy .env files into a worktree, wants a coding agent or sandbox to work in one, or asks to remove or clean up a worktree.
+description: Git worktree setup and cleanup for isolated parallel work. Use when the user asks to "work in a worktree", wants an isolated workspace or a parallel branch checkout, is about to execute an implementation plan that should not touch the current checkout, asks how to install dependencies or copy .env files into a worktree, wants a coding agent or sandbox to work in one, or asks to remove or clean up a worktree, or when worktrees fill the disk (ENOSPC, "No space left on device").
 ---
 
 # Creating Worktrees
@@ -158,6 +158,26 @@ When the user is done with a worktree:
 `git clean -xdff` (double `f`) in `<root>` deletes in-repo worktrees with their uncommitted work; `git clean -xdf` skips them.
 
 After `<root>` or `<wt>` moves, or in a container that mounts the repo at another path, the worktree's `.git` file points at a stale absolute path: run `git worktree repair` in the moved checkout. Git 2.48 and later can store relative links instead (`git worktree add --relative-paths`, or `git config worktree.useRelativePaths true`); older git versions cannot read the repository afterwards.
+
+## Disk full
+
+Many worktrees each hold their own dependency install, so builds can start failing with `ENOSPC` or "No space left on device". Measure before you delete anything:
+
+```bash
+df -h <root>
+du -sh <root>/.worktrees/* 2>/dev/null | sort -h | tail
+du -sh "${TMPDIR:-/tmp}" ~/.bun/install/cache ~/.npm ~/.cache 2>/dev/null
+```
+
+Free space in this order, and stop when the build works again:
+
+1. `git worktree prune` for entries whose directory is gone.
+2. Worktrees whose branch is merged (`git branch --merged <main>`): remove each through the Cleanup steps above, which check for uncommitted and unpushed work first.
+3. Package caches: `bun pm cache rm`, `npm cache clean --force`, `pnpm store prune`. The next install downloads again; nothing else is lost.
+
+A directory you did not create, or cannot match to a merged branch or a cache, stays: list it with its size and ask the user. It may hold another session's work.
+
+Done when the build runs again, and the report lists what was removed with the space freed and each directory left for the user to decide.
 
 ## Common mistakes
 
