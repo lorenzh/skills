@@ -37,6 +37,11 @@ test('box: fades in on source pixels before crop, at boxAt seconds', () => {
   assert.match(vf, /^fps=30,split\[a\]\[b\];\[b\]drawbox=x=10:y=30:w=80:h=20:color=0xff9f1c:t=4,drawbox=x=200:y=90:w=40:h=20:.*fade=in:st=0\.8:d=0\.3:alpha=1\[hl\];\[a\]\[hl\]overlay,crop=320:180:0:0,/);
 });
 
+test('an empty box list draws no highlight', () => {
+  const [a] = dry(setup({ beats: [{ id: 'B1', src: 'raw.mp4', start: 0, dur: 2, box: [] }] }), 'B1');
+  assert.doesNotMatch(a[a.indexOf('-vf') + 1], /split|drawbox/);
+});
+
 test('one beat renders alone; all renders every beat', () => {
   const dir = setup();
   assert.equal(dry(dir, 'B2').length, 1);

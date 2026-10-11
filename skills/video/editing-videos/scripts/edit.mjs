@@ -87,7 +87,7 @@ export function beatArgs(c, b) {
   const maxH = c.H - band - Math.round(c.H * 0.06);
   const [cw, ch] = (b.crop ?? '').split(':');
   const f = [`fps=${c.fps}`];
-  if (b.box) {
+  if (b.box?.length) {
     const boxes = b.box.map((r) => { const [w, h, x, y] = r.split(':'); return `drawbox=x=${x}:y=${y}:w=${w}:h=${h}:color=0xff9f1c:t=4`; });
     f.push(`split[a][b];[b]${boxes.join(',')},format=yuva420p,fade=in:st=${b.boxAt ?? 1}:d=0.3:alpha=1[hl];[a][hl]overlay`);
   }
