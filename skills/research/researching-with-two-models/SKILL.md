@@ -82,8 +82,8 @@ For each `MISSING` file, recover the content from the agent's transcript instead
 ```bash
 # the last Write to this file; an agent may write several files, or the same file twice
 jq -rs --arg f report.md '[.[] | select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Write" and (.input.file_path | endswith("/" + $f)))] | last | .input.content // empty' <transcript>
-# fallback: the complete final text message
-jq -rs '[.[] | select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text] | last // empty' <transcript>
+# fallback: the complete final message, every text block joined (one message can span several entries with the same id)
+jq -rs '[.[] | select(.type=="assistant" and any(.message.content[]?; .type=="text"))] as $a | ($a | last | .message.id) as $id | [(if $id then $a[] | select(.message.id == $id) else ($a | last) end) | .message.content[]? | select(.type=="text") | .text] | join("\n\n")' <transcript>
 ```
 
 Use the file name you are recovering in place of `report.md`. Take the whole message; a cut-off report loses its last sections.

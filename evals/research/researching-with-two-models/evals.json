@@ -88,6 +88,12 @@
         "observed": [
           "jq -rs filtered Write calls by file_path ending in /report.md and took `last`, excluding notes.md and the draft; checked the file with -s afterwards. The filter was also run on a synthetic three-Write transcript and returned the final version."
         ]
+      },
+      "fixture": "inputs/synth-transcript.jsonl",
+      "fixture_check": {
+        "write_recovery": "FINAL\\nline2",
+        "final_message_fallback": "## Part 1\\n\\n## Part 2\\n\\n## Part 3",
+        "note": "the last assistant message (id m5) has two text blocks in one entry and a third in a second entry; the fallback must return all three, not only the last block. Run the two jq commands from SKILL.md step 4 on the fixture."
       }
     }
   ]
