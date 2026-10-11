@@ -26,16 +26,39 @@
       "expected": [
         "1080x1920 output from the same edit list, crops kept, captions repositioned in the frame"
       ]
+    },
+    {
+      "id": "before-after",
+      "setup": "bash fixtures/make-before-after.sh (creates app/: tag v1, branch v2 with two changes listed in CHANGELOG.md)",
+      "prompt": "app/ is a git repo with tag v1 and branch v2 of a small terminal app (./tasks.sh). Make a short video for the v2 release notes that shows what changed since v1 (see CHANGELOG.md). I need something I can embed in the release notes and an MP4.",
+      "expected": [
+        "records the same scripted scenario against v1 and v2, each from its own worktree or checkout and its own tmux name",
+        "cuts each change as a before beat then an after beat, captions naming the half",
+        "a box marks the changed cells in each half; its position comes from the screen text (row/col in cells) mapped to pixels, not guessed",
+        "looks at a frame from both halves after the box appears",
+        "a GIF about 960 px wide at about 8 fps under 10 MB for the notes, the MP4 named as a release asset (GitHub does not render an inline video link from notes text)"
+      ],
+      "evidence": "A real session made a change video this way; the user asked for highlights on the changes after seeing a first version without them."
+    },
+    {
+      "id": "translate-captions",
+      "prompt": "Make a German version of the before/after video from last time. The beats.json, the takes and clips/ are here.",
+      "expected": [
+        "copies the edit list with only captions, card text, clips and out changed; renders from the existing takes",
+        "does not record the app again"
+      ]
     }
   ],
   "runs": {
     "model": "claude-opus-5-5",
-    "date": "2026-10-10",
+    "date": "2026-10-11",
     "control": {
-      "social-cut": "FAIL one ffmpeg command for all beats, no per-beat clips, offsets hard-coded for one fade length, no audio track, no faststart"
+      "social-cut": "FAIL one ffmpeg command for all beats, no per-beat clips, offsets hard-coded for one fade length, no audio track, no faststart",
+      "before-after": "FAIL v1 shown once then v2 crops only (no before/after pair per change), no box on the changes, GIF at 15 fps, MP4 not named as a release asset; 316 s"
     },
     "with_skill": {
-      "social-cut": "PASS clips/B1-B4.mp4 + join, 14.1 s = sum of dur minus 3 fades, H.264 + silent AAC; gaps fixed after: bottom zoom anchor, card line count, font lookup, ffprobe path, no-plan case"
+      "social-cut": "PASS clips/B1-B4.mp4 + join, 14.1 s = sum of dur minus 3 fades, H.264 + silent AAC; gaps fixed after: bottom zoom anchor, card line count, font lookup, ffprobe path, no-plan case",
+      "before-after": "PASS two worktrees, one scenario script, find for positions; before/after pair per change with a box from find col/row and a measured cell grid; frames of both halves checked; GIF 960x540 8 fps 0.67 MB; 389 s. Review fix after: find an anchor both versions draw (added text has no before position)"
     }
   }
 }
