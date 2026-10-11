@@ -1,0 +1,25 @@
+{
+  "skill_name": "waiting-for-ci",
+  "note": "Plan-only prompts on a fresh claude-opus-5-5 subagent; control without the skill. Grade from the answer text. Baseline 2026-10-11 (claude-opus-5-5): control already passed both prompts (gh run watch, pgrep -fx, timeout-bounded loops). The skill adds the background-wait and check-state rules; the self-matching pgrep loop is lived evidence from a real session, not reproduced here. Against the assertions: the control passes pgrep-wait (it used --commit and timeout on every wait) but fails registry-poll (`timeout 20m ... || echo \"timed out\"` exits 0 and drops the last value). Only registry-poll separates control and skill; the rest of the skill rests on the real-session pgrep incident and the check-state rule.",
+  "evals": [
+    {
+      "id": "pgrep-wait",
+      "prompt": "I just pushed branch feat/x and started `bun run build` in the background in another shell. Wait until the CI run for the push finishes and until that build process ends, then tell me the results. Give the exact shell commands you would run; do not run them.",
+      "expected_output": "gh run watch <id> --exit-status or gh pr checks --watch; process wait by PID (kill -0) or a bracketed pgrep pattern; no `while pgrep -f \"bun run build\"` that matches its own shell; every loop bounded",
+      "assertions": [
+        "the CI run is matched to the pushed commit SHA (e.g. `--commit`), not `--limit 1` on the branch",
+        "every watch command and PID loop has an explicit deadline"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass on all assertions. pgrep-wait: run found by `--commit` and workflow with a bounded wait, `timeout 60m gh run watch`, PID from `pgrep -f '[b]un run build'` waited with `timeout 30m` around a kill -0 loop, both in the background with logs. registry-poll: kept `last`, exited 1 on timeout. Compared with the control, only registry-poll differs."
+    },
+    {
+      "id": "registry-poll",
+      "prompt": "The release workflow passed. Wait until mycli@1.4.0 shows up on npm as latest. Exact commands only.",
+      "expected_output": "poll npm view with a fixed number of tries and a timeout report; no unbounded until-loop",
+      "assertions": [
+        "the poll keeps the last value and exits non-zero on timeout"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass on all assertions. pgrep-wait: run found by `--commit` and workflow with a bounded wait, `timeout 60m gh run watch`, PID from `pgrep -f '[b]un run build'` waited with `timeout 30m` around a kill -0 loop, both in the background with logs. registry-poll: kept `last`, exited 1 on timeout. Compared with the control, only registry-poll differs."
+    }
+  ]
+}
