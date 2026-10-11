@@ -10,6 +10,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 |---|---|---|
 | research | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | Has two researchers from different model families answer one brief, checks each disagreement against primary sources, and writes one report. |
 | publishing | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | Scans text, recordings and frames for private data (home paths, hosts, emails, tokens, internal names) before anything goes public. |
+| agents | [competing-implementations](skills/agents/competing-implementations/SKILL.md) | Runs two implementations of one brief, compares blind diffs, and ships the reviewed winner. |
 | agents | [reviewing-across-families](skills/agents/reviewing-across-families/SKILL.md) | Runs a review loop where a model of another family reviews an agent's change, the implementer fixes, and the orchestrating session ships the PR. |
 | git | [creating-worktrees](skills/git/creating-worktrees/SKILL.md) | Sets up git worktrees that are really isolated: in-repo placement, dependencies installed and resolving inside the worktree, local files copied only with consent, and safe cleanup. |
 | terminal | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | Drives, tests, screenshots and records terminal apps (CLIs, TUIs, REPLs) through tmux, like a person at the keyboard. |
@@ -58,6 +59,7 @@ To install without the CLI, copy a skill folder into your agent's skills folder,
 |---|---|
 | researching-with-two-models | Two agent runtimes of different model families, for example a pinned Claude subagent and the `codex` CLI. |
 | checking-before-publishing | Node.js 18+ for the scan. For GIF or video frames: `ffmpeg`. |
+| competing-implementations | Model router (such as Spatz), two implementer workers, one reviewer, `git`, Node.js 18+ for blind packets, and a PR CLI for publishing. |
 | reviewing-across-families | Two agent runtimes of different model families (for example a Claude harness and Codex CLI). For shipping: Node.js 18+, `git` and `gh`. |
 | creating-worktrees | Node.js 18+ and `git`. Uses the package managers the repo already uses. |
 | driving-terminal-apps | Node.js 18+ and `tmux`. For recordings: `asciinema` and `agg`. For PNG and MP4: `ffmpeg` (without it, the skill makes GIFs). |

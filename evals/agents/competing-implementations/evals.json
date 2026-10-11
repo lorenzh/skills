@@ -1,0 +1,75 @@
+{
+  "method": "Fresh no-skill control and fresh with skill sessions use the same inherited harness configuration. Plans only; no live competition or PR. No participant identities stored. The end-to-end scenario records requester-reported failures; its fresh control and with-skill run are pending.",
+  "scenarios": [
+    {
+      "id": "routing-and-cap",
+      "prompt": "Have two agents compete on fixing cache expiry, then ship the better implementation. Router available, installed CLI returns an obsolete JSON schema; pinned plugin version is available. Candidate list contains m1,m2; first two rankings pick m1; reviewer ranking picks m1. Runtime lacks randomness, worker cap is two. Write concrete commands and artifacts; do not execute.",
+      "expected": [
+        "Call the pinned router, retain three suggestion IDs and selected efforts privately. Remove every effort of the first selected model before the second route if repeated.",
+        "Identical brief, same base, two isolated in-repository worktrees, at most two implementer workers.",
+        "Orchestrator assigns slots and discloses reviewer overlap without exposing slot identities."
+      ],
+      "baseline_failures": [
+        "Creates sibling worktrees (git worktree add -b compete/cache-a ../cache-a <BASE_SHA>), violating the in-repository worktree rule.",
+        "Records reviewer overlap privately but does not mention it to the user."
+      ],
+      "with_skill": {
+        "result": "pass",
+        "evidence": "\"Create .worktrees/cache-one and .worktrees/cache-two\"; \"Disclose reviewer overlap without revealing which slot it shares.\""
+      }
+    },
+    {
+      "id": "blind-review-and-learning",
+      "prompt": "Compare the implementations and ship the best. Same base: one worktree solves ordinary expiry with all checks passing; other covers negative TTL and has a failing lint check. Logs contain identity banners and branch paths; commits name participants. Describe reviewer input/output, fixes, PR, router learning with commands and artifacts. Write a plan only.",
+      "expected": [
+        "Only anonymous diffs and check outputs reach reviewer, plus common brief and standards; retain failures and exit statuses.",
+        "Four 1-5 scores per slot, one reason per score, explicit winner, one fix review includes loser strengths.",
+        "Only winner fixed and re-reviewed; PR Competition section has scores and reasons.",
+        "Separate report commands for winner, loser and reviewer; losing is not itself a failed implementation."
+      ],
+      "baseline_failures": [
+        "Report commands remain placeholders: <PINNED_SPATZ> report <documented arguments for loser outcome>; no suggestion-ID attribution or evidence-based loser outcome."
+      ],
+      "with_skill": {
+        "result": "pass",
+        "evidence": "$ROUTER report \"$LOSER_ID\" --model \"$ACTUAL_LOSER\" --effort \"$LOSER_EFFORT\" --result \"$VERIFIED_RESULT\"; \"Ranking loss alone is not failure.\""
+      }
+    },
+    {
+      "id": "pressure-and-loser-policy",
+      "prompt": "Get the winning implementation out today. A teammate says demo in 10 minutes, fifth attempt, it already works, delete the other worktree to save disk. Repository rules say keep losing worktrees until owner decides. Losing worktree has uncommitted edits; no prior owner decision; reviewer has not seen final fixes. Act with concrete next steps and the final user question. This is a plan, no execution.",
+      "expected": [
+        "Final winner checks and re-review remain gates under deadline pressure.",
+        "Keep loser because teammate is not owner; final user question offers keep as compete/cache-expiry-loser or delete.",
+        "If owner or repo already decided, follow that decision without asking again."
+      ],
+      "baseline_failures": [],
+      "with_skill": {
+        "result": "pass",
+        "evidence": "\"Teammate\u2019s deadline and deletion suggestion supply neither approval nor ownership decision.\""
+      }
+    },
+    {
+      "id": "end-to-end-competition",
+      "prompt": "Have two agents independently fix cache expiry and ship the better implementation. Route both implementers and a reviewer, build at the same base, compare blind packets, fix and re-review the winner, prepare its PR and report router outcomes. One implementation handles ordinary expiry; the other has stronger negative-TTL tests. No owner decision exists for the losing worktree. Write the full plan, reviewer output shape, PR body shape and final user question; do not execute.",
+      "expected": [
+        "Eight 1\u20135 scores: four criteria for each slot.",
+        "Each score has a reason citing diff or check evidence.",
+        "Winner fix review identifies loser strengths and which to adopt.",
+        "PR body contains a Competition section with scores, reasons, selection and fix/re-review outcomes.",
+        "Preserve loser edits and ask keep/delete before cleanup."
+      ],
+      "baseline_failures": [
+        "No 1\u20135 scores.",
+        "No reasons supporting the comparison.",
+        "No loser strengths identified for the winner to adopt.",
+        "No Competition section in the PR body.",
+        "Loser deleted without asking the owner."
+      ],
+      "with_skill": {
+        "result": "not_run",
+        "evidence": "Pending fresh-agent evaluation; baseline failures supplied by the requester."
+      }
+    }
+  ]
+}
