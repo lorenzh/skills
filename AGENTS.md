@@ -47,6 +47,8 @@ No build and no dependencies — the deliverables are the skill folders.
 | [directing-videos](skills/video/directing-videos/SKILL.md) | `video` |
 | [editing-videos](skills/video/editing-videos/SKILL.md) | `video` |
 | [suggesting-skills](skills/agents/suggesting-skills/SKILL.md) | `agents` |
+| [cutting-releases](skills/shipping/cutting-releases/SKILL.md) | `shipping` |
+| [retargeting-stacked-prs](skills/shipping/retargeting-stacked-prs/SKILL.md) | `shipping` |
 | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | `shipping` |
 
 ## Conventions
