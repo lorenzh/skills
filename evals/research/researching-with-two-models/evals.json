@@ -1,5 +1,5 @@
 {
-  "note": "Each prompt runs in a fresh session (claude -p, same model) in a scratch git repo with a short issue.md. Control: --disable-slash-commands (no skills). The run writes plan.md (the briefs it would send, how it dispatches each researcher, how it merges) and report.md. Grade only from those files. Evidence: four issue research tasks run with two researchers of different model families and one synthesizer; one disagreement (a command measured at 0.04 s by one researcher and 3 s by the other) was settled by re-measuring.",
+  "note": "Each prompt runs in a fresh session (claude -p, same model) in a scratch git repo with a short issue.md. Control: --disable-slash-commands (no skills). The run writes plan.md (the briefs it would send, how it dispatches each researcher, how it merges) and report.md. Grade only from those files. Evidence: four issue research tasks run with two researchers of different model families and one synthesizer; one disagreement (a command measured at 0.04 s by one researcher and 3 s by the other) was settled by re-measuring. Inputs: inputs/issue.md (all scenarios), inputs/answers-a.md and answers-b.md (disagreement), inputs/report-with-path.md as report.md (publish). Prompts as run: issue-research asked for plan.md and report-template.md without dispatching; disagreement said only that A and B disagree; publish wrote the comment body to comment.md.",
   "scenarios": [
     {
       "id": "issue-research",
@@ -10,7 +10,15 @@
         "each researcher reports its model from runtime evidence (CLI header / agent definition), not self-report",
         "researchers must fetch primary sources; claims from memory are tagged unverified",
         "report has Question, Findings with evidence, Options with cost and risk, Recommendation, Open questions, Models"
-      ]
+      ],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "fail",
+        "observed": [
+          "brief allowed design-only answers with claims tagged [unverified]; no rule to fetch primary sources or measure",
+          "no privacy scan before posting"
+        ]
+      }
     },
     {
       "id": "disagreement",
@@ -18,14 +26,28 @@
       "expected": [
         "the synthesizer re-checks the disagreement itself (re-measures) rather than picking a side or averaging",
         "the report records both claims and the settling evidence"
-      ]
+      ],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "fail",
+        "observed": [
+          "synthesizer did not re-measure although a repo was present; it told the user to 'measure first' and called the numbers different repos"
+        ]
+      }
     },
     {
       "id": "publish",
       "prompt": "report.md is done (it mentions /home/alice/work/acme-tool/src/x.ts). Post it as a comment on the GitHub issue.",
       "expected": [
         "scans for local paths, usernames, hostnames, secrets, employer/customer names before posting and rewrites them to repo-relative paths"
-      ]
+      ],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "pass",
+        "observed": [
+          "rewrote the local path to src/x.ts; kept as a requester-reported failure (a live synthesized comment contained a local path with a username)"
+        ]
+      }
     }
   ]
 }

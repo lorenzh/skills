@@ -31,7 +31,7 @@ Done when `brief.md` holds the five parts and names no other researcher or answe
 
 ## 2. Dispatch both researchers in parallel
 
-Start both in the same turn, each with only `brief.md`. Each writes its answer to its own file (`answer-a.md`, `answer-b.md`).
+Start both in the same turn, each with only `brief.md`. Each returns its answer as text; the lead or the runtime saves it to its own file (`answer-a.md`, `answer-b.md`).
 
 - **Same family as the harness:** a subagent pinned to the model and effort (for example a Claude Code agent file with `model:` and `effort:` in its frontmatter), or a model router such as Spatz.
 - **Other family:** its CLI in a read-only sandbox, for example `codex exec -m <model> -c model_reasoning_effort=high -s read-only --skip-git-repo-check -C <repo> -o answer-b.md - < brief.md`.
@@ -74,11 +74,11 @@ Done when `report.md` has every section and each Disagreements line names the ch
 Before the report leaves the machine (issue comment, PR, chat), scan it for private data:
 
 ```bash
-grep -nE '/(home|Users)/|[A-Za-z]:\\|[A-Za-z0-9._-]+\.(local|internal|lan)\b|(token|secret|password|api[_-]?key)\s*[:=]' report.md
+grep -inE '/(home|Users)/|[A-Za-z]:[\\]|[A-Za-z0-9._-]+[.](local|internal|lan)([^A-Za-z0-9]|$)|["'"'"']?(token|secret|password|api[_-]?key)["'"'"']?[[:space:]]*[:=]' report.md; echo "exit $?"
 ```
 
 Rewrite each hit: a path to repo-relative, a username or host to a placeholder, a secret removed. Also read for employer, customer and private repo names; grep cannot know them.
 
 Then deliver where the user asked: post it (for example `gh issue comment <n> --body-file report.md`) or hand over the file path. Without a destination, give the path and ask.
 
-Done when the grep prints nothing and the report is posted or its path given.
+Done when the grep prints only `exit 1` (no match; `exit 2` is a scan error) and the report is posted or its path given.
