@@ -47,3 +47,14 @@ test('cli: directories skip binary files', () => {
   assert.match(r.stdout, /b\.md:1: home-path/);
   assert.doesNotMatch(r.stdout, /a\.png/);
 });
+
+test('review findings: split cast events, scoped allow lists, quiet placeholders', () => {
+  const cast = ['{"version":2}', '[1,"o","/ho"]', '[2,"o","me/jdoe/docs ghp_"]', '[3,"o","AbCdEfGhIjKlMnOpQrStUvWxYz0123456789\\r\\n"]'].join('\n');
+  assert.deepEqual(scan('d.cast', cast).map((f) => [f.line, f.kind]), [[2, 'home-path'], [3, 'token']]);
+  assert.deepEqual(kinds('ghp_noreplyAbCdEfGhIjKlMnOpQrStUvWx /home/jdoe-noreply /home/user-admin/src /home/runner.dev'), ['home-path', 'home-path', 'home-path', 'token']);
+  assert.deepEqual(kinds('API_KEY="$API_KEY" TOKEN="<redacted>" see config.local'), []);
+});
+
+test('cli: unreadable deny file is misuse, not a finding', () => {
+  assert.equal(run(['-'], 'x\n', { PUBLISH_DENY_FILE: '.' }).status, 2);
+});

@@ -19,19 +19,19 @@ Never dump a process environment (`env`, `printenv`, `/proc/*/environ`) to look 
 
 Put each thing you will publish in a file: a comment or PR body in a `.md` file (post it with `--body-file`), a commit as its staged diff (`git diff --cached`) plus its message, a recording as its `.cast` or text log, and media as PNG frames.
 
-For a GIF or video, extract one frame per second: `ffmpeg -i demo.gif -vf fps=1 frames/%04d.png`. Leaks often appear only in the last frames, where the demo shows its output.
+For a GIF or video, extract every frame that differs from the one before: `ffmpeg -i demo.gif -vf mpdecimate -fps_mode vfr frames/%04d.png`. Sampling at a fixed rate can skip a short-lived leak, and leaks often appear only in the last frames, where the demo shows its output.
 
 Done when every item to publish exists as a file, and each video or GIF exists as a frame directory.
 
 ## 2. Scan the text
 
-Run the bundled scan on every text file:
+Run the bundled scan on every text file. The script lives in this skill's folder, so use its full path:
 
 ```bash
-node scripts/scan.mjs [--deny <word>]... <file|dir|->...
+node <this-skill-dir>/scripts/scan.mjs [--deny <word>]... <file|dir|->...
 ```
 
-It finds home paths, scratch paths, tokens, secret assignments, emails, private IPs, internal hosts, `user@host` prompts and UUID session ids, and decodes `.cast` files to plain text first. Your own names (username, hostnames, employer, customers, private repos) are not generic patterns: pass them with `--deny`, `PUBLISH_DENY=a,b`, or one per line in `PUBLISH_DENY_FILE` (default `~/.config/publish-deny.txt`). Each finding prints `file:line: kind: match -> fix`; exit 1 means findings, `--json` prints an array. Without Node, use `grep -nE '/home/|/Users/|@|token|key|secret'` plus your deny words.
+It finds home paths, scratch paths, tokens, secret assignments, emails, private IPs, internal hosts, `user@host` prompts and UUID session ids, and decodes `.cast` files to plain text first. Your own names (username, hostnames, employer, customers, private repos) are not generic patterns: pass them with `--deny`, `PUBLISH_DENY=a,b`, or one per line in `PUBLISH_DENY_FILE` (default `~/.config/publish-deny.txt`). Each finding prints `file:line: kind: match -> fix`; exit 1 means findings, exit 2 a usage or read error, `--json` prints an array. Without Node, use `grep -nE '/home/|/Users/|@|token|key|secret'` plus your deny words.
 
 Then read the text once yourself: the scan knows a private project or customer name only if it is in the deny list.
 
