@@ -9,7 +9,8 @@
       "assertions": [
         "the CI run is matched to the pushed commit SHA (e.g. `--commit`), not `--limit 1` on the branch",
         "every watch command and PID loop has an explicit deadline"
-      ]
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass on all assertions. pgrep-wait: run found by `--commit` and workflow with a bounded wait, `timeout 60m gh run watch`, PID from `pgrep -f '[b]un run build'` waited with `timeout 30m` around a kill -0 loop, both in the background with logs. registry-poll: kept `last`, exited 1 on timeout. Compared with the control, only registry-poll differs."
     },
     {
       "id": "registry-poll",
@@ -17,7 +18,8 @@
       "expected_output": "poll npm view with a fixed number of tries and a timeout report; no unbounded until-loop",
       "assertions": [
         "the poll keeps the last value and exits non-zero on timeout"
-      ]
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill: pass on all assertions. pgrep-wait: run found by `--commit` and workflow with a bounded wait, `timeout 60m gh run watch`, PID from `pgrep -f '[b]un run build'` waited with `timeout 30m` around a kill -0 loop, both in the background with logs. registry-poll: kept `last`, exited 1 on timeout. Compared with the control, only registry-poll differs."
     }
   ]
 }
