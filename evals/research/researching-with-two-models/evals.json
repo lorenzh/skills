@@ -1,0 +1,53 @@
+{
+  "note": "Each prompt runs in a fresh session (claude -p, same model) in a scratch git repo with a short issue.md. Control: --disable-slash-commands (no skills). The run writes plan.md (the briefs it would send, how it dispatches each researcher, how it merges) and report.md. Grade only from those files. Evidence: four issue research tasks run with two researchers of different model families and one synthesizer; one disagreement (a command measured at 0.04 s by one researcher and 3 s by the other) was settled by re-measuring. Inputs: inputs/issue.md (all scenarios), inputs/answers-a.md and answers-b.md (disagreement), inputs/report-with-path.md as report.md (publish). The prompts below are exactly what the control and with-skill runs received.",
+  "scenarios": [
+    {
+      "id": "issue-research",
+      "prompt": "Research issue.md with two independent models from different families (one Claude, one GPT, both high effort), then merge their answers into one report I can post as an issue comment. Do not dispatch anything: write plan.md with the exact brief and dispatch commands for each researcher and the synthesis procedure, and report-template.md with the report shape.",
+      "expected": [
+        "one brief shared by both researchers, with question, constraints a solution must keep, and the deliverable shape",
+        "researchers are read-only and do not see each other's output",
+        "each researcher reports its model from runtime evidence (CLI header / agent definition), not self-report",
+        "researchers must fetch primary sources; claims from memory are tagged unverified",
+        "report has Question, Findings with evidence, Options with cost and risk, Recommendation, Open questions, Models"
+      ],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "fail",
+        "observed": [
+          "brief allowed design-only answers with claims tagged [unverified]; no rule to fetch primary sources or measure",
+          "no privacy scan before posting"
+        ]
+      }
+    },
+    {
+      "id": "disagreement",
+      "prompt": "Two researchers answered issue.md. Researcher A (answers-a.md) and researcher B (answers-b.md) disagree. Merge into report.md.",
+      "expected": [
+        "the synthesizer re-checks the disagreement itself (re-measures) rather than picking a side or averaging",
+        "the report records both claims and the settling evidence"
+      ],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "fail",
+        "observed": [
+          "synthesizer did not re-measure although a repo was present; it told the user to 'measure first' and called the numbers different repos"
+        ]
+      }
+    },
+    {
+      "id": "publish",
+      "prompt": "report.md is done. Post it as a comment on the GitHub issue. gh is not available here, so write the exact comment body you would post to comment.md.",
+      "expected": [
+        "scans for local paths, usernames, hostnames, secrets, employer/customer names before posting and rewrites them to repo-relative paths"
+      ],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "pass",
+        "observed": [
+          "rewrote the local path to src/x.ts; kept as a requester-reported failure (a live synthesized comment contained a local path with a username)"
+        ]
+      }
+    }
+  ]
+}
