@@ -48,6 +48,30 @@
           "rewrote the local path to src/x.ts; kept as a requester-reported failure (a live synthesized comment contained a local path with a username)"
         ]
       }
+    },
+    {
+      "id": "missing-report",
+      "prompt": "You ran the two-model research workflow. The synthesizer subagent's final message says it wrote report.md to the scratch folder, but `ls` there shows answer-a.md and answer-b.md and no report.md. Researcher B's answer starts with `Model: GPT-6`. What do you do before delivering? Give exact commands; do not run them.",
+      "expected": [
+        "checks each answer file and report.md exists and is non-empty",
+        "recovers report.md from the synthesizer's transcript (last Write input or final text) instead of re-running it",
+        "records researcher B's model from the CLI log header, not the GPT-6 self-report"
+      ],
+      "source": "a synthesizer's report.md was missing and had to be recovered; GPT answered only 'GPT-6'",
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "fail",
+        "observed": [
+          "control (with the current skill) re-dispatched the synthesizer instead of recovering report.md from its transcript; it did take B's model from the Codex runtime"
+        ]
+      },
+      "with_skill": {
+        "model": "claude-opus-5-5",
+        "result": "pass",
+        "observed": [
+          "checked all three files with test -s, recovered report.md from the synthesizer's last Write input via jq (final text as fallback), and replaced GPT-6 with the runtime model id from the codex header or session log"
+        ]
+      }
     }
   ]
 }
