@@ -200,3 +200,62 @@ test('scaffolder refuses an existing eval directory before creating the skill', 
   assert.equal(fs.existsSync(path.join(root, 'skills/agents/sample')), false);
   assert.equal(fs.readFileSync(path.join(root, 'evals/agents/sample/evals.json'), 'utf8'), 'preserve');
 });
+
+function pluginFixture(t, plugin = {}, market = {}) {
+  const f = fixture(t);
+  f.write('skills/agents/sample/SKILL.md', markdown());
+  f.write('skills/terminal/other/SKILL.md', markdown('other'));
+  f.write('skills/empty/.gitkeep');
+  f.write('.claude-plugin/plugin.json', JSON.stringify({ name: 'lorenzh', skills: ['./skills/agents', './skills/terminal'], ...plugin }));
+  f.write('.claude-plugin/marketplace.json', JSON.stringify({ name: 'lorenzh-skills', owner: { name: 'x' }, plugins: [{ name: 'lorenzh', source: './' }], ...market }));
+  return f;
+}
+
+test('accepts plugin manifests that match the skill categories', (t) => {
+  const r = pluginFixture(t).run();
+  assert.equal(r.status, 0, r.stdout);
+});
+
+for (const [label, skills, error] of [
+  ['missing category', ['./skills/agents'], /missing \.\/skills\/terminal/],
+  ['category without skills', ['./skills/agents', './skills/terminal', './skills/empty'], /not a skill category: skills\/empty/],
+  ['duplicate entry', ['./skills/agents', './skills/terminal', 'skills/agents/'], /must list each category folder that holds skills once/],
+]) {
+  test(`plugin.json skills must equal the skill categories: ${label}`, (t) => {
+    const r = pluginFixture(t, { skills }).run();
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, error);
+  });
+}
+
+test('marketplace entry name must equal the plugin name', (t) => {
+  const r = pluginFixture(t, {}, { plugins: [{ name: 'other', source: './' }] }).run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /no plugin entry named "lorenzh"/);
+});
+
+for (const name of ['claude-tools', 'anthropic-tools', 'cc-plugin-tools']) {
+  test(`rejects reserved plugin and marketplace name ${name}`, (t) => {
+    const r = pluginFixture(t, { name }, { name, plugins: [{ name, source: './' }] }).run();
+    assert.equal(r.status, 1);
+    assert.equal((r.stdout.match(/reserved prefix/g) ?? []).length, 3);
+  });
+}
+
+for (const file of ['plugin.json', 'marketplace.json']) {
+  test(`reports a missing ${file} once .claude-plugin/ exists`, (t) => {
+    const f = pluginFixture(t);
+    fs.rmSync(path.join(f.root, '.claude-plugin', file));
+    const r = f.run();
+    assert.equal(r.status, 1);
+    assert.ok(r.stdout.includes(`.claude-plugin/${file}: missing`), r.stdout);
+  });
+}
+
+test('reports invalid plugin JSON', (t) => {
+  const { write, run } = pluginFixture(t);
+  write('.claude-plugin/plugin.json', '{');
+  const r = run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /plugin\.json: invalid JSON/);
+});

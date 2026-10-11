@@ -62,7 +62,7 @@ Done when final checks pass and re-review says APPROVE, or remaining findings ar
 
 ## 6. Ship the approved winner
 
-Follow publishing/privacy rules and existing authorization, including push restrictions. Open only the winner's PR with a `Competition` section: A/B scores and reasons, chosen slot and rationale, loser strengths adopted, fix outcome and re-review verdict. Keep identities, private routing records and loser code out. If publishing is prohibited, prepare the PR body locally. For steps 6–8, record and report any blocker or failed operation once in the final status.
+Follow publishing/privacy rules and existing authorization, including push restrictions. Open only the winner's PR with a `Competition` section: A/B scores and reasons, chosen slot and rationale, loser strengths adopted, fix outcome and re-review verdict. Keep identities, private routing records and loser code out. If publishing is prohibited, prepare the PR body locally. To push and open the PR with resumable steps, use step 5 of the `reviewing-across-families` skill. For steps 6–8, record and report any blocker or failed operation once in the final status.
 Done when the PR or prepared body contains the Competition section.
 
 ## 7. Report verified outcomes

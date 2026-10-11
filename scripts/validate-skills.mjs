@@ -5,7 +5,11 @@
 //   README.md or a skill's markdown pointing at a file that does not exist,
 //   missing skills/, a SKILL.md at repo root or in
 //   skills/ or a category (it shadows skills below it), invalid category names,
-//   deeper skills, duplicate names, evals without a skill in the same category.
+//   deeper skills, duplicate names, evals without a skill in the same category,
+//   and, when .claude-plugin/ exists: missing or unreadable plugin.json or marketplace.json,
+//   plugin.json "skills" not equal to the category folders that hold skills,
+//   plugin name missing from marketplace.json, a plugin or marketplace name
+//   starting with "claude-", "anthropic-" or "cc-plugin-".
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger, not third person, or still holding the
 //   template's TODO, reference not linked from SKILL.md, skill folder without SKILL.md.
@@ -18,7 +22,8 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log(`Usage: node scripts/validate-skills.mjs
 
 Validates skills/<category>/<name>/SKILL.md: layout, frontmatter, name rules, description
-quality, and that relative markdown links in skills, AGENTS.md and README.md resolve.
+quality, that relative markdown links in skills, AGENTS.md and README.md resolve,
+and that .claude-plugin/plugin.json and marketplace.json match the skill categories.
 
 Exit 0  no errors (warnings may still be printed)
 Exit 1  at least one error`);
@@ -37,6 +42,7 @@ const errors = [];
 const warnings = [];
 const skillNames = new Set();
 const skillPaths = new Set();
+const skillCategories = new Set();
 const CATEGORY = /^[a-z]+(-[a-z]+)*$/;
 
 const rel = (p) => path.relative(repoRoot, p).replaceAll(path.sep, "/");
@@ -166,6 +172,7 @@ for (const category of fs.existsSync(skillsDir) ? fs.readdirSync(skillsDir, { wi
       warnings.push(`${rel(skillPath)} has no SKILL.md`);
       continue;
     }
+    skillCategories.add(category.name);
     validateSkill(skillPath, e.name);
   }
 }
@@ -181,6 +188,50 @@ if (fs.existsSync(evalsDir)) {
         errors.push(`${rel(path.join(categoryPath, e.name))} matches no skill in the same category under skills/`);
     }
   }
+}
+
+// Claude plugin manifests: the plugin's skill scan is not recursive, so each category needs an entry.
+const pluginDir = path.join(repoRoot, ".claude-plugin");
+const readJson = (file) => {
+  if (!fs.existsSync(file)) return undefined;
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (err) {
+    errors.push(`${rel(file)}: invalid JSON (${err.message})`);
+    return null;
+  }
+};
+const RESERVED_PREFIX = /^(claude-|anthropic-|cc-plugin-)/;
+const checkName = (file, what, name) => {
+  if (typeof name !== "string" || !name) errors.push(`${rel(file)}: missing ${what} name`);
+  else if (RESERVED_PREFIX.test(name))
+    errors.push(`${rel(file)}: ${what} name "${name}" starts with a reserved prefix (claude-, anthropic-, cc-plugin-)`);
+};
+const pluginFile = path.join(pluginDir, "plugin.json");
+const marketFile = path.join(pluginDir, "marketplace.json");
+if (fs.existsSync(pluginDir))
+  for (const file of [pluginFile, marketFile]) if (!fs.existsSync(file)) errors.push(`${rel(file)}: missing`);
+const plugin = readJson(pluginFile);
+const market = readJson(marketFile);
+if (plugin) {
+  checkName(pluginFile, "plugin", plugin.name);
+  const listed = (Array.isArray(plugin.skills) ? plugin.skills : [plugin.skills ?? ""]).map((s) =>
+    path.posix.normalize(String(s)).replace(/\/$/, ""),
+  );
+  const expected = [...skillCategories].map((c) => `skills/${c}`);
+  const missing = expected.filter((d) => !listed.includes(d));
+  const extra = listed.filter((d) => !expected.includes(d));
+  if (missing.length || extra.length || listed.length !== new Set(listed).size)
+    errors.push(`${rel(pluginFile)}: "skills" must list each category folder that holds skills once` +
+      (missing.length ? `; missing ${missing.map((d) => `./${d}`).join(", ")}` : "") +
+      (extra.length ? `; not a skill category: ${extra.join(", ")}` : ""));
+}
+if (market) {
+  checkName(marketFile, "marketplace", market.name);
+  const entries = Array.isArray(market.plugins) ? market.plugins : [];
+  for (const entry of entries) checkName(marketFile, "plugin entry", entry?.name);
+  if (plugin && !entries.some((entry) => entry?.name === plugin.name))
+    errors.push(`${rel(marketFile)}: no plugin entry named "${plugin.name}" (the name in plugin.json)`);
 }
 
 for (const w of warnings) console.log(`WARN  ${w}`);

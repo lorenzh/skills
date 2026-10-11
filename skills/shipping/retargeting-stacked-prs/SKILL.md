@@ -1,6 +1,6 @@
 ---
 name: retargeting-stacked-prs
-description: Stacked pull request handling after the base PR merges. Use when a PR was opened on top of another PR's branch and that base PR has merged, when the user asks to retarget, rebase or land a PR stack, or when CI does not start on a PR after its base branch was changed.
+description: Stacked pull request handling after the base PR merges, for PRs that build on another PR's branch. Use when a PR was opened on top of another PR's branch and that base PR has merged, when the user asks to retarget, rebase or merge a stack of PRs built on each other's branches, or when CI does not start on a PR after its base branch was changed.
 ---
 
 # Retargeting stacked PRs
@@ -71,5 +71,7 @@ Done when every required workflow has a run for `$sha` with `createdAt` after th
 **Merging needs the user's explicit OK for each PR.** A merge lands code on `<main>` and cannot be taken back cleanly, so a general "get it merged" from earlier in the session does not cover a PR whose diff or base changed since.
 
 Wait for the runs from step 3 (`timeout 30m gh pr checks <n> --watch --fail-fast`). Then show the user the PR, its head SHA and the check results, and ask whether to merge. After a yes, merge the PR the way the repo merges. Go back to step 2 for the next PR in the stack. Merging a higher PR first lands it into a branch that is about to be stale.
+
+For waits that hang, time out or need another approach, see the `waiting-for-ci` skill.
 
 Done when every PR in the stack is merged with the user's OK, or the report names the PR that waits for that OK or is blocked, with its failing check.

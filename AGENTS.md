@@ -21,6 +21,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | `evals/<category>/<name>/` | Eval scenarios (`evals.json`) and inputs for the skill in the same category; not installed |
 | `templates/` | Scaffold source for `new-skill.mjs` |
 | `scripts/` | Repo tooling (Node, no dependencies) |
+| `.claude-plugin/` | Claude plugin manifest (`plugin.json`, one `skills` entry per category) and marketplace (`marketplace.json`) |
 
 ## Categories
 
