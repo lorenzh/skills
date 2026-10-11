@@ -24,7 +24,7 @@ Done when you hold a list of candidates, each with one piece of concrete evidenc
 
 ## 2. Check existing skills
 
-List the skill roots that exist on this machine: `~/.agents/skills`, `~/.claude/skills`, `~/.codex/skills`, and `.agents/skills`, `.claude/skills` in the repo. Read the `name` and `description` of every `SKILL.md`. For each candidate, find the closest match. A candidate that a skill already covers becomes an **update** to that skill. It is a new skill only when no existing skill fits.
+List the skill roots that exist on this machine: `~/.agents/skills`, `~/.claude/skills`, `~/.codex/skills`; `.agents/skills`, `.claude/skills`, `.codex/skills` in the repo; and the skills of installed plugins (Claude Code: `~/.claude/plugins/**/skills`). The harness's own skill listing, if it shows one, counts too. Read the `name` and `description` of every `SKILL.md`. For each candidate, find the closest match. A candidate that a skill already covers becomes an **update** to that skill. It is a new skill only when no existing skill fits.
 
 Done when every candidate is marked `new` or `update: <skill-name>`.
 
