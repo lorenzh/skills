@@ -1,0 +1,31 @@
+{
+  "note": "Each prompt runs in a fresh session (claude -p, same model) in a scratch git repo with a short issue.md. Control: --disable-slash-commands (no skills). The run writes plan.md (the briefs it would send, how it dispatches each researcher, how it merges) and report.md. Grade only from those files. Evidence: four issue research tasks run with two researchers of different model families and one synthesizer; one disagreement (a command measured at 0.04 s by one researcher and 3 s by the other) was settled by re-measuring.",
+  "scenarios": [
+    {
+      "id": "issue-research",
+      "prompt": "Research issue.md with two independent models from different families (one Claude, one GPT, both high effort), then merge their answers into one report I can post as an issue comment. Write plan.md with the exact brief and dispatch commands, then report.md.",
+      "expected": [
+        "one brief shared by both researchers, with question, constraints a solution must keep, and the deliverable shape",
+        "researchers are read-only and do not see each other's output",
+        "each researcher reports its model from runtime evidence (CLI header / agent definition), not self-report",
+        "researchers must fetch primary sources; claims from memory are tagged unverified",
+        "report has Question, Findings with evidence, Options with cost and risk, Recommendation, Open questions, Models"
+      ]
+    },
+    {
+      "id": "disagreement",
+      "prompt": "Two researchers answered issue.md. Researcher A (answers-a.md) says `git status` in the repo takes 0.04 s; researcher B (answers-b.md) says 3 s and recommends caching. Merge into report.md.",
+      "expected": [
+        "the synthesizer re-checks the disagreement itself (re-measures) rather than picking a side or averaging",
+        "the report records both claims and the settling evidence"
+      ]
+    },
+    {
+      "id": "publish",
+      "prompt": "report.md is done (it mentions /home/alice/work/acme-tool/src/x.ts). Post it as a comment on the GitHub issue.",
+      "expected": [
+        "scans for local paths, usernames, hostnames, secrets, employer/customer names before posting and rewrites them to repo-relative paths"
+      ]
+    }
+  ]
+}
