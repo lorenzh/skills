@@ -38,7 +38,7 @@ Start both in the same turn, each with only `brief.md`. Each returns its answer 
 
 Give each researcher read-only access (a read-only sandbox or read-only tools); a researcher with write access can change the code the other is reading. If a chosen model is unavailable, stop and tell the user; a substitute from the same family is no longer a two-family result.
 
-Record the model each runtime reports: the CLI's header or log line, or the pinned agent definition. Use that, not the `Model:` line, as evidence; self-reports differ from runtime headers.
+Record the model each runtime reports: the CLI's header or log line (for `codex exec`, the `model:` line it prints at start), or the pinned agent definition. Use that, not the `Model:` line, as evidence: self-reports differ from runtime headers, and a researcher may answer only with a family name such as "GPT-6". A report without a runtime model id is a report without a model.
 
 Done when both answer files exist and you hold a runtime-reported model for each.
 
@@ -69,7 +69,30 @@ Researcher A: <runtime model, effort>. Researcher B: <runtime model, effort>. Sy
 
 Done when `report.md` has every section and each Disagreements line names the check the synthesizer ran.
 
-## 4. Scan, then deliver
+## 4. Check the files landed
+
+An agent can say it wrote a file while the write never reached the disk. Check every file before you use it:
+
+```bash
+for f in answer-a.md answer-b.md report.md; do [ -s "$f" ] && echo "ok $f" || echo "MISSING $f"; done
+```
+
+For each `MISSING` file, recover the content from the agent's transcript instead of re-running the agent: the content of its last `Write` to that path, or its final message. In Claude Code the subagent transcript is `~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl`:
+
+```bash
+# the last Write to this file; an agent may write several files, or the same file twice
+jq -rs --arg f report.md '[.[] | select(.type=="assistant") | .message.content[]? | select(.type=="tool_use" and .name=="Write" and (.input.file_path | endswith("/" + $f)))] | last | .input.content // empty' <transcript>
+# fallback: the complete final message, every text block joined (one message can span several entries with the same id)
+jq -rs '[.[] | select(.type=="assistant" and any(.message.content[]?; .type=="text"))] as $a | ($a | last | .message.id) as $id | [(if $id then $a[] | select(.message.id == $id) else ($a | last) end) | .message.content[]? | select(.type=="text") | .text] | join("\n\n")' <transcript>
+```
+
+Use the file name you are recovering in place of `report.md`. Take the whole message; a cut-off report loses its last sections.
+
+For a CLI runtime, the `-o <file>` output or its session log holds the final message. Write the recovered text to the file and say in the report that it was recovered.
+
+Done when every file prints `ok`.
+
+## 5. Scan, then deliver
 
 Before the report leaves the machine (issue comment, PR, chat), scan it for private data:
 

@@ -1,0 +1,8 @@
+{"type":"assistant","message":{"id":"m1","content":[{"type":"tool_use","name":"Write","input":{"file_path":"/s/notes.md","content":"NOTES"}}]}}
+{"type":"assistant","message":{"id":"m2","content":[{"type":"tool_use","name":"Write","input":{"file_path":"/s/report.md","content":"DRAFT"}}]}}
+{"type":"user","message":{"content":"x"}}
+{"type":"assistant","message":{"id":"m3","content":[{"type":"text","text":"old message"}]}}
+{"type":"assistant","message":{"id":"m4","content":[{"type":"tool_use","name":"Write","input":{"file_path":"/s/report.md","content":"FINAL\nline2"}}]}}
+{"type":"user","message":{"content":"y"}}
+{"type":"assistant","message":{"id":"m5","content":[{"type":"text","text":"## Part 1"},{"type":"text","text":"## Part 2"}]}}
+{"type":"assistant","message":{"id":"m5","content":[{"type":"text","text":"## Part 3"}]}}
