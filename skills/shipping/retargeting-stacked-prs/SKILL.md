@@ -45,11 +45,11 @@ git switch <branch> && git merge origin/<main>   # resolve conflicts, then commi
 git push
 ```
 
-Keep the branch history as it is: no rebase, no force-push. A force-push rewrites history others may have pulled and drops review context. The merge commit removes the duplicate changes from the diff, and the push starts CI, so skip step 3.
+Keep the branch history as it is: no rebase, no force-push. A force-push rewrites history others may have pulled and drops review context. The merge commit removes the duplicate changes from the diff, and the push starts CI, so skip the close and reopen in step 3 but still run its head-SHA check.
 
 Done when `gh pr view <n> --json baseRefName` shows `<main>`.
 
-## 3. Trigger CI
+## 3. Trigger CI and check the runs
 
 The base change sends a `pull_request` `edited` event, and most workflows listen only for `opened`, `synchronize` and `reopened`. Old check results stay on the PR and can look green. Start a new run:
 
