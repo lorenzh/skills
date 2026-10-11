@@ -34,7 +34,20 @@ git switch <branch> && git merge origin/<main>
 
 In a shared list, keep both sides of each conflict: main's entries, then this PR's entries, with no line twice. Run the repo's checks, then push normally. Keep the branch history as it is, with no rebase and no force-push: a force-push rewrites history others may have pulled.
 
-Done when the merge commit is pushed and `gh pr view <n> --json mergeable -q .mergeable` prints `MERGEABLE` (it can print `UNKNOWN` for a few seconds).
+GitHub computes mergeability after the push and reports `UNKNOWN` until then. Wait with a limit, and stop on a conflict:
+
+```bash
+for i in $(seq 1 20); do
+  m=$(gh pr view <n> --json mergeable -q .mergeable)
+  [ "$m" != UNKNOWN ] && break
+  sleep 6
+done
+echo "$m"
+```
+
+`CONFLICTING` means main moved again: repeat this step. `UNKNOWN` after the loop is a timeout: report it and stop the batch.
+
+Done when the merge commit is pushed and the loop printed `MERGEABLE`.
 
 ## 3. Wait for checks on the new head
 
@@ -52,9 +65,23 @@ Done when every required check for `$sha` passed, or the report names the failin
 
 ## 4. Merge with the user's OK
 
-Show the user the PR, `$sha` and the check results, and ask whether to merge. After a yes, merge the way the repo merges. Then go back to step 2 for the next PR.
+Show the user the PR, `$sha` and the check results, and ask whether to merge. After a yes, merge exactly that commit, with the repo's merge method (`--merge`, `--squash` or `--rebase`):
 
-If the user merges the PRs themselves, wait for each merge in the background before you update the next PR:
+```bash
+gh pr merge <n> --merge --match-head-commit "$sha"
+```
+
+`--match-head-commit` refuses the merge if the head moved after the approval and the checks. If it refuses, go back to step 2: the new head needs its own checks and its own OK.
+
+A merge queue or auto-merge can return before the PR is merged. Confirm the merge with a deadline before the next PR:
+
+```bash
+timeout 30m bash -c 'until [ "$(gh pr view <n> --json state -q .state)" = MERGED ]; do sleep 30; done'
+```
+
+If the wait times out, report the PR's state and stop the batch. Then go back to step 2 for the next PR.
+
+If the user merges the PRs themselves, wait for each merge in the background, with the same deadline, before you update the next PR:
 
 ```bash
 timeout 30m bash -c 'until [ "$(gh pr view <n> --json state -q .state)" = MERGED ]; do sleep 30; done'

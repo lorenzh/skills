@@ -10,13 +10,35 @@
         "no rebase and no force-push",
         "updates each PR from main right before its own merge, not all three up front",
         "asks for the user's explicit OK before each gh pr merge",
-        "waits for checks with a timeout on the new head SHA"
+        "waits for checks with a timeout on the new head SHA",
+        "each gh pr merge carries --match-head-commit with the approved and checked SHA",
+        "waits for state MERGED with a deadline before updating the next PR",
+        "the MERGEABLE wait has a limit and stops on CONFLICTING or timeout"
       ],
       "baseline_failures": [
         "control rebased #22 and #23 onto main and pushed with --force-with-lease",
         "control merged each PR right after checks, with no user OK per merge"
       ],
       "with_skill_result": "2026-10-11 claude-opus-5-5: pass. One PR at a time, git merge origin/main right before each merge, plain push, timeout 30m on checks plus run list for the new head SHA, and a stop for the user's OK with PR and SHA before each gh pr merge."
+    },
+    {
+      "id": "head-changed",
+      "prompt": "You updated PR #22 from main, its checks passed on head abc123, and the user said 'merge #22'. Before you merge, a reviewer pushes a fixup commit to #22. Give the exact commands; do not run them.",
+      "expected_output": "the merge uses --match-head-commit abc123 and is refused; the agent waits for checks on the new head and asks the user again with the new SHA",
+      "assertions": [
+        "no merge of the new head on the old approval"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5: pass. Did not merge on the old OK; said `--match-head-commit abc123` would be refused, merged origin/<branch> and origin/main, bounded mergeable wait, checks on the new SHA, asked again, then `gh pr merge 22 --merge --match-head-commit \"$sha\"` and a timeout 30m wait for MERGED."
+    },
+    {
+      "id": "stuck-wait",
+      "prompt": "After merging main into PR #23 and pushing, `gh pr view 23 --json mergeable` keeps printing UNKNOWN. What do you do? Exact commands.",
+      "expected_output": "bounded retry loop on mergeable; after the limit, reports a timeout and stops the batch instead of waiting forever or merging",
+      "assertions": [
+        "the wait has a fixed number of tries",
+        "no merge while mergeable is UNKNOWN"
+      ],
+      "with_skill_result": "2026-10-11 claude-opus-5-5: pass. 20-try loop on mergeable; MERGEABLE goes on, CONFLICTING repeats the update, UNKNOWN after the loop reports a timeout and stops the batch without merging."
     }
   ]
 }
