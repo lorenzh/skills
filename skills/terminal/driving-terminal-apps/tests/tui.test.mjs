@@ -54,8 +54,9 @@ test('stop escalates every snapshot process still alive, reparented ones include
 import {appendFileSync} from 'node:fs';
 const command = process.argv[6];
 if (command === 'list-panes') console.log('100');
-if (command === 'kill-server') appendFileSync(process.env.TUI_TEST_CALLS, JSON.stringify(['kill-server']) + '\\n');
+if (command === 'kill-session') appendFileSync(process.env.TUI_TEST_CALLS, JSON.stringify(['kill-session', process.argv[8]]) + '\\n');
 if (command === 'has-session') process.exitCode = 1;
+if (command === 'show-options') console.log('1');
 `, { mode: 0o755 });
     writeFileSync(join(dir, 'ps'), `#!${process.execPath}
 import {existsSync, writeFileSync} from 'node:fs';
@@ -66,7 +67,7 @@ writeFileSync(marker, '');
     ok(['stop', `stop-test-${process.pid}`], { PATH: dir, TUI_TEST_CALLS: calls, NODE_OPTIONS: `--import=${preload}` });
     assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n').map(JSON.parse), [
       [101, 'SIGTERM'], [102, 'SIGTERM'], [103, 'SIGTERM'], [100, 'SIGTERM'],
-      [102, 'SIGKILL'], [103, 'SIGKILL'], [100, 'SIGKILL'], ['kill-server'],
+      [102, 'SIGKILL'], [103, 'SIGKILL'], [100, 'SIGKILL'], ['kill-session', `=stop-test-${process.pid}`],
     ]);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -204,4 +205,35 @@ createInterface({input:process.stdin}).on('line', line => {
       }
     }
   } finally { tui(['stop', name]); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('find counts terminal cells: wide CJK and emoji 2, combining marks 0', { skip: !have('tmux') }, () => {
+  const name = `tui-cells-${process.pid}`;
+  try {
+    ok(['start', name, '-s', '40x3', '--', 'sh', '-c', 'printf "\\342\\234\\205 \\342\\217\\260 e\\314\\201 \\346\\274\\242 x"; sleep 30']);
+    ok(['wait', name, 'x', 5]);
+    assert.equal(ok(['find', name, 'x']).trim(), '12 1');
+  } finally { tui(['stop', name]); }
+  for (const cluster of ['👩‍💻', '🇩🇪', '👍🏽', '☀️']) {
+    try {
+      ok(['start', name, '-s', '20x3', '--', 'sh', '-c', 'printf "%s x" "$1"; sleep 30', 'sh', cluster]);
+      ok(['wait', name, 'x', 5]);
+      assert.equal(ok(['find', name, 'x']).trim(), '4 1', cluster);
+    } finally { tui(['stop', name]); }
+  }
+});
+
+test('a refused start and its stop leave the sessions already on that socket running', { skip: !have('tmux') }, () => {
+  const name = `tui-shared-${process.pid}`;
+  const tmux = args => spawnSync('tmux', ['-L', name, '-f', '/dev/null', ...args], { encoding: 'utf8' });
+  try {
+    assert.equal(tmux(['new-session', '-d', '-s', 'mine', 'sleep', '60']).status, 0);
+    assert.equal(tui(['start', name, '--', 'sleep', '60']).status, 1);
+    ok(['stop', name]);
+    assert.equal(tmux(['has-session', '-t', '=mine']).status, 0);
+    assert.equal(tmux(['new-session', '-d', '-s', name, 'sleep', '60']).status, 0);
+    assert.equal(tui(['start', name, '--', 'sleep', '60']).status, 1);
+    assert.equal(tui(['stop', name]).status, 1, 'stop refuses a session start did not create');
+    assert.equal(tmux(['has-session', '-t', `=${name}`]).status, 0);
+  } finally { tmux(['kill-server']); }
 });

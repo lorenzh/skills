@@ -18,10 +18,11 @@ beats.json (paths relative to its folder):
     "beats": [
       { "id": "B1", "src": "raw.mp4", "start": 10.5, "dur": 3.3, "crop": "w:h:x:y",
         "zoom": "min(1+0.2*on/30,1.2)", "zoomX": "iw/2-iw/zoom/2", "zoomY": "0",
-        "caption": "One line a viewer reads in time" },
+        "caption": "One line a viewer reads in time", "box": ["w:h:x:y"], "boxAt": 1 },
       { "id": "B8", "dur": 4, "card": ["Title", "subtitle", "example.com/repo"] } ] }
   size: 1080x1080 square, 1080x1920 vertical, 1920x1080 landscape. crop, zoom, zoomX, zoomY,
-  caption are optional; zoom is an ffmpeg zoompan expression (on = output frame number).
+  caption, box, boxAt are optional; box: 4 px orange frames in source pixels that fade in boxAt s
+  (default 1) into the beat; zoom is an ffmpeg zoompan expression (on = output frame number).
   audio: true adds a silent AAC track (feeds that expect one).
 
 ffmpeg: $FFMPEG, else ffmpeg on PATH; it needs the drawtext filter (libfreetype).
@@ -54,6 +55,8 @@ export function load(file) {
     if (b.caption !== undefined && typeof b.caption !== 'string') fail(`${b.id}: "caption" must be text`);
     if (!b.card && (typeof b.src !== 'string' || !b.src || !(b.start >= 0))) fail(`${b.id}: give "src" and "start", or "card"`);
     if (b.crop && !/^\d+:\d+:\d+:\d+$/.test(b.crop)) fail(`${b.id}: crop '${b.crop}' is not w:h:x:y in pixels`);
+    if (b.box !== undefined && (!Array.isArray(b.box) || !b.box.every((r) => /^\d+:\d+:\d+:\d+$/.test(r)))) fail(`${b.id}: "box" must be a list of "w:h:x:y" in source pixels`);
+    if (b.boxAt !== undefined && !(b.boxAt >= 0)) fail(`${b.id}: "boxAt" must be 0 or more seconds`);
   }
   return {
     W: +m[1], H: +m[2], fps: cfg.fps ?? 30, fade, bg: cfg.bg ?? '0x202020',
@@ -84,6 +87,10 @@ export function beatArgs(c, b) {
   const maxH = c.H - band - Math.round(c.H * 0.06);
   const [cw, ch] = (b.crop ?? '').split(':');
   const f = [`fps=${c.fps}`];
+  if (b.box?.length) {
+    const boxes = b.box.map((r) => { const [w, h, x, y] = r.split(':'); return `drawbox=x=${x}:y=${y}:w=${w}:h=${h}:color=0xff9f1c:t=4`; });
+    f.push(`split[a][b];[b]${boxes.join(',')},format=yuva420p,fade=in:st=${b.boxAt ?? 1}:d=0.3:alpha=1[hl];[a][hl]overlay`);
+  }
   if (b.crop) f.push(`crop=${b.crop}`);
   if (b.zoom) {
     // zoompan needs a fixed output size: keep the crop size, scale afterwards (smooth sub-pixel zoom).

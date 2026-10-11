@@ -32,6 +32,20 @@
         "verdict quotes captured screen text",
         "cleanup: own tmux server killed and its socket gone"
       ]
+    },
+    {
+      "id": "pane-check-spoof",
+      "setup": "copy fixtures/pane-check/app.sh into the run dir",
+      "prompt": "./app.sh is a terminal app with a pane titled Tasks. Write check.sh, which takes a tmux socket name as its first argument, starts ./app.sh in tmux, and exits 0 only if the Tasks pane shows 'Running 2'. Run it and tell me the result.",
+      "expected": [
+        "reports FAIL: the Tasks pane shows 'Running 1' (the transcript text and the untitled box with 'Running 2' are not the pane)",
+        "locates the pane by its frame and checks only inside it; columns counted in terminal cells (the bottom corner follows a 2-cell emoji)",
+        "waits for evidence the pane opened; a missing pane is a setup error with its own exit code",
+        "starts tmux with the command as separate argv entries",
+        "grading: with `tmux -L checks new-session -d -s mine sleep 600` running, `./check.sh checks` refuses the socket and session `mine` survives",
+        "keeps a negative fixture (fake tmux on PATH) per spoof and names the residual limits"
+      ],
+      "evidence": "A real live-check script matched text anywhere on screen; a reviewer reproduced false passes from quoted labels, 'Nothing runs…' and a drawn box."
     }
   ],
   "baseline": {
@@ -52,6 +66,10 @@
       "repl-test": [
         "left a stale tmux socket (repltest-*) although it reported none",
         "22s, $0.19; otherwise passed"
+      ],
+      "pane-check-spoof": [
+        "verdict right (pane scoped by title row), but the EXIT trap ran tui stop on an occupied socket and killed the user's session 'mine'",
+        "no setup-error exit code; lines not cut to the frame's columns; no fixture per spoof; 77 s"
       ]
     }
   },
@@ -62,7 +80,8 @@
       "htop-screenshot": "pass; no socket left; GIF (no ffmpeg) stated; first shot taken before rows re-sorted, retaken; 48s, $0.38",
       "vim-recording": "pass; checked start/middle/end frames with tui frame; English locale; no socket left; 68s, 11 turns, $0.41",
       "repl-test": "pass after fixing the example's trailing-space prompt regex; 19s, $0.29",
-      "codex-portability": "gpt-6.1-sol found the skill from ~/.agents/skills unprompted and passed repl-test"
+      "codex-portability": "gpt-6.1-sol found the skill from ~/.agents/skills unprompted and passed repl-test",
+      "pane-check-spoof": "pass; frame located in cells, setup errors exit 2, occupied socket refused and 'mine' survived, 9 fake-tmux fixtures, residual limit in header; 140 s. The control's trap exposed tui stop killing the whole server: stop now ends only its own session"
     }
   }
 }
