@@ -12,12 +12,13 @@ const usage = `usage: node tui.mjs <command> <name> [args]
   key    <name> <key> [secs=0.6]               send one tmux key (Enter, Down, C-c, q, ...), then sleep
   click  <name> <col> <row>                    SGR mouse click at 1-based cell
   wait   <name> <regex> [secs=30]              wait until the screen matches; exit 1 on timeout
-  find   <name> <regex>                        print "col row" (1-based) of the first match
+  find   <name> <regex>                        print "col row" (1-based cells) of the first match
   cap    <name> [-e]                           print the screen (-e: keep colours)
   shot   <name> <out.txt|.ansi|.gif|.png>       screenshot of the current screen
   frame  <cast> <secs> <out.gif|.png>          still of a recording at a time
   render <cast> <out.gif|.mp4> [agg args]      recording to video
-  stop   <name>                                kill the server and everything in it, remove the socket
+  stop   <name>                                kill the session <name> and its processes; the server and
+                                               socket go with the last session
   tools                                        show which helper tools were found
 exit 0 ok, 1 failed (timeout, no match, missing tool), 2 misuse
 `;
@@ -45,6 +46,15 @@ function seconds(value) {
 }
 function regex(value) {
   try { return new RegExp(value); } catch (error) { fail(`invalid regex: ${error.message}`, 2); }
+}
+// ponytail: main East Asian Wide/Fullwidth blocks plus emoji presentation; rare wide code points count 1.
+function cells(text) {
+  let width = 0;
+  for (const char of text) {
+    if (/[\p{Mn}\p{Me}\p{Cf}]/u.test(char)) continue;
+    width += /[\p{Emoji_Presentation}\u1100-\u115f\u2e80-\u303e\u3041-\u33ff\u3400-\u4dbf\u4e00-\u9fff\ua000-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6\u{20000}-\u{3fffd}]/u.test(char) ? 2 : 1;
+  }
+  return width;
 }
 function quote(value) { return `'${value.replaceAll("'", "'\\''")}'`; }
 async function temporary(extension, action) {
@@ -159,7 +169,7 @@ async function main([command, ...args]) {
       const lines = screen().split('\n');
       for (let row = 0; row < lines.length; row++) {
         const found = match.exec(lines[row]);
-        if (found) { console.log(`${Array.from(lines[row].slice(0, found.index)).length + 1} ${row + 1}`); return; }
+        if (found) { console.log(`${cells(lines[row].slice(0, found.index)) + 1} ${row + 1}`); return; }
       }
       process.exitCode = 1;
       break;
@@ -179,7 +189,7 @@ async function main([command, ...args]) {
     }
     case 'stop': {
       check(args.length === 0);
-      const roots = tmux(['list-panes', '-a', '-F', '#{pane_pid}'], true).stdout?.trim().split(/\s+/).filter(Boolean).map(Number) || [];
+      const roots = tmux(['list-panes', '-s', '-t', `=${name}`, '-F', '#{pane_pid}'], true).stdout?.trim().split(/\s+/).filter(Boolean).map(Number) || [];
       function descendants() {
         const rows = run('ps', ['-eo', 'pid=,ppid=']).stdout.trim().split('\n').map(line => line.trim().split(/\s+/).map(Number));
         const pids = [];
@@ -196,9 +206,9 @@ async function main([command, ...args]) {
           pids = pids.filter(pid => { try { process.kill(pid, 0); return true; } catch { return false; } });
         }
       }
-      tmux(['kill-server'], true);
-      if (tmux(['has-session'], true).status === 0) fail(`server ${name} still runs`);
-      rmSync(join(process.env.TMUX_TMPDIR || '/tmp', `tmux-${process.getuid()}`, name), { force: true });
+      tmux(['kill-session', '-t', `=${name}`], true);
+      if (tmux(['has-session', '-t', `=${name}`], true).status === 0) fail(`session ${name} still runs`);
+      if (tmux(['list-sessions'], true).status !== 0) rmSync(join(process.env.TMUX_TMPDIR || '/tmp', `tmux-${process.getuid()}`, name), { force: true });
       break;
     }
   }

@@ -27,6 +27,7 @@ All commands go through `node scripts/tui.mjs` in this skill's folder (run it; `
    - keys: `node "$T" key <name> <Key> [secs]` (`Enter`, `Escape`, `Down`, `C-x`, `F6`, `q`); the default pause is 0.6 s. Keep at least 0.2 s between keys that redraw the screen: keys sent faster are dropped by some apps.
    - mouse: `node "$T" find <name> '<regex>'` prints `col row`; `node "$T" click <name> <col> <row>`.
    - check: `node "$T" wait <name> '<regex>' <secs>`; `wait` and `find` use JavaScript regular expressions. On timeout it prints the screen to stderr, so read it before trying again. The capture drops trailing spaces: match `\$$`, not `\$ `.
+   Before writing a script whose pass or fail comes from the screen text (a live check, a smoke test, a CI step), read [references/screen-checks.md](references/screen-checks.md): text the app did not draw, such as a transcript that quotes its labels, makes a whole-screen match pass.
    For a recording, put the whole sequence in a script file, with a pause of 1.5–3 s (tunable) after each visible change so a viewer can read it.
    Done when the screen shows the expected end state.
 
@@ -37,7 +38,7 @@ All commands go through `node scripts/tui.mjs` in this skill's folder (run it; `
    - check a video: `node "$T" frame <file>.cast <secs> f.gif` renders the screen at a time; look at two or three such frames before handing the video over.
    Done when each file exists and you looked at it (open the image) or quoted it.
 
-6. **Stop and clean up.** `node "$T" stop <name>` kills the app, its child processes and the server, and removes the socket. Then check with a bracketed pattern, e.g. `pgrep -fa '[s]leep 300'`, so `pgrep` does not match itself. Ignore the agent's own wrapper shell, which may still contain the command. A process that detached or was reparented survives `stop`; kill only leftover processes that belong to this run.
+6. **Stop and clean up.** `node "$T" stop <name>` kills the session `<name>`, the app and its child processes; the server and its socket go with the last session, and other sessions on that socket keep running. Then check with a bracketed pattern, e.g. `pgrep -fa '[s]leep 300'`, so `pgrep` does not match itself. Ignore the agent's own wrapper shell, which may still contain the command. A process that detached or was reparented survives `stop`; kill only leftover processes that belong to this run.
    Done when `stop` exits 0 and `pgrep` shows no remaining app processes from this run.
 
 7. **Report.** Give the file paths, size and length of videos, what each capture shows, and any fallback (GIF instead of MP4). If the harness can send files to the user (in Claude Code, `SendUserFile`), send the images or video; otherwise give the paths.
