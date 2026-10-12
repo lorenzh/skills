@@ -64,6 +64,17 @@ In Claude Code, add this repo as a plugin marketplace, then install the `lorenzh
 
 In Claude Desktop, open the Code tab, choose "+" > Plugins > Add plugin and enter `lorenzh/skills`.
 
+### Install as a Codex plugin
+
+With the Codex CLI, add this repo as a plugin marketplace, then install the `lorenzh` plugin. It holds all skills:
+
+```bash
+codex plugin marketplace add lorenzh/skills
+codex plugin add lorenzh@lorenzh-skills
+```
+
+To try a local clone, run `codex plugin marketplace add ./` in the clone instead.
+
 ## Requirements per skill
 
 | Skill | Needs |

@@ -22,6 +22,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | `templates/` | Scaffold source for `new-skill.mjs` |
 | `scripts/` | Repo tooling (Node, no dependencies) |
 | `.claude-plugin/` | Claude plugin manifest (`plugin.json`, one `skills` entry per category) and marketplace (`marketplace.json`) |
+| `.codex-plugin/`, `.agents/plugins/` | Codex plugin manifest (`plugin.json`, `skills` is `./skills/`; Codex scans it recursively) and Codex marketplace (`marketplace.json`) |
 
 ## Categories
 
