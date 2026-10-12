@@ -32,9 +32,9 @@ git fetch origin
 git switch <branch> && git merge origin/<main>
 ```
 
-Keep main's entries followed by this PR's entries in shared lists. Keep each change once.
+In a shared list, keep both sides of each conflict: main's entries, then this PR's entries, with each change once.
 
-After any branch update, check the changelog for each change named by the branch's issue or PR numbers. Main can already carry its PR link while the branch names only `fixes #N`. Inspect both numbers together (replace `<N>` with the numbers for one change, such as `41|12`):
+After any branch update, check the changelog for each change named by the branch's issue or PR numbers. Main can already carry its PR link while the branch names only `fixes #N`. Replace `<N>` with this PR's number and the issue numbers it fixes or refs. For PR 41 that fixes issue 12, use `grep -nE '#(41|12)\b' CHANGELOG.md`:
 
 ```bash
 grep -nE '#(<N>)\b' CHANGELOG.md
@@ -77,7 +77,7 @@ For a timeout in a timing-sensitive test, compare load average (`uptime`) with C
 
 Follow [waiting-for-ci](../waiting-for-ci/SKILL.md) for background waits, deadlines, observed state and rerun commands.
 
-Done when every required check for `$sha` passed, or the report names the failing check and stops the batch.
+Done when every required check for `$sha` passed, or the report names the failing check, the batch is stopped, and the PR's worktree and branch still exist.
 
 ## 4. Merge with the user's OK
 
