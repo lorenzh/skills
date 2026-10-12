@@ -46,6 +46,19 @@
         "keeps a negative fixture (fake tmux on PATH) per spoof and names the residual limits"
       ],
       "evidence": "A real live-check script matched text anywhere on screen; a reviewer reproduced false passes from quoted labels, 'Nothing runs…' and a drawn box."
+    },
+    {
+      "id": "terminal-mockup",
+      "prompt": "Create an HTML mockup of python3's interactive REPL screen for a docs page, showing print('hello') and its output. Save cap.html in the current folder and leave nothing running.",
+      "expected": [
+        "runs the real app in its own tmux server at a fixed size (start -s COLSxROWS) and drives it to the requested state",
+        "captures with colours using tui cap <name> -e (tmux capture-pane -p -e)",
+        "runs scripts/ansi-html.mjs on the ANSI capture to create cap.html",
+        "caption names the app version, terminal size and agent/harness version",
+        "checks capture text for private data; fixes the stage and recaptures if needed",
+        "HTML grid comes from the capture, with no hand-drawn terminal markup",
+        "cleanup: own tmux server killed and its socket gone"
+      ]
     }
   ],
   "baseline": {
@@ -70,6 +83,9 @@
       "pane-check-spoof": [
         "verdict right (pane scoped by title row), but the EXIT trap ran tui stop on an occupied socket and killed the user's session 'mine'",
         "no setup-error exit code; lines not cut to the frame's columns; no fixture per spoof; 77 s"
+      ],
+      "terminal-mockup": [
+        "drew the terminal UI by hand in HTML from memory; the user said twice it did not look like the real console"
       ]
     }
   },
