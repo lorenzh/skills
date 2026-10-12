@@ -46,6 +46,16 @@
         "keeps a negative fixture (fake tmux on PATH) per spoof and names the residual limits"
       ],
       "evidence": "A real live-check script matched text anywhere on screen; a reviewer reproduced false passes from quoted labels, 'Nothing runs…' and a drawn box."
+    },
+    {
+      "id": "terminal-mockup",
+      "prompt": "Create an HTML mockup of python3's interactive REPL screen for a docs page, showing print('hello') and its output. Save cap.html in the current folder and leave nothing running.",
+      "expected": [
+        "HTML grid comes from a real app capture, with no hand-drawn terminal markup",
+        "caption includes app version, terminal size and agent/harness version",
+        "checks capture text for private data before sharing; if any is found, fixes the stage and recaptures instead of editing HTML by hand"
+      ],
+      "evidence": "2026-10-12 rerun: control and with-skill runs used claude-opus-5-5, each in a fresh claude -p session in an empty scratch dir with the scenario prompt unchanged. Control had all skills disabled; with-skill used the PR branch's SKILL.md. Control hand-wrote HTML and omitted the caption and private-data check; with-skill produced cap.html from a real capture with a caption and checked the capture. No private data was found, so recapture was not exercised."
     }
   ],
   "baseline": {
@@ -70,6 +80,13 @@
       "pane-check-spoof": [
         "verdict right (pane scoped by title row), but the EXIT trap ran tui stop on an occupied socket and killed the user's session 'mine'",
         "no setup-error exit code; lines not cut to the frame's columns; no fixture per spoof; 77 s"
+      ],
+      "terminal-mockup": [
+        "drew the terminal UI by hand in HTML from memory; the user said twice it did not look like the real console",
+        "2026-10-12 rerun: wrote the terminal by hand in HTML with a window bar, traffic-light dots, a fabricated 'user@host: ~' title, a blinking cursor and a '$ python3' line; did not run python3 in tmux or capture the screen, only piped print('hello') into python3 once to copy the banner",
+        "2026-10-12 rerun: no caption with app version, terminal size or agent version",
+        "2026-10-12 rerun: no private-data check of the content",
+        "2026-10-12 rerun: did not open the page; nothing left running; 23 s, 4 turns, $0.41"
       ]
     }
   },
@@ -81,7 +98,8 @@
       "vim-recording": "pass; checked start/middle/end frames with tui frame; English locale; no socket left; 68s, 11 turns, $0.41",
       "repl-test": "pass after fixing the example's trailing-space prompt regex; 19s, $0.29",
       "codex-portability": "gpt-6.1-sol found the skill from ~/.agents/skills unprompted and passed repl-test",
-      "pane-check-spoof": "pass; frame located in cells, setup errors exit 2, occupied socket refused and 'mine' survived, 9 fake-tmux fixtures, residual limit in header; 140 s. The control's trap exposed tui stop killing the whole server: stop now ends only its own session"
+      "pane-check-spoof": "pass; frame located in cells, setup errors exit 2, occupied socket refused and 'mine' survived, 9 fake-tmux fixtures, residual limit in header; 140 s. The control's trap exposed tui stop killing the whole server: stop now ends only its own session",
+      "terminal-mockup": "2026-10-12: pass; ran python3 in its own tmux session at 80x12, captured with tui cap -e and converted with scripts/ansi-html.mjs to cap.html (grid from the capture, no hand-drawn markup); caption 'Python 3.12.3, 80x12, Claude Code 2.1.296'; checked the capture for home paths, usernames and hostnames (none); stopped the session, socket gone and no python3 from the run left; 55 s, 7 turns, $0.74"
     }
   }
 }

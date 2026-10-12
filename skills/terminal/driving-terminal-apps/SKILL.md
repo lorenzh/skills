@@ -1,6 +1,6 @@
 ---
 name: driving-terminal-apps
-description: Terminal app automation through tmux. Use when the user asks to drive, control or test a console, CLI or TUI tool (htop, vim, a REPL, an installer, a coding agent) like a user would; to take a screenshot of a terminal app; or to record a terminal video, demo GIF or MP4. Web pages and Electron apps belong to a browser automation skill.
+description: Terminal app automation through tmux. Use when the user asks to drive, control or test a console, CLI or TUI tool (htop, vim, a REPL, an installer, a coding agent) like a user would; to take a screenshot of a terminal app; to record a terminal video, demo GIF or MP4; or to make a mockup, image or HTML preview of a terminal UI for docs, a design or a PR. Web pages and Electron apps belong to a browser automation skill.
 ---
 
 # Driving terminal apps
@@ -9,7 +9,7 @@ Run the app in its own tmux server, drive it with keys, read the screen as text,
 
 **Every action waits on what the screen shows, and every run ends with the app's server stopped.**
 
-All commands go through `node scripts/tui.mjs` in this skill's folder (run it; `node scripts/tui.mjs --help` prints the usage). Set its full path, e.g. `T="<skill dir>/scripts/tui.mjs"`, then use `node "$T" ...`. It needs Node.js 18 or later and `tmux` on `PATH`; screenshots and video need `agg`, video recording needs `asciinema`, PNG and MP4 need `ffmpeg`. It finds these three on `PATH` or in `$TUI_TOOLS` (default `~/.local/share/tui-tools`).
+Drive the app through `node scripts/tui.mjs` in this skill's folder (`--help` prints usage). Set `T="<skill dir>/scripts/tui.mjs"`, then run `node "$T" ...`. It needs Node.js 18+ and `tmux` on `PATH`; rendered images and video need `agg`, recording needs `asciinema`, PNG and MP4 need `ffmpeg`. It finds these three on `PATH` or in `$TUI_TOOLS` (default `~/.local/share/tui-tools`). HTML conversion needs only Node.js.
 
 ## Process
 
@@ -32,11 +32,14 @@ All commands go through `node scripts/tui.mjs` in this skill's folder (run it; `
    Done when the screen shows the expected end state.
 
 5. **Capture.**
-   - text evidence: `node "$T" cap <name>` (plain) or `node "$T" cap <name> -e` (with colours as ANSI codes).
+   Use real captures for terminal mockups, images and videos: hand-drawn markup from memory does not match the real console.
+   - text evidence: `node "$T" cap <name>` (plain) or `node "$T" cap <name> -e` (`tmux capture-pane -p -e`, with colours).
+   - mockup for a page, doc, design or PR: start the real app at a fixed size (`start -s COLSxROWS`, step 3), drive to the state to show (step 4), then `node "$T" cap <name> -e > cap.ansi`. Run `node "<skill dir>/scripts/ansi-html.mjs" cap.ansi -o cap.html --caption "app 1.2.3, 100x30, agent 4.5"`; `--help` prints usage, `--fragment` gives a block to paste into a page.
    - screenshot: `node "$T" shot <name> shot.png` (needs `ffmpeg`) or `shot.gif` (one frame); `.txt` and `.ansi` also work.
    - video: stop the app or the server (step 6) so the cast closes, then `node "$T" render <file>.cast out.mp4` (or `out.gif`; pauses are cut to 3 s). Extra `agg` options go after the output, e.g. `--font-size 20`.
    - check a video: `node "$T" frame <file>.cast <secs> f.gif` renders the screen at a time; look at two or three such frames before handing the video over.
-   Done when each file exists and you looked at it (open the image) or quoted it.
+   Caption mockups, images and videos that will be shared with app version, terminal size and agent/harness version. Before sharing, check capture text for private data (home paths, usernames, hostnames, tokens); fix the stage (step 2) and recapture instead of editing HTML by hand.
+   Done when each file exists and you viewed or quoted the text evidence; shared mockups, images and videos have a caption with app version, terminal size and agent/harness version, and their private-data check is done.
 
 6. **Stop and clean up.** `node "$T" stop <name>` kills the session `<name>`, the app and its child processes; the server and its socket go with the last session, and other sessions on that socket keep running; it refuses a session that `start` did not create. Then check with a bracketed pattern, e.g. `pgrep -fa '[s]leep 300'`, so `pgrep` does not match itself. Ignore the agent's own wrapper shell, which may still contain the command. A process that detached or was reparented survives `stop`; kill only leftover processes that belong to this run.
    Done when `stop` exits 0 and `pgrep` shows no remaining app processes from this run.
@@ -59,4 +62,4 @@ node "$T" stop repl
 ## References
 
 - Testing a Claude Code plugin or mod live: read [references/claude-code.md](references/claude-code.md) before the first `start` — it covers settings isolation, the cheap model and the start delay.
-- `node --test "<skill dir>/tests/tui.test.mjs"` checks the helper (exit 0 when all pass; optional media checks need `agg` and `asciinema`).
+- Run `node --test "<skill dir>/tests/tui.test.mjs" "<skill dir>/tests/ansi-html.test.mjs"` to check both helpers (exit 0 when all pass; optional media checks need `agg` and `asciinema`).
