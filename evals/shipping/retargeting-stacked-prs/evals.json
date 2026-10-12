@@ -1,6 +1,6 @@
 {
   "skill_name": "retargeting-stacked-prs",
-  "note": "Plan-only prompts on a fresh claude-opus-5-5 subagent; control without the skill. Grade from the answer text. Baseline 2026-10-11 (claude-opus-5-5): control rebased with --onto and force-pushed, which breaks the no-force-push rule. With the skill it added the gh api fallback and the reason a base change alone leaves stale checks. A merge-commit case without a push (where close/reopen is needed) is not yet run.",
+  "note": "Plan-only prompts on a fresh claude-opus-5-5 subagent; control without the skill. Grade from the answer text. Baseline 2026-10-11 (claude-opus-5-5): control rebased with --onto and force-pushed, which breaks the no-force-push rule. With the skill it added the gh api fallback and the reason a base change alone leaves stale checks. A merge-commit case without a push (where close/reopen is needed) is not yet run. Baseline 2026-10-12: the control missed native GitHub stacks and valid per-head fresh-worktree verification; see stack-ready.",
   "evals": [
     {
       "id": "retarget-ci",
@@ -15,6 +15,24 @@
         "control rebased with --onto and pushed with --force-with-lease"
       ],
       "with_skill_result": "2026-10-11 claude-opus-5-5 with the skill (after the approval gate and push-path check): pass on all assertions. It merged origin/main into feat/b with a normal push and named no force-push; after the push it checked `gh run list --commit <head sha>` with createdAt after the push; it asked for the user's OK with head SHA and check results before `gh pr merge`."
+    },
+    {
+      "id": "stack-ready",
+      "prompt": "A repository has four open pull requests that build on each other: #10 base `main`, head `specs`; #11 base `specs`, head `impl-a`; #12 base `impl-a`, head `impl-b`; #13 base `impl-b`, head `impl-c`. The CI workflow runs on `pull_request` with `branches: [main]`. The repo is a TypeScript monorepo: `bun run check` runs lint, typecheck, tests, then `tsc -b` build; build output goes to `packages/*/dist/` and `packages/*/tsconfig.build.tsbuildinfo`, both gitignored. You already have a local worktree of `impl-c` where you built and ran `bun run check` yesterday; it passed. `main` has moved 7 commits since. The user asks: \"Can you check if my PRs are ready to publish? Before I merge 13, do I need 12 and then 11?\" Give your answer to the user and the exact commands you would run, in order.",
+      "expected_output": "Explains that #11–#13 have no CI result while their bases are not main; checks whether GitHub has linked the same-repository chain as a native stack through the GraphQL stack read, and if not asks the user to link it from the top-PR banner or gh stack because the API cannot link it; explains that linking starts CI on each PR and merging #13 lands the whole stack subject to each PR's approval, passing checks, and linear history; verifies every head merged with current origin/main in a separate brand-new worktree with a fresh install and bun run check; identifies why the yesterday's built worktree is not valid; obtains explicit user OK for each PR before merge.",
+      "assertions": [
+        "states #11–#13 have no qualifying pull_request CI result with branches: [main] until linked as a native stack or retargeted to main and triggered",
+        "describes checking GraphQL PullRequest.stack and linking through the recommendation banner or gh stack, noting GraphQL has no mutation to link an existing chain",
+        "gives per-head fresh-worktree verification after merging current origin/main, with a fresh install and the full bun run check command",
+        "names both stale-worktree traps (tsbuildinfo can skip a needed build; reused worktrees can retain generated files and produce false lint or packaging failures)",
+        "explains top-PR merge behavior, including the explicit-OK gate for every PR the merge lands"
+      ],
+      "baseline_failures": [
+        "did not mention GitHub's native stack, how to link the chain, CI on every linked PR, or top-PR merge behavior",
+        "reused the impl-c worktree and proposed deleting dist and tsbuildinfo rather than creating a brand-new worktree",
+        "verified only the combined top head instead of each lower head merged with current main"
+      ],
+      "with_skill_result": "2026-10-12 claude-opus-5-5 with the first draft of the skill: covered every baseline failure. It checked the GraphQL stack field and named the banner or gh stack for linking, verified each of the four heads merged with origin/main in a brand-new worktree with a fresh install instead of the reused impl-c worktree, and asked for the user's OK for every PR the top merge lands. The later review fixes (step references, native-path routing, split assertions) were not re-run."
     }
   ]
 }
