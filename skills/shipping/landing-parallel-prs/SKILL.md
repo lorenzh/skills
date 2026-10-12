@@ -34,16 +34,6 @@ git switch <branch> && git merge origin/<main>
 
 In a shared list, keep both sides of each conflict: main's entries, then this PR's entries, with each change once.
 
-If the repository has a changelog, check it after any branch update. If there is no changelog, skip this check. Use the repository's actual changelog file (`CHANGELOG.md` when present) in the commands below.
-
-Check each change named by the branch's issue or PR numbers. Main can already carry its PR link while the branch names only `fixes #N`. Replace `<N>` with this PR's number and the issue numbers it fixes or refs. For PR 41 that fixes issue 12, use `grep -nE '#(41|12)\b' <changelog-file>`:
-
-```bash
-grep -nE '#(<N>)\b' <changelog-file>
-```
-
-The command must print one line per change. If two entries describe the same change, delete the entry without the PR link. A duplicate merged to main stays until someone removes it.
-
 Run the repo's checks using step 3's failure rules. Then push normally. Keep the branch history as it is, with no rebase and no force-push: a force-push rewrites history others may have pulled.
 
 GitHub can report `UNKNOWN` after a push or a merge to main. Decide that a PR conflicts only when this bounded loop returns `CONFLICTING`:
