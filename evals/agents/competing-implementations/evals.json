@@ -1,5 +1,5 @@
 {
-  "method": "Fresh no-skill control and fresh with skill sessions use the same inherited harness configuration. Plans only; no live competition or PR. No participant identities stored. The end-to-end scenario records requester-reported failures; its fresh control and with-skill run are pending.",
+  "method": "The original scenarios use fresh no-skill control and fresh with-skill sessions with the same inherited harness configuration. The end-to-end scenario records requester-reported failures; its fresh control and with-skill run are pending. For fix-round-no-commit, dependent-waves and ai-tools-blinding-and-shipping, the requester supplied measured runs from 2026-10-12: claude-opus-5-5, each a fresh claude -p session in an empty scratch directory, unchanged scenario prompt, read-only tools. Control: skill as on origin/main. With skill: this branch. Plans only; no live competition or PR. Results below record the supplied evidence, not new runs or verification of live routing/merging.",
   "scenarios": [
     {
       "id": "routing-and-cap",
@@ -81,7 +81,19 @@
       ],
       "baseline_failures": [
         "a fix round answered done without a new commit; the orchestrator sent the unchanged branch to re-review"
-      ]
+      ],
+      "control": {
+        "result": "fail",
+        "duration_seconds": 47,
+        "cost_usd": 0.45,
+        "evidence": "Did not demand a new commit; treated uncommitted edits or an amend as 'the fix landed' and planned to commit at ship time. Did plan a fresh packet before re-review. Fails expectations 1-2."
+      },
+      "with_skill": {
+        "result": "pass",
+        "duration_seconds": 25,
+        "cost_usd": 0.41,
+        "evidence": "Compared rev-list --count and HEAD with pre-fix values, required clean status --porcelain, one retry demanding new commits with no amend, stop and report on a repeat, no re-review of the unchanged packet. Noted that a count check alone misses an amend with the same count (the rule's 'higher count' requirement still rejects it)."
+      }
     },
     {
       "id": "dependent-waves",
@@ -93,20 +105,44 @@
       ],
       "baseline_failures": [
         "a wave-2 brief claimed an unmerged change from wave 1 was already on main"
-      ]
+      ],
+      "control": {
+        "result": "fail",
+        "duration_seconds": 49,
+        "cost_usd": 0.34,
+        "evidence": "Based wave 2 on the unmerged PR head SHA of issue 1 and wrote 'Base contains unmerged PR #<P1>' into the brief, with stacked PRs; did not wait for the merge. Fails expectations 1-2."
+      },
+      "with_skill": {
+        "result": "pass",
+        "duration_seconds": 27,
+        "cost_usd": 0.26,
+        "evidence": "Waves gated on merge (hand-over not enough for the next wave), git fetch then base files and git log origin/<base> for each brief, wave 3 after wave 2 merges."
+      }
     },
     {
       "id": "ai-tools-blinding-and-shipping",
       "prompt": "Compare changes in a repository about agent tools whose docs legitimately mention Claude and gpt-6.1-sol. Check logs also contain implementer identities, worktree paths, branch names and runtime banners. The approved winner\u2019s PR is open, repository rules allow the orchestrator to merge after checks. Plan blind export and completion; do not execute.",
       "expected": [
-        "Use --no-builtin-patterns with only identity literals in the deny file: absolute worktree paths, branch names, implementers\u2019 model names and runtime banners; preserve legitimate vendor/model content.",
+        "Use --no-builtin-patterns with identity-only literals in the deny file. When an implementer's model name is also legitimate repository content, leave it out of the deny file and remove identifying runtime lines from private check logs before export; preserve legitimate vendor/model content.",
         "Inspect diff.txt and checks.txt for remaining identity clues.",
         "The orchestrator merges the approved PR or hands it to the user per repository rules before declaring the competition finished."
       ],
       "baseline_failures": [
         "the built-in model filter redacted legitimate model names in a repository about agent tools",
         "the ship step opened the PR and the run was reported finished without a merge"
-      ]
+      ],
+      "control": {
+        "result": "fail",
+        "duration_seconds": 108,
+        "cost_usd": 0.51,
+        "evidence": "Found by testing that the built-in filter redacts CLAUDE.md paths, gpt-6.1-sol and substrings (o[redacted] for ollama), then fell back to a hand-made manual export with an allowlist. Shipping step merged via ship.mjs --merge, so the shipping baseline failure did not reproduce in this run. Fails expectation 1 (no supported option, ad-hoc manual export)."
+      },
+      "with_skill": {
+        "result": "pass",
+        "duration_seconds": 50,
+        "cost_usd": 0.33,
+        "evidence": "Used --no-builtin-patterns, deny file with paths, branch names, model IDs and banners; removed an implementer model ID from the deny file when it is also doc content and stripped banner lines at the source instead. Inspected both files, merged via ship.mjs --merge after the gate."
+      }
     }
   ]
 }
