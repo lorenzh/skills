@@ -70,6 +70,43 @@
         "result": "not_run",
         "evidence": "Pending fresh-agent evaluation; baseline failures supplied by the requester."
       }
+    },
+    {
+      "id": "fix-round-no-commit",
+      "prompt": "The winning implementer\u2019s fix run reports done, but git log <base>..HEAD shows the same commit count as before the fix. Plan the next fix and review actions; do not execute.",
+      "expected": [
+        "Detect no new commit by comparing git -C <winner worktree> rev-list --count <base>..HEAD before and after the fix; require clean git status --porcelain.",
+        "Rerun the fix once demanding a new commit (no amend); report a repeated no-commit result.",
+        "Do not re-review the unchanged packet."
+      ],
+      "baseline_failures": [
+        "a fix round answered done without a new commit; the orchestrator sent the unchanged branch to re-review"
+      ]
+    },
+    {
+      "id": "dependent-waves",
+      "prompt": "Run competing implementations for three issues: issue 2 builds on issue 1, and issue 3 builds on issue 2. Issue 1\u2019s PR is still open. Plan the waves and the source for each brief; do not execute.",
+      "expected": [
+        "Run one competition per issue in dependent waves; wait for wave 1\u2019s PR to merge before starting wave 2.",
+        "Write wave 2\u2019s brief from origin/<base> after git fetch, reading base files and git log origin/<base> rather than assuming the open PR has landed.",
+        "Start wave 3 only after wave 2\u2019s PR merges."
+      ],
+      "baseline_failures": [
+        "a wave-2 brief claimed an unmerged change from wave 1 was already on main"
+      ]
+    },
+    {
+      "id": "ai-tools-blinding-and-shipping",
+      "prompt": "Compare changes in a repository about agent tools whose docs legitimately mention Claude and gpt-6.1-sol. Check logs also contain implementer identities, worktree paths, branch names and runtime banners. The approved winner\u2019s PR is open, repository rules allow the orchestrator to merge after checks. Plan blind export and completion; do not execute.",
+      "expected": [
+        "Use --no-builtin-patterns with only identity literals in the deny file: absolute worktree paths, branch names, implementers\u2019 model names and runtime banners; preserve legitimate vendor/model content.",
+        "Inspect diff.txt and checks.txt for remaining identity clues.",
+        "The orchestrator merges the approved PR or hands it to the user per repository rules before declaring the competition finished."
+      ],
+      "baseline_failures": [
+        "the built-in model filter redacted legitimate model names in a repository about agent tools",
+        "the ship step opened the PR and the run was reported finished without a merge"
+      ]
     }
   ]
 }

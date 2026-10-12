@@ -1,6 +1,6 @@
 ---
 name: competing-implementations
-description: Implementation competition for one task. Use when the user asks to have two agents compete on a change, wants competing implementations, or asks to compare implementations and ship the winner.
+description: Implementation competition for one task. Use when the user asks to have two agents compete on a change, wants competing implementations, asks to compare implementations and ship the winner, or asks for competing implementations on several dependent issues in waves.
 ---
 
 # Competing Implementations
@@ -13,6 +13,7 @@ Use the reusable [workflow outline](references/workflow.md) with the assigned sl
 ## 1. Freeze the brief and route three roles
 
 Read repository instructions, acceptance criteria, checks and loser policy. Store immutable `brief.md` and orchestrator-only, untracked `competition.json` in the session scratchpad outside both worktrees. The brief holds task, scope, base, criteria, standards and checks; the record holds phase, brief path, role suggestion IDs, model/effort, runtime evidence, worktree/slot mapping, checks, verdict, PR and loser decision.
+For dependent issues, run one competition per issue in waves; start a later wave only after the earlier wave’s PRs merge. After `git fetch`, read the base files and `git log origin/<base>` to write each wave’s brief from that branch; assuming a pending PR has landed sends both implementers to build on absent code.
 Call the router version the installed plugin's launcher pins, e.g. `bunx @spatz/cli@<version from the plugin's launcher>`; a stale global CLI can fail on a newer database. Use that executable for suggestions and reports; retain raw JSON privately:
 
 ```sh
@@ -35,10 +36,10 @@ Done when both candidates are finished at the same base with diffable changes an
 Give a fresh reviewer only the common brief, standards and anonymous packets in a read-only directory, without repository, transcript or private mapping access. Export each slot:
 
 ```sh
-node <skill-dir>/scripts/blind-packet.mjs <worktree> <base> <checks.txt> <private-deny.txt> <new-packet-dir> [--json]
+node <skill-dir>/scripts/blind-packet.mjs <worktree> <base> <checks.txt> <private-deny.txt> <new-packet-dir> [--json] [--no-builtin-patterns]
 ```
 
-The deny file lists every identity, vendor, branch and absolute worktree path, one literal per line; built-in vendor/model patterns provide a backstop. Preserve check commands, statuses and failures; exclude commit metadata and identity-only banners. Inspect both files (`diff.txt` and `checks.txt`) for remaining identity clues before sharing. Redacted diffs are review displays, not patches. See the workflow reference for Node-less export and binary evidence; pause comparison if blinding would lose material evidence.
+The deny file lists identity literals, one per line; built-in vendor/model patterns provide a backstop. For repositories about AI tools or models, use `--no-builtin-patterns` and keep only absolute worktree paths, branch names, implementers’ model names and runtime banners in the deny file: the backstop otherwise mangles legitimate code or docs. Preserve check commands, statuses and failures; exclude commit metadata and identity-only banners. Inspect both files (`diff.txt` and `checks.txt`) for remaining identity clues before sharing. Redacted diffs are review displays, not patches. See the workflow reference for Node-less export and binary evidence; pause comparison if blinding would lose material evidence.
 Done when both packets are anonymous and the reviewer has no identity-bearing access.
 
 ## 4. Score both and write one fix review
@@ -57,13 +58,14 @@ Done when the review contains scores, reasons, winner and one fix review with lo
 
 ## 5. Fix only the winner and re-review
 
-Send the original winning implementer the fix review; freeze the loser. Rerun winner checks, export a fresh anonymous packet and send it with initial findings to the same reviewer. Require `re-review.md` covering each fix, regressions, unchecked areas and APPROVE/BLOCK. Allow one fix round and one re-review; further rounds need an explicit task decision. Failed checks or BLOCK stop shipping, even under deadline pressure.
+Send the original winning implementer the fix review demanding a new commit (no amend); freeze the loser. Record `git -C <winner worktree> rev-list --count <base>..HEAD` before the fix; after it, require a higher count and clean `git status --porcelain` before rerunning checks and exporting for re-review. If no new commit exists, rerun the fix once with that demand stated; if it repeats, report it and stop: re-reviewing an unchanged packet wastes the round.
+Send the fresh packet and initial findings to the same reviewer; require `re-review.md` covering each fix, regressions, unchecked areas and APPROVE/BLOCK. Allow one fix round and one re-review apart from the no-commit retry; further rounds need an explicit task decision. Failed checks or BLOCK stop shipping, even under deadline pressure.
 Done when final checks pass and re-review says APPROVE, or remaining findings are reported.
 
 ## 6. Ship the approved winner
 
-Follow publishing/privacy rules and existing authorization, including push restrictions. Open only the winner's PR with a `Competition` section: A/B scores and reasons, chosen slot and rationale, loser strengths adopted, fix outcome and re-review verdict. Keep identities, private routing records and loser code out. If publishing is prohibited, prepare the PR body locally. To push and open the PR with resumable steps, use step 5 of the `reviewing-across-families` skill. For steps 6–8, record and report any blocker or failed operation once in the final status.
-Done when the PR or prepared body contains the Competition section.
+Follow publishing/privacy rules and existing authorization, including push restrictions. Open only the winner's PR with a `Competition` section: A/B scores and reasons, chosen slot and rationale, loser strengths adopted, fix outcome and re-review verdict. Keep identities, private routing records and loser code out. If publishing is prohibited, prepare the PR body locally. For resumable shipping, use step 5 of the `reviewing-across-families` skill. The orchestrator lands the PR by merging or handing it to the user per repository rules; the competition is finished only when the PR is merged or handed over. For steps 6–8, record and report any blocker or failed operation once in the final status.
+Done when the PR is merged or handed over with its Competition section, or a local PR body and publishing blocker are reported.
 
 ## 7. Report verified outcomes
 
