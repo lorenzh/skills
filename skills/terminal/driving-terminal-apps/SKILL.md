@@ -1,6 +1,6 @@
 ---
 name: driving-terminal-apps
-description: Terminal app automation through tmux. Use when the user asks to drive, control or test a console, CLI or TUI tool (htop, vim, a REPL, an installer, a coding agent) like a user would. Use when the user asks for a screenshot of a terminal app. Use when the user asks to record a terminal video, demo GIF or MP4. Use when the user asks for a mockup, image or HTML preview of a terminal UI for docs, a design or a PR. Web pages and Electron apps belong to a browser automation skill.
+description: Terminal app automation through tmux. Use when the user asks to drive, control or test a console, CLI or TUI tool (htop, vim, a REPL, an installer, a coding agent) like a user would; to take a screenshot of a terminal app; to record a terminal video, demo GIF or MP4; or to make a mockup, image or HTML preview of a terminal UI for docs, a design or a PR. Web pages and Electron apps belong to a browser automation skill.
 ---
 
 # Driving terminal apps
@@ -34,12 +34,12 @@ Drive the app through `node scripts/tui.mjs` in this skill's folder (`--help` pr
 5. **Capture.**
    Use real captures for terminal mockups, images and videos: hand-drawn markup from memory does not match the real console.
    - text evidence: `node "$T" cap <name>` (plain) or `node "$T" cap <name> -e` (`tmux capture-pane -p -e`, with colours).
-   - mockup for a page, doc, design or PR: start the real app at a fixed size (`start -s COLSxROWS`, step 3), drive to the state to show (step 4), then `node "$T" cap <name> -e > cap.ansi`. The agent runs `node "<skill dir>/scripts/ansi-html.mjs" cap.ansi -o cap.html --caption "app 1.2.3, 100x30, agent 4.5"`; `--help` prints usage, `--fragment` gives a block to paste into a page.
+   - mockup for a page, doc, design or PR: start the real app at a fixed size (`start -s COLSxROWS`, step 3), drive to the state to show (step 4), then `node "$T" cap <name> -e > cap.ansi`. Run `node "<skill dir>/scripts/ansi-html.mjs" cap.ansi -o cap.html --caption "app 1.2.3, 100x30, agent 4.5"`; `--help` prints usage, `--fragment` gives a block to paste into a page.
    - screenshot: `node "$T" shot <name> shot.png` (needs `ffmpeg`) or `shot.gif` (one frame); `.txt` and `.ansi` also work.
    - video: stop the app or the server (step 6) so the cast closes, then `node "$T" render <file>.cast out.mp4` (or `out.gif`; pauses are cut to 3 s). Extra `agg` options go after the output, e.g. `--font-size 20`.
    - check a video: `node "$T" frame <file>.cast <secs> f.gif` renders the screen at a time; look at two or three such frames before handing the video over.
-   Caption each capture with app version, terminal size and agent/harness version. Before sharing, check capture text for private data (home paths, usernames, hostnames, tokens); fix the stage (step 2) and recapture instead of editing HTML by hand.
-   Done when each file exists, its text is checked, its caption names all three values, and you viewed or quoted it.
+   Caption mockups, images and videos that will be shared with app version, terminal size and agent/harness version. Before sharing, check capture text for private data (home paths, usernames, hostnames, tokens); fix the stage (step 2) and recapture instead of editing HTML by hand.
+   Done when each file exists and you viewed or quoted the text evidence; shared mockups, images and videos have a caption with app version, terminal size and agent/harness version, and their private-data check is done.
 
 6. **Stop and clean up.** `node "$T" stop <name>` kills the session `<name>`, the app and its child processes; the server and its socket go with the last session, and other sessions on that socket keep running; it refuses a session that `start` did not create. Then check with a bracketed pattern, e.g. `pgrep -fa '[s]leep 300'`, so `pgrep` does not match itself. Ignore the agent's own wrapper shell, which may still contain the command. A process that detached or was reparented survives `stop`; kill only leftover processes that belong to this run.
    Done when `stop` exits 0 and `pgrep` shows no remaining app processes from this run.
