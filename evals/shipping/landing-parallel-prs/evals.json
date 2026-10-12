@@ -1,6 +1,6 @@
 {
   "skill_name": "landing-parallel-prs",
-  "note": "Plan-only prompt on a fresh claude-opus-5-5 subagent; control without the skill. Evidence: in a real session three PRs adding rows to the same README and AGENTS.md tables conflicted twice in a row, because each merge broke the next.",
+  "note": "Plan-only prompt on a fresh claude-opus-5-5 subagent; control without the skill. Evidence: in a real session three PRs adding rows to the same README and AGENTS.md tables conflicted twice in a row, because each merge broke the next. For changelog-duplicate and failed-check-under-load, the requester supplied measured runs from 2026-10-12 on claude-opus-5-5: each used a fresh claude -p session in an empty scratch directory, unchanged prompt and read-only tools. Control used landing-parallel-prs from origin/main; revised used this branch before the review fixes. These results do not measure the final review fixes.",
   "evals": [
     {
       "id": "shared-index",
@@ -36,8 +36,7 @@
       "expected_output": "bounded retry loop on mergeable; after the limit, reports a timeout and stops the batch instead of waiting forever or merging",
       "assertions": [
         "the wait has a fixed number of tries",
-        "no merge while mergeable is UNKNOWN",
-        "UNKNOWN immediately after another PR merges to main is not a conflict; only CONFLICTING from the bounded loop confirms a conflict"
+        "no merge while mergeable is UNKNOWN"
       ],
       "with_skill_result": "2026-10-11 claude-opus-5-5: pass. 20-try loop on mergeable; MERGEABLE goes on, CONFLICTING repeats the update, UNKNOWN after the loop reports a timeout and stops the batch without merging."
     },
@@ -52,8 +51,18 @@
         "checks that the recipe prints one line for the change after cleanup"
       ],
       "baseline_failures": [
-        "kept both sides of the changelog conflict; the same change was listed twice on main"
-      ]
+        "control failed assertion 1: no check recipe using both issue and PR numbers; it used grep -n 'Fix X' instead"
+      ],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "fail",
+        "observed": [
+          "2026-10-12 control (32 s, $0.28): kept main's \"- Fix X ([#41](link))\" and deleted the branch's \"- Fix X (fixes #12)\" line",
+          "checked with grep -n 'Fix X' (text match, not the issue/PR numbers), conflict-marker grep and git diff origin/main",
+          "outcome correct; failed assertion 1 (no recipe on both numbers)"
+        ]
+      },
+      "with_skill_result": "2026-10-12 claude-opus-5-5 revised (22 s, $0.26): pass on all assertions. Same resolution as control; checked with grep -nE '#(41|12)\\b' CHANGELOG.md expecting one line. Revised skill was this branch before the review fixes."
     },
     {
       "id": "failed-check-under-load",
@@ -68,9 +77,18 @@
         "keeps the PR worktree and branch for the fix; cleanup requires state MERGED",
         "runs the tests instead of skipping them"
       ],
-      "baseline_failures": [
-        "three timeout failures under load 15 were treated as a code failure and a landing script removed a worktree that was still needed"
-      ]
+      "baseline_failures": [],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "pass",
+        "observed": [
+          "2026-10-12 control (36 s, $0.31): pass on all assertions",
+          "stopped the landing script before cleanup, kept worktree and branch, used uptime + nproc, waited with a limit for load to drop, reran once, second failure counts as real, batch stopped, cleanup only after MERGED",
+          "said it took the rerun rule from waiting-for-ci"
+        ]
+      },
+      "with_skill_result": "2026-10-12 claude-opus-5-5 revised (24 s, $0.27): pass on all assertions; same decisions as control. Revised skill was this branch before the review fixes.",
+      "note": "Not discriminating: the control already passes every assertion. This scenario does not justify new load/timeout or keep-worktree rules in landing-parallel-prs."
     }
   ]
 }

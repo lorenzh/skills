@@ -34,10 +34,12 @@ git switch <branch> && git merge origin/<main>
 
 In a shared list, keep both sides of each conflict: main's entries, then this PR's entries, with each change once.
 
-After any branch update, check the changelog for each change named by the branch's issue or PR numbers. Main can already carry its PR link while the branch names only `fixes #N`. Replace `<N>` with this PR's number and the issue numbers it fixes or refs. For PR 41 that fixes issue 12, use `grep -nE '#(41|12)\b' CHANGELOG.md`:
+If the repository has a changelog, check it after any branch update. If there is no changelog, skip this check. Use the repository's actual changelog file (`CHANGELOG.md` when present) in the commands below.
+
+Check each change named by the branch's issue or PR numbers. Main can already carry its PR link while the branch names only `fixes #N`. Replace `<N>` with this PR's number and the issue numbers it fixes or refs. For PR 41 that fixes issue 12, use `grep -nE '#(41|12)\b' <changelog-file>`:
 
 ```bash
-grep -nE '#(<N>)\b' CHANGELOG.md
+grep -nE '#(<N>)\b' <changelog-file>
 ```
 
 The command must print one line per change. If two entries describe the same change, delete the entry without the PR link. A duplicate merged to main stays until someone removes it.
@@ -71,13 +73,9 @@ gh run list --commit "$sha" --json workflowName,status,conclusion,createdAt
 
 Checks count only when their runs belong to `$sha` and started after the push. A green result from before the update ran on the old main.
 
-A failed check stops landing this PR and the rest of the batch. Keep its worktree and branch for the fix. In landing scripts and cleanup steps, remove either only after the PR state is `MERGED`. Removing them on failure deletes work still needed.
+Follow [waiting-for-ci](../waiting-for-ci/SKILL.md) for background waits, deadlines, observed state and CI reruns. For local test timeouts under machine load, follow [reviewing-across-families step 3](../../agents/reviewing-across-families/SKILL.md#3-fix-at-the-root).
 
-For a timeout in a timing-sensitive test, compare load average (`uptime`) with CPU count (`nproc`). If load exceeds CPU count, wait for other agents' builds to finish. Then rerun the check at normal load. Treat this as load contention, not a code failure or a reason to skip tests. A second timeout at normal load is a real failure.
-
-Follow [waiting-for-ci](../waiting-for-ci/SKILL.md) for background waits, deadlines, observed state and rerun commands.
-
-Done when every required check for `$sha` passed, or the report names the failing check, the batch is stopped, and the PR's worktree and branch still exist.
+Done when every required check for `$sha` passed, or the report names the failing check and stops the batch.
 
 ## 4. Merge with the user's OK
 
