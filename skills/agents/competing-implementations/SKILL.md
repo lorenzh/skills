@@ -58,8 +58,8 @@ Done when the review contains scores, reasons, winner and one fix review with lo
 
 ## 5. Fix only the winner and re-review
 
-Send the original winning implementer the fix review demanding a new commit (no amend); freeze the loser. Record `git -C <winner worktree> rev-list --count <base>..HEAD` before the fix; after it, require a higher count and clean `git status --porcelain` before rerunning checks and exporting for re-review. If no new commit exists, rerun the fix once with that demand stated; if it repeats, report it and stop: re-reviewing an unchanged packet wastes the round.
-Send the fresh packet and initial findings to the same reviewer; require `re-review.md` covering each fix, regressions, unchecked areas and APPROVE/BLOCK. Allow one fix round and one re-review apart from the no-commit retry; further rounds need an explicit task decision. Failed checks or BLOCK stop shipping, even under deadline pressure.
+Send the fix review only to the original winning implementer. Freeze the loser. Before rerunning checks or exporting for re-review, apply the [shared delegated-fix gate in reviewing-across-families step 3](../reviewing-across-families/SKILL.md#3-fix-at-the-root). Use the winner's reviewed SHA and worktree for that gate.
+Send the fresh anonymous packet and initial findings to the same reviewer. Require `re-review.md` to cover each fix, regressions and unchecked areas. Require an APPROVE/BLOCK verdict. Allow one fix round and one re-review apart from the shared gate's retry. Further rounds need an explicit task decision. If checks fail or the verdict is BLOCK, stop shipping even under deadline pressure.
 Done when final checks pass and re-review says APPROVE, or remaining findings are reported.
 
 ## 6. Ship the approved winner
