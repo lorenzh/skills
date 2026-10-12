@@ -73,9 +73,9 @@ When a background wait, a run or another agent goes quiet, look before you repor
 
 A silent agent may have finished, crashed or be stuck in a loop. Report what the check showed, not what you expect.
 
-If a job failed with a timeout or a network error on a step that passed before, rerun it once with `gh run rerun <run-id> --failed`. A second failure is real: report it with the failing step's log.
+If `gh run view <run-id> --log-failed` (or `--log`) is empty, get the raw job log with `gh api repos/{owner}/{repo}/actions/jobs/<job-id>/logs` (get the job id from `gh run view <run-id> --json jobs`) and find the failing test or step. Before treating a test failure as caused by the PR, compare it with `gh pr view <n> --json files -q '.files[].path'`, check `main`'s latest runs, and run that single test locally a few times. For a failure unrelated to the diff, or a timeout or network error on a step that passed before, rerun only the failed jobs once with `gh run rerun <run-id> --failed` and watch with a deadline. A second failure is real; report its log. If the unrelated test passes on rerun, offer to open an issue for the flaky test instead of changing the PR.
 
-Done when the report states the observed status (passed, failed with the step, still running with its last log line) for every wait.
+Done when the report states each wait's observed status and, for a failed job, includes its raw log evidence and whether the failure matches the PR diff.
 
 ## 5. A background agent with no completion notice
 
