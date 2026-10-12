@@ -49,4 +49,6 @@ Done when the list is shown and the question is asked. Stop here until the user 
 
 For each candidate the user picked, load a skill-authoring skill (such as `writing-skills`) if one is installed and follow it, with the session evidence from step 1 as its baseline material. For an `update`, edit the existing skill instead of making a new one.
 
-Done when each chosen skill passes that skill's checks (or, without one, has valid `name` and `description` frontmatter and numbered steps), or the user stops the work.
+Make the change in the skill's source repository, never in the installed copy: the next `npx skills update` overwrites an installed copy. The lock file names the source: `source` and `skillPath` in `~/.agents/.skill-lock.json` (global) or `skills-lock.json` (project). A new skill goes to the repository that most of the user's installed skills come from. Open one branch and one pull request per skill, follow that repository's `AGENTS.md` (validator, evals, commit rules), and leave the merge to the user.
+
+Done when each chosen skill has its own open pull request in its source repository and passes that skill's checks (or, without one, has valid `name` and `description` frontmatter and numbered steps), or the user stops the work.
