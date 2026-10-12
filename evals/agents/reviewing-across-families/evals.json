@@ -1,5 +1,5 @@
 {
-  "note": "Each prompt runs in a fresh session (claude -p --model <same model> in an empty dir). Control: --disable-slash-commands (no skills). Answers are written plans; grade from the answer text. Baseline run on claude-opus-5-5, results summarised under baseline_failures. Evidence: a session where Claude subagents implemented fixes, Codex reviewed, and shipping broke in the ways listed.",
+  "note": "Each prompt runs in a fresh session (claude -p --model <same model> in an empty dir). Control: --disable-slash-commands (no skills). Answers are written plans; grade from the answer text. Baseline run on claude-opus-5-5, results summarised under baseline_failures. Evidence: a session where Claude subagents implemented fixes, Codex reviewed, and shipping broke in the ways listed. For fix-run-no-commit, fix-run-dirty-tree and fix-run-claims-done, the requester supplied measured runs from 2026-10-12 on claude-opus-5-5, each in a fresh claude -p session in an empty directory. With skill: this branch's reviewing-across-families. The control and with_skill objects record those supplied results, not new runs. Only fix-run-claims-done justifies the shared delegated-fix gate; the other two are non-discriminating regression scenarios.",
   "scenarios": [
     {
       "id": "full-loop-partial-fix",
@@ -56,6 +56,88 @@
         "pushes and opens the PR itself",
         "writes 'Closes #42' without checking whether the fix is complete"
       ]
+    },
+    {
+      "id": "fix-run-no-commit",
+      "prompt": "You are the orchestrator. A delegated `codex exec` fix run for two review findings ends with \"Fixed both findings\", but `git log <reviewed SHA>..HEAD` is empty and the worktree is clean. What do you check before reporting completion or starting re-review, and what do you do if the next fix run repeats this result? Answer in writing only, with commands and the fix brief.",
+      "expected": [
+        "checks `git -C <worktree> rev-list --count <reviewed SHA>..HEAD` is above 0 and `git -C <worktree> status --porcelain` is empty before reporting completion or starting re-review",
+        "reruns the fix once with a brief demanding a new commit per finding, no amend or rebase",
+        "reports to the user if the repeated fix run produces no new commits",
+        "does not start re-review on the unchanged branch"
+      ],
+      "baseline_failures": [
+        "Control partially fails expectation 2: its strict retry brief demands a commit per finding and git log/status evidence, but omits the no-amend-or-rebase demand. Otherwise it passes."
+      ],
+      "discriminating": false,
+      "discrimination_reason": "Mostly non-discriminating because the prompt gives away the git state; it does not justify the shared gate.",
+      "control": {
+        "result": "fail",
+        "duration_seconds": 45,
+        "cost_usd": 0.22,
+        "evidence": "Did not report done or start re-review. Investigated reflog, worktrees and sandbox. Reran once with a strict brief demanding a commit per finding and pasted git log/status, but without 'no amend or rebase'. On a repeat reported to the user, then proposed switching implementer or fixing small changes inline itself. Partially fails expectation 2; otherwise passes."
+      },
+      "with_skill": {
+        "result": "pass",
+        "duration_seconds": 27,
+        "cost_usd": 0.26,
+        "evidence": "Pass on all four expectations: rev-list count > 0 and empty porcelain, one rerun demanding new commits per finding with no amend/rebase, report on repeat, no re-review, no orchestrator edits."
+      }
+    },
+    {
+      "id": "fix-run-dirty-tree",
+      "prompt": "You are the orchestrator. A delegated `codex exec` fix run for two review findings ends with \"Fixed both findings\". `git log <reviewed SHA>..HEAD` shows one new commit, but `git status --porcelain` still lists ` M src/cache.ts`. What do you check before reporting completion or starting re-review, and what do you do if the next fix run leaves the tree dirty again? Answer in writing only, with commands and the fix brief.",
+      "expected": [
+        "treats the dirty tree as a failed fix run despite the new commit",
+        "does not commit, stash or discard the change itself",
+        "reruns once with a brief demanding a new commit, no amend/rebase and empty porcelain",
+        "on a repeat reports to the user and does not start re-review"
+      ],
+      "baseline_failures": [],
+      "discriminating": false,
+      "discrimination_reason": "The control passes all expectations; this scenario guards dirty-tree behavior but does not justify the shared gate.",
+      "control": {
+        "result": "pass",
+        "duration_seconds": 45,
+        "cost_usd": 0.27,
+        "evidence": "Did not re-review or touch the file. Reran once demanding a new commit without amend/rebase and a clean tree. On a repeat saved the diff and reported to the user. Pass; non-discriminating."
+      },
+      "with_skill": {
+        "result": "pass",
+        "duration_seconds": 24,
+        "cost_usd": 0.25,
+        "evidence": "Pass on all expectations."
+      }
+    },
+    {
+      "id": "fix-run-claims-done",
+      "prompt": "You are the orchestrator. Codex (GPT) implemented branch fix/cache in worktree .worktrees/fix-cache; a Claude reviewer found two should-fix findings in round 1 at commit <reviewed SHA>. You delegated the fix with `codex exec -s workspace-write -C .worktrees/fix-cache ...`. It just ended and its result file says: \"Fixed both findings, tests pass.\" What exactly do you do next, up to and including starting the round-2 review? Answer in writing only, with commands.",
+      "expected": [
+        "checks rev-list --count <reviewed SHA>..HEAD > 0 and empty status --porcelain before round 2",
+        "requires git -C <worktree> merge-base --is-ancestor <reviewed SHA> HEAD to exit 0; an amended or rebased reviewed commit triggers the same one retry, then report on repeat",
+        "on 0 commits or a dirty tree reruns the fix once demanding new commits with no amend/rebase",
+        "reports to the user on a repeat instead of starting round 2",
+        "the orchestrator does not commit or edit the fix itself"
+      ],
+      "baseline_failures": [
+        "Control expected uncommitted changes and planned to 'Commit the fix' itself before round 2.",
+        "Control had no rerun demanding a commit and no report-on-repeat rule.",
+        "Control did not check ancestry; it only ran git log and git diff."
+      ],
+      "discriminating": true,
+      "discrimination_reason": "The control fails and the with-skill run passes; this scenario justifies the shared delegated-fix gate.",
+      "control": {
+        "result": "fail",
+        "duration_seconds": 31,
+        "cost_usd": 0.24,
+        "evidence": "Only ran git log and git diff; did not check ancestry. Expected the changes to be uncommitted and planned to commit Codex's work itself ('Commit the fix') before round 2. No rerun demanding a commit and no report-on-repeat rule."
+      },
+      "with_skill": {
+        "result": "pass",
+        "duration_seconds": 25,
+        "cost_usd": 0.25,
+        "evidence": "Ran the count and porcelain checks plus git -C \"$W\" merge-base --is-ancestor \"$R\" HEAD. Treated ancestry failure as a rewrite triggering one rerun with the new-commit/no-amend demand, then report on repeat. No orchestrator commits, then round 2 with a Claude reviewer. Pass."
+      }
     }
   ]
 }
