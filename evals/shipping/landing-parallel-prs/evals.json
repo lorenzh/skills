@@ -1,6 +1,6 @@
 {
   "skill_name": "landing-parallel-prs",
-  "note": "Plan-only prompt on a fresh claude-opus-5-5 subagent; control without the skill. Evidence: in a real session three PRs adding rows to the same README and AGENTS.md tables conflicted twice in a row, because each merge broke the next.",
+  "note": "Plan-only prompt on a fresh claude-opus-5-5 subagent; control without the skill. Evidence: in a real session three PRs adding rows to the same README and AGENTS.md tables conflicted twice in a row, because each merge broke the next. For changelog-duplicate and failed-check-under-load, the requester supplied measured runs from 2026-10-12 on claude-opus-5-5: the leading, plan-only prompts used fresh claude -p sessions in empty scratch directories with read-only tools. The realistic changelog pair used fresh claude -p sessions in a real git repo with full tool access. Each pair used an unchanged prompt. Control used landing-parallel-prs from origin/main; revised used this branch before the review fixes. These results do not measure the final review fixes.",
   "evals": [
     {
       "id": "shared-index",
@@ -39,6 +39,58 @@
         "no merge while mergeable is UNKNOWN"
       ],
       "with_skill_result": "2026-10-11 claude-opus-5-5: pass. 20-try loop on mergeable; MERGEABLE goes on, CONFLICTING repeats the update, UNKNOWN after the loop reports a timeout and stops the batch without merging."
+    },
+    {
+      "id": "changelog-duplicate",
+      "prompt": "After merging main into a PR, CHANGELOG.md contains \"- Fix X ([#41](link))\" from main and \"- Fix X (fixes #12)\" from the branch for the same change. Resolve the changelog and give the commands to check it; do not run them.",
+      "realistic_prompt": "Bring the branch up to date with origin/main, resolve conflicts, commit the merge, do not push.",
+      "realistic_setup": "Branch fix/empty-config (PR #41, fixes #12) adds \"- Empty config files no longer crash startup (fixes #12)\". Main has meanwhile added \"- Handle empty configuration files ([#41](https://github.com/acme/tool/pull/41))\" and a #43 entry. The prompt does not say the entries are duplicates.",
+      "expected_output": "recognizes the duplicate; keeps one entry with the PR link and deletes the issue-only entry; preserves unrelated main entries",
+      "assertions": [
+        "recognizes that different numbers can describe the same change",
+        "keeps only \"- Fix X ([#41](link))\" and removes \"- Fix X (fixes #12)\"",
+        "checks that each change appears once after cleanup",
+        "in the realistic run, CHANGELOG.md equals main's and the merge is committed without pushing"
+      ],
+      "baseline_failures": [],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "pass",
+        "observed": [
+          "2026-10-12 leading-prompt control (32 s, $0.28): pass; kept main's \"- Fix X ([#41](link))\" and deleted the branch's \"- Fix X (fixes #12)\" line",
+          "checked with grep -n 'Fix X' (text match, not the issue/PR numbers), conflict-marker grep and git diff origin/main",
+          "the earlier failure label measured recipe compliance only; the duplicate was removed and checked correctly",
+          "2026-10-12 realistic control (38 s, $0.32): pass; merged, recognized the branch's #12 line and main's #41 line as the same fix, kept main's lines, dropped the branch line and committed the merge without pushing; CHANGELOG.md equals main's"
+        ]
+      },
+      "with_skill_result": "2026-10-12 claude-opus-5-5 leading-prompt revised (22 s, $0.26): pass; same resolution as control; checked with grep -nE '#(41|12)\\b' CHANGELOG.md expecting one line. Realistic revised (61 s, $0.31): pass; same result as realistic control, including the merge commit without pushing and CHANGELOG.md equaling main's; checked with grep -nE '#(41|12)\\b'. Revised skill was this branch before the review fixes.",
+      "note": "Not discriminating: both controls already removed the duplicate correctly, in the leading prompt and the realistic repo. These four measured runs do not justify a number-specific changelog check or changelog-existence rule in landing-parallel-prs. The general conflict rule keeps each change once."
+    },
+    {
+      "id": "failed-check-under-load",
+      "prompt": "A PR has three timeouts in a timing-sensitive test while load average is 15 on a machine with 8 CPUs and other agents are building. A landing script is about to remove its worktree and branch after the failed check. What do you do? Give commands and the landing decision; do not run them.",
+      "expected_output": "stops landing this PR and the rest of the batch; checks load average against CPU count, waits for other agents to finish and reruns at normal load; keeps the worktree and branch and does not skip tests",
+      "assertions": [
+        "uses uptime and nproc to compare load average with CPU count",
+        "treats timeouts while load 15 exceeds CPU count as load contention rather than a code failure",
+        "waits until other agents finish and load is normal before rerunning the check",
+        "treats a second timeout at normal load as a real failure",
+        "stops landing this PR and the rest of the batch on a failed check",
+        "keeps the PR worktree and branch for the fix; cleanup requires state MERGED",
+        "runs the tests instead of skipping them"
+      ],
+      "baseline_failures": [],
+      "baseline": {
+        "model": "claude-opus-5-5",
+        "result": "pass",
+        "observed": [
+          "2026-10-12 control (36 s, $0.31): pass on all assertions",
+          "stopped the landing script before cleanup, kept worktree and branch, used uptime + nproc, waited with a limit for load to drop, reran once, second failure counts as real, batch stopped, cleanup only after MERGED",
+          "said it took the rerun rule from waiting-for-ci"
+        ]
+      },
+      "with_skill_result": "2026-10-12 claude-opus-5-5 revised (24 s, $0.27): pass on all assertions; same decisions as control. Revised skill was this branch before the review fixes.",
+      "note": "Not discriminating: the control already passes every assertion. This scenario does not justify new load/timeout or keep-worktree rules in landing-parallel-prs."
     }
   ]
 }
