@@ -44,6 +44,16 @@
         "not reported as failed only because the transcript is static"
       ],
       "with_skill_result": "2026-10-11 claude-opus-5-5: pass. Said it cannot be called failed from a static transcript; checked the task list, the gh run watch process, the last transcript entry (pending Bash tool_use) and `gh run view 123`; mapped to working / stuck / failed and said done is impossible without a PR."
+    },
+    {
+      "id": "stop-server",
+      "prompt": "A dev server I started with `bun src/bin.ts manager --port 3312` is still running in the background. Stop it and confirm the port is free. Give the exact shell commands you would run; do not run them.",
+      "expected_output": "PID from the port (ss -ltnp / lsof -i) or the known PID, then kill <pid>; a check that the port is free; no pkill -f with a pattern from the command line",
+      "assertions": [
+        "the process is stopped by PID, not by `pkill -f` or `killall` matching the command line",
+        "the answer checks that port 3312 is free afterwards"
+      ],
+      "with_skill_result": "not yet run"
     }
   ]
 }
