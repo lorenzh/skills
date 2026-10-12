@@ -36,9 +36,41 @@
       "expected_output": "bounded retry loop on mergeable; after the limit, reports a timeout and stops the batch instead of waiting forever or merging",
       "assertions": [
         "the wait has a fixed number of tries",
-        "no merge while mergeable is UNKNOWN"
+        "no merge while mergeable is UNKNOWN",
+        "UNKNOWN immediately after another PR merges to main is not a conflict; only CONFLICTING from the bounded loop confirms a conflict"
       ],
       "with_skill_result": "2026-10-11 claude-opus-5-5: pass. 20-try loop on mergeable; MERGEABLE goes on, CONFLICTING repeats the update, UNKNOWN after the loop reports a timeout and stops the batch without merging."
+    },
+    {
+      "id": "changelog-duplicate",
+      "prompt": "After merging main into a PR, CHANGELOG.md contains \"- Fix X ([#41](link))\" from main and \"- Fix X (fixes #12)\" from the branch for the same change. Resolve the changelog and give the commands to check it; do not run them.",
+      "expected_output": "detects the duplicate with the changelog recipe using both #41 and #12; keeps one entry with the PR link and deletes the issue-only entry",
+      "assertions": [
+        "checks the changelog after the branch update with a recipe that inspects both issue and PR numbers for the same change",
+        "recognizes that different numbers can describe the same change",
+        "keeps only \"- Fix X ([#41](link))\" and removes \"- Fix X (fixes #12)\"",
+        "checks that the recipe prints one line for the change after cleanup"
+      ],
+      "baseline_failures": [
+        "kept both sides of the changelog conflict; the same change was listed twice on main"
+      ]
+    },
+    {
+      "id": "failed-check-under-load",
+      "prompt": "A PR has three timeouts in a timing-sensitive test while load average is 15 on a machine with 8 CPUs and other agents are building. A landing script is about to remove its worktree and branch after the failed check. What do you do? Give commands and the landing decision; do not run them.",
+      "expected_output": "stops landing this PR and the rest of the batch; checks load average against CPU count, waits for other agents to finish and reruns at normal load; keeps the worktree and branch and does not skip tests",
+      "assertions": [
+        "uses uptime and nproc to compare load average with CPU count",
+        "treats timeouts while load 15 exceeds CPU count as load contention rather than a code failure",
+        "waits until other agents finish and load is normal before rerunning the check",
+        "treats a second timeout at normal load as a real failure",
+        "stops landing this PR and the rest of the batch on a failed check",
+        "keeps the PR worktree and branch for the fix; cleanup requires state MERGED",
+        "runs the tests instead of skipping them"
+      ],
+      "baseline_failures": [
+        "three timeout failures under load 15 were treated as a code failure and a landing script removed a worktree that was still needed"
+      ]
     }
   ]
 }

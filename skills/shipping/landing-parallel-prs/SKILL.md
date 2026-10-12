@@ -32,9 +32,19 @@ git fetch origin
 git switch <branch> && git merge origin/<main>
 ```
 
-In a shared list, keep both sides of each conflict: main's entries, then this PR's entries, with no line twice. Run the repo's checks, then push normally. Keep the branch history as it is, with no rebase and no force-push: a force-push rewrites history others may have pulled.
+Keep main's entries followed by this PR's entries in shared lists. Keep each change once.
 
-GitHub computes mergeability after the push and reports `UNKNOWN` until then. Wait with a limit, and stop on a conflict:
+After any branch update, check the changelog for each change named by the branch's issue or PR numbers. Main can already carry its PR link while the branch names only `fixes #N`. Inspect both numbers together (replace `<N>` with the numbers for one change, such as `41|12`):
+
+```bash
+grep -nE '#(<N>)\b' CHANGELOG.md
+```
+
+The command must print one line per change. If two entries describe the same change, delete the entry without the PR link. A duplicate merged to main stays until someone removes it.
+
+Run the repo's checks using step 3's failure rules. Then push normally. Keep the branch history as it is, with no rebase and no force-push: a force-push rewrites history others may have pulled.
+
+GitHub can report `UNKNOWN` after a push or a merge to main. Decide that a PR conflicts only when this bounded loop returns `CONFLICTING`:
 
 ```bash
 for i in $(seq 1 20); do
@@ -61,7 +71,11 @@ gh run list --commit "$sha" --json workflowName,status,conclusion,createdAt
 
 Checks count only when their runs belong to `$sha` and started after the push. A green result from before the update ran on the old main.
 
-For waits that hang, time out or need another approach, see the `waiting-for-ci` skill.
+A failed check stops landing this PR and the rest of the batch. Keep its worktree and branch for the fix. In landing scripts and cleanup steps, remove either only after the PR state is `MERGED`. Removing them on failure deletes work still needed.
+
+For a timeout in a timing-sensitive test, compare load average (`uptime`) with CPU count (`nproc`). If load exceeds CPU count, wait for other agents' builds to finish. Then rerun the check at normal load. Treat this as load contention, not a code failure or a reason to skip tests. A second timeout at normal load is a real failure.
+
+Follow [waiting-for-ci](../waiting-for-ci/SKILL.md) for background waits, deadlines, observed state and rerun commands.
 
 Done when every required check for `$sha` passed, or the report names the failing check and stops the batch.
 
@@ -75,18 +89,12 @@ gh pr merge <n> --merge --match-head-commit "$sha"
 
 `--match-head-commit` refuses the merge if the head moved after the approval and the checks. If it refuses, go back to step 2: the new head needs its own checks and its own OK.
 
-A merge queue or auto-merge can return before the PR is merged. Confirm the merge with a deadline before the next PR:
+A merge queue or auto-merge can return before the PR is merged. If the user merges themselves, use the same wait. Follow `waiting-for-ci` and confirm `MERGED` before updating the next PR:
 
 ```bash
 timeout 30m bash -c 'until [ "$(gh pr view <n> --json state -q .state)" = MERGED ]; do sleep 30; done'
 ```
 
 If the wait times out, report the PR's state and stop the batch. Then go back to step 2 for the next PR.
-
-If the user merges the PRs themselves, wait for each merge in the background, with the same deadline, before you update the next PR:
-
-```bash
-timeout 30m bash -c 'until [ "$(gh pr view <n> --json state -q .state)" = MERGED ]; do sleep 30; done'
-```
 
 Done when every PR in the batch is merged, or the report names the PR that waits for the user's OK or is blocked.
