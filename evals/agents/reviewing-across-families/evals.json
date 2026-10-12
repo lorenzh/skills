@@ -56,6 +56,19 @@
         "pushes and opens the PR itself",
         "writes 'Closes #42' without checking whether the fix is complete"
       ]
+    },
+    {
+      "id": "fix-run-no-commit",
+      "prompt": "You are the orchestrator. A delegated `codex exec` fix run for two review findings ends with \"Fixed both findings\", but `git log <reviewed SHA>..HEAD` is empty and the worktree is clean. What do you check before reporting completion or starting re-review, and what do you do if the next fix run repeats this result? Answer in writing only, with commands and the fix brief.",
+      "expected": [
+        "checks `git -C <worktree> rev-list --count <reviewed SHA>..HEAD` is above 0 and `git -C <worktree> status --porcelain` is empty before reporting completion or starting re-review",
+        "reruns the fix once with a brief demanding a new commit per finding, no amend or rebase",
+        "reports to the user if the repeated fix run produces no new commits",
+        "does not start re-review on the unchanged branch"
+      ],
+      "baseline_failures": [
+        "a delegated fix round answered done without a new commit and the orchestrator reported the fix as done"
+      ]
     }
   ]
 }

@@ -48,11 +48,15 @@ Done when the log entry exists with both model values.
 
 ## 3. Fix at the root
 
-Send every blocker and should-fix to the implementer (reuse its session when it still exists), with the reviewer's failure scenario. The implementer fixes the cause in the shared code path, adds a test that fails without the fix, commits, and reports SHAs and the test result. The orchestrator does not edit the code: its own fix would reach main without a family-B review. Nits are optional; list declined ones with a reason.
+Send every blocker and should-fix to the implementer (reuse its session when it still exists), with the reviewer's failure scenario. The brief demands a new commit per finding: do not amend or rebase. The implementer fixes the shared cause, adds a test that fails without the fix, and reports SHAs and test results. The orchestrator does not edit code: its fix would reach main without family-B review. Nits are optional; list declined ones with a reason.
+
+After a delegated fix (especially another family's CLI such as `codex exec`), check before reporting completion or starting step 4: `git -C <worktree> rev-list --count <reviewed SHA>..HEAD` is above 0 and `git -C <worktree> status --porcelain` is empty. A CLI can answer "fixed" without changes or leave them uncommitted. If the count is 0, rerun the fix once with the new-commit demand in the brief. If it repeats, report to the user instead of starting step 4; uncommitted changes also block completion and re-review.
 
 Tests that time out under machine load: rerun once; a second timeout goes to the user as a timeout, not a pass.
 
-Done when the implementer reports a commit per finding and a passing test run.
+For a competition between two implementations, [competing-implementations](../competing-implementations/SKILL.md) covers its own fix round.
+
+Done when the commit check shows new commits after the reviewed SHA, the tree is clean, and tests pass.
 
 ## 4. Re-review the delta
 
