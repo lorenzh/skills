@@ -114,13 +114,15 @@
       "prompt": "You are the orchestrator. Codex (GPT) implemented branch fix/cache in worktree .worktrees/fix-cache; a Claude reviewer found two should-fix findings in round 1 at commit <reviewed SHA>. You delegated the fix with `codex exec -s workspace-write -C .worktrees/fix-cache ...`. It just ended and its result file says: \"Fixed both findings, tests pass.\" What exactly do you do next, up to and including starting the round-2 review? Answer in writing only, with commands.",
       "expected": [
         "checks rev-list --count <reviewed SHA>..HEAD > 0 and empty status --porcelain before round 2",
+        "requires git -C <worktree> merge-base --is-ancestor <reviewed SHA> HEAD to exit 0; an amended or rebased reviewed commit triggers the same one retry, then report on repeat",
         "on 0 commits or a dirty tree reruns the fix once demanding new commits with no amend/rebase",
         "reports to the user on a repeat instead of starting round 2",
         "the orchestrator does not commit or edit the fix itself"
       ],
       "baseline_failures": [
         "Control expected uncommitted changes and planned to 'Commit the fix' itself before round 2.",
-        "Control had no rerun demanding a commit and no report-on-repeat rule."
+        "Control had no rerun demanding a commit and no report-on-repeat rule.",
+        "Control did not check ancestry; it only ran git log and git diff."
       ],
       "discriminating": true,
       "discrimination_reason": "The control fails and the with-skill run passes; this scenario justifies the shared delegated-fix gate.",
@@ -128,13 +130,13 @@
         "result": "fail",
         "duration_seconds": 31,
         "cost_usd": 0.24,
-        "evidence": "Expected the changes to be uncommitted and planned to commit Codex's work itself ('Commit the fix') before round 2. No rerun demanding a commit and no report-on-repeat rule."
+        "evidence": "Only ran git log and git diff; did not check ancestry. Expected the changes to be uncommitted and planned to commit Codex's work itself ('Commit the fix') before round 2. No rerun demanding a commit and no report-on-repeat rule."
       },
       "with_skill": {
         "result": "pass",
         "duration_seconds": 25,
         "cost_usd": 0.25,
-        "evidence": "Ran the count and porcelain checks plus merge-base --is-ancestor. One rerun with the new-commit/no-amend demand, report on repeat, no orchestrator commits, then round 2 with a Claude reviewer. Pass."
+        "evidence": "Ran the count and porcelain checks plus git -C \"$W\" merge-base --is-ancestor \"$R\" HEAD. Treated ancestry failure as a rewrite triggering one rerun with the new-commit/no-amend demand, then report on repeat. No orchestrator commits, then round 2 with a Claude reviewer. Pass."
       }
     }
   ]
