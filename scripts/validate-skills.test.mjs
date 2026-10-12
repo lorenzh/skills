@@ -287,7 +287,8 @@ test('Codex marketplace must list the plugin', (t) => {
 });
 
 test('Codex plugin name must equal the Claude plugin name', (t) => {
-  const r = codexFixture(t, { name: 'other' }).run();
+  const r = codexFixture(t, { name: 'other' }, { plugins: [{ name: 'other', source: { source: 'local', path: './' } }] }).run();
+  assert.doesNotMatch(r.stdout, /no plugin entry/);
   assert.equal(r.status, 1);
   assert.match(r.stdout, /name "other" differs/);
 });

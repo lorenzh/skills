@@ -26,7 +26,9 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 
 Validates skills/<category>/<name>/SKILL.md: layout, frontmatter, name rules, description
 quality, that relative markdown links in skills, AGENTS.md and README.md resolve,
-and that .claude-plugin/plugin.json and marketplace.json match the skill categories.
+that .claude-plugin/plugin.json and marketplace.json match the skill categories, and that
+.codex-plugin/plugin.json and .agents/plugins/marketplace.json exist together, use the Claude
+plugin name, cover every skill category ("./skills/" or one entry per category) and list the plugin.
 
 Exit 0  no errors (warnings may still be printed)
 Exit 1  at least one error`);
