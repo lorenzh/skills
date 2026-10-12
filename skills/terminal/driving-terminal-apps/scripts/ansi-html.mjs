@@ -25,7 +25,7 @@ function colour(n) {
 const foreground = '#d0d0d0', background = '#1e1e1e';
 function convert(input, caption, fragment) {
   let state;
-  const reset = () => { state = { fg: foreground, bg: background, bold: false, dim: false, underline: false, reverse: false }; };
+  const reset = () => { state = { fg: foreground, bg: background, bold: false, dim: false, underline: false, reverse: false, conceal: false }; };
   reset();
   function sgr(sequence) {
     const codes = sequence.split(';').map(Number);
@@ -36,19 +36,22 @@ function convert(input, caption, fragment) {
       else if (code === 2) state.dim = true;
       else if (code === 4) state.underline = true;
       else if (code === 7) state.reverse = true;
+      else if (code === 8) state.conceal = true;
       else if (code === 22) state.bold = state.dim = false;
       else if (code === 24) state.underline = false;
       else if (code === 27) state.reverse = false;
+      else if (code === 28) state.conceal = false;
       else if (code === 39) state.fg = foreground;
       else if (code === 49) state.bg = background;
+      else if (code === 59) continue; // Underline colour is not rendered.
       else if (code >= 30 && code <= 37) state.fg = palette[code - 30];
       else if (code >= 90 && code <= 97) state.fg = palette[code - 90 + 8];
       else if (code >= 40 && code <= 47) state.bg = palette[code - 40];
       else if (code >= 100 && code <= 107) state.bg = palette[code - 100 + 8];
-      else if (code === 38 || code === 48) {
+      else if (code === 38 || code === 48 || code === 58) {
         const mode = codes[++i], count = mode === 5 ? 1 : mode === 2 ? 3 : 0;
         const values = codes.slice(i + 1, i + 1 + count);
-        if (count && values.length === count && values.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) {
+        if (code !== 58 && count && values.length === count && values.every(n => Number.isInteger(n) && n >= 0 && n <= 255)) {
           state[code === 38 ? 'fg' : 'bg'] = mode === 5 ? colour(values[0]) : rgb(values);
         }
         i += count;
@@ -58,7 +61,9 @@ function convert(input, caption, fragment) {
   function text(value) {
     if (!value) return '';
     const fg = state.reverse ? state.bg : state.fg, bg = state.reverse ? state.fg : state.bg;
-    return `<span style="color:${fg};background:${bg}${state.bold ? ';font-weight:bold' : ''}${state.dim ? ';opacity:0.5' : ''}${state.underline ? ';text-decoration:underline' : ''}">${escape(value)}</span>`;
+    // Hidden glyphs keep their widths (including wide and combining characters) while the background stays visible.
+    const content = state.conceal ? `<span style="visibility:hidden">${escape(value)}</span>` : escape(value);
+    return `<span style="color:${fg};background:${bg}${state.bold ? ';font-weight:bold' : ''}${state.dim ? ';opacity:0.5' : ''}${state.underline ? ';text-decoration:underline' : ''}">${content}</span>`;
   }
   // Consume CSI, OSC and control strings as units so their payloads cannot appear as screen text.
   const escapes = /\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[PX^_][\s\S]*?\x1b\\|[ -/]*[0-~])|[\x00-\x08\x0b-\x1f\x7f]/g;

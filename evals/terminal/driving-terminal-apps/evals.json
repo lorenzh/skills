@@ -51,14 +51,9 @@
       "id": "terminal-mockup",
       "prompt": "Create an HTML mockup of python3's interactive REPL screen for a docs page, showing print('hello') and its output. Save cap.html in the current folder and leave nothing running.",
       "expected": [
-        "runs the real app in its own tmux server at a fixed size (start -s COLSxROWS) and drives it to the requested state",
-        "captures with colours using tui cap <name> -e (tmux capture-pane -p -e)",
-        "runs scripts/ansi-html.mjs on the ANSI capture to create cap.html",
-        "caption names the app version, terminal size and agent/harness version",
-        "checks capture text for private data; fixes the stage and recaptures if needed",
-        "HTML grid comes from the capture, with no hand-drawn terminal markup",
-        "cleanup: own tmux server killed and its socket gone"
-      ]
+        "HTML grid comes from a real app capture, with no hand-drawn terminal markup"
+      ],
+      "evidence": "Only hand-drawn HTML is supported by the recorded baseline failure. No with-skill run, artifact evidence, timing or cost has been measured for this scenario."
     }
   ],
   "baseline": {

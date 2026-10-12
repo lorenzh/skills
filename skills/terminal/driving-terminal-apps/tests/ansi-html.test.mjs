@@ -49,6 +49,25 @@ test('256-colour table, cube, greys and truecolour', () => {
     pre + row + span('RGB', 'color:#0180ff;background:#ff1000') + '</span></pre>\n');
 });
 
+test('underline colours consume their parameters without changing other attributes', () => {
+  for (const colour of ['58;5;0', '58;5;31', '58;2;255;0;0']) {
+    assert.equal(fragment(`\x1b[31m\x1b[${colour}mX\x1b[59mY`), pre + row +
+      span('X', 'color:#800000;background:#1e1e1e') + span('Y', 'color:#800000;background:#1e1e1e') + '</span></pre>\n');
+    assert.equal(fragment(`\x1b[31;44;1;4;${colour};59;2mX`), pre + row +
+      span('X', 'color:#800000;background:#000080;font-weight:bold;opacity:0.5;text-decoration:underline') + '</span></pre>\n');
+  }
+});
+
+test('concealment hides glyphs without collapsing cells; 28 and 0 reset it', () => {
+  const concealed = '<span style="visibility:hidden">hidden 猫 é\t</span>';
+  assert.equal(fragment('\x1b[31;44;8mhidden 猫 é\t\x1b[28mA\x1b[8mB\x1b[0mC'), pre + row +
+    span(concealed, 'color:#800000;background:#000080') + span('A', 'color:#800000;background:#000080') +
+    span('<span style="visibility:hidden">B</span>', 'color:#800000;background:#000080') + span('C') + '</span></pre>\n');
+  assert.equal(fragment('\x1b[8m<&>\nsecret\x1b[mvisible'), pre + row +
+    span('<span style="visibility:hidden">&lt;&amp;&gt;</span>') + '</span>' + row +
+    span('<span style="visibility:hidden">secret</span>') + span('visible') + '</span></pre>\n');
+});
+
 test('bold, dim, underline, their resets and full reset', () => {
   assert.equal(fragment('\x1b[1;2;4mA\x1b[22mB\x1b[24mC\x1b[31;44;1;2;4mD\x1b[0mE\x1b[1mF\x1b[mG'), pre + row +
     span('A', 'color:#d0d0d0;background:#1e1e1e;font-weight:bold;opacity:0.5;text-decoration:underline') +
