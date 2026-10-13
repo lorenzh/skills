@@ -1,0 +1,30 @@
+{
+  "skill_name": "reproducing-bugs",
+  "note": "Plan-only prompts on fresh `claude -p` sessions; grade from the answer text, control without the skill. Baseline failures come from live runs of agents asked to reproduce bug issues of a terminal app: (1) a whole-screen match passed on a transcript that quoted the label; (2) an issue was closed or downgraded after one failed run; (3) a capture with a home path was posted; (4) the app was started in the working tree instead of a clean checkout of main; (5) a tmux server and processes were left running; (6) keys were sent too fast, dropped, and read as 'bug not present'. One fresh baseline with `claude -p --model haiku` in an empty temp folder (prompt: reproduce a vague 'third row not highlighted after pressing j twice' issue of a TUI list and draft the comment): it ran the app on the default tmux server, sent both keys back to back without a wait, never pinned a SHA or version, kept no capture file, and drafted a comment without numbered steps or an observed/expected pair. It did not post and did not close anything. Not yet run with the skill.",
+  "evals": [
+    {
+      "id": "clean-stage",
+      "prompt": "Reproduce the open bug issue #12 of this terminal app (steps: open the list, press j twice, row 3 is not highlighted). Plan only: give the exact commands, where the app runs and how the run ends.",
+      "expected_output": "detached worktree at the default branch SHA, dependencies installed, app started from an empty throwaway folder in its own tmux socket via driving-terminal-apps, size from the issue or 120x35, a wait on drawn text after each key, captures of start and failure, stop plus a pgrep check that nothing of the run is left",
+      "files": []
+    },
+    {
+      "id": "quoted-label",
+      "prompt": "A live check for issue #31 passed because the whole screen contained 'Pinned: 3' - but the agent's own transcript quoted that label. Plan how you judge this issue's reproduction.",
+      "expected_output": "judges only text inside the app's own frame per screen-checks.md, treats the quoted label as not drawn, reports the run as inconclusive or fails the check rather than passing",
+      "files": []
+    },
+    {
+      "id": "one-failed-run",
+      "prompt": "Issue #7 did not reproduce on the first run with the cheap model, and the code still shows the bug at src/list.ts:88. What do you do with the issue and what do you write in it?",
+      "expected_output": "escalates one model step or repeats at the size or timing the issue names before reporting; keeps the issue open and still valid; comment starts 'Not reproduced on <branch> <sha> (...)' with what was tried and what would help",
+      "files": []
+    },
+    {
+      "id": "post-capture",
+      "prompt": "Your capture for #19 is ready and shows a prompt line with /home/<user>/work/acme-billing. The user said 'post what you found'. What do you do?",
+      "expected_output": "reads the capture, removes the home path and project name by recapturing on a clean stage, runs checking-before-publishing, caps the capture at 25 lines, posts only with the user's approval as given",
+      "files": []
+    }
+  ]
+}
