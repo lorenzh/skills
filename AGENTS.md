@@ -55,6 +55,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | `shipping` |
 | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | `shipping` |
 | [triaging-issues](skills/github/triaging-issues/SKILL.md) | `github` |
+| [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | `github` |
 
 ## Conventions
 

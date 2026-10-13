@@ -1,0 +1,76 @@
+{
+  "skill_name": "using-gh-rest",
+  "note": "Plan-only prompts on fresh `claude -p --tools \"\" --disable-slash-commands` sessions; the prompt goes in on stdin; control without the skill, with-skill run gets SKILL.md and references/commands.md prepended. Grade from the answer text. The baseline failures below come from one real long session on a repo with Projects (classic) data, not from reruns. One fresh control run on `claude -p --model haiku` (2026-10-13, one combined prompt: update a PR body after the projectCards error, clear a milestone, squash merge after a new push) passed every assertion except the push-SHA comparison: it read the head SHA with gh pr view right after git push and never compared it with the pushed SHA; it also used gh pr view, which fails with projectCards on the repos in question. The scenarios below stay as the target behaviour; a scenario counts only when a run without the skill fails it, so rerun the control on the model you ship for. With-skill runs were not done.",
+  "evals": [
+    {
+      "id": "projectcards-switch",
+      "prompt": "`gh pr edit 12 --body-file body.md` just failed with: \"GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience ... (repository.pullRequest.projectCards)\". Update the title and body of PR 12 and set label `bug` on it. Exact commands only; do not run them.",
+      "expected_output": "no second gh pr edit; PATCH repos/{owner}/{repo}/pulls/12 with -f title and -F body=@file; POST .../issues/12/labels with -f 'labels[]=bug'; reads the body back",
+      "assertions": [
+        "does not retry gh pr edit",
+        "uses gh api PATCH on pulls/12 with -F body=@<file>",
+        "sets the label through issues/12/labels",
+        "reads the body back after the edit"
+      ],
+      "source": "user session: gh pr edit retried three times on the same projectCards error",
+      "baseline_failures": [
+        "retried gh pr edit three times on the same GraphQL error"
+      ]
+    },
+    {
+      "id": "clear-milestone",
+      "prompt": "Issue 40 is in milestone v0.6 and must have no milestone. `gh issue edit` is failing with a projectCards GraphQL error on this repo. Exact commands only; do not run them.",
+      "expected_output": "gh api -X PATCH repos/{owner}/{repo}/issues/40 -F milestone=null, then a re-read of .milestone",
+      "assertions": [
+        "does not use --remove-milestone",
+        "sends milestone=null with -F through PATCH on issues/40",
+        "re-reads the milestone before reporting it cleared"
+      ],
+      "source": "user session: used a nonexistent --remove-milestone flag",
+      "baseline_failures": [
+        "used a nonexistent --remove-milestone flag"
+      ]
+    },
+    {
+      "id": "guarded-merge",
+      "prompt": "PR 12 is approved at head abc1234. I pushed one more commit a minute ago. Wait for its checks and squash merge it. `gh pr view` fails with a projectCards error here. Exact commands only; do not run them.",
+      "expected_output": "compares the pushed SHA with .head.sha from the API before reading check-runs; waits for completed runs of that SHA; merges with PUT pulls/12/merge -f merge_method=squash -f sha=<head>; asks for the merge OK against the new head",
+      "assertions": [
+        "compares the pushed head SHA with the one the API returns before reading checks",
+        "reads check-runs of that SHA, not of abc1234",
+        "merge call carries sha=<head> so a later push cannot merge unseen code",
+        "treats HTTP 409 as a moved head and goes back to the checks"
+      ],
+      "source": "user session: merged without the sha guard; polled checks of the previous head",
+      "baseline_failures": [
+        "merged without the sha guard",
+        "polled checks of the previous head"
+      ]
+    },
+    {
+      "id": "shared-body-file",
+      "prompt": "I have PR 31 (closes #28) and PR 32 (closes #29). Write the body of each and update both PRs. `gh pr edit` fails with projectCards here. Exact commands only; do not run them.",
+      "expected_output": "one private body file per PR; -F body=@<file> for each; reads each body back and diffs against its file",
+      "assertions": [
+        "uses a separate body file for each PR",
+        "reads each body back after the edit"
+      ],
+      "source": "user session: a shared body.md overwrote another PR's body and would have closed two issues wrongly",
+      "baseline_failures": [
+        "edited a PR body from a shared temp file"
+      ]
+    },
+    {
+      "id": "closing-keyword-check",
+      "prompt": "PR 45 body says \"Closes #44\" and it just merged into main. Report that #44 is closed and set its milestone to v0.7. Exact commands only; do not run them.",
+      "expected_output": "reads issues/44 state after the merge; closes it with a comment naming PR 45 if still open; sets milestone by number from the milestones list; re-reads the milestone before reporting",
+      "assertions": [
+        "verifies the state of #44 instead of assuming the keyword closed it",
+        "sets the milestone by number found in the milestones list",
+        "re-reads the milestone before reporting it applied"
+      ],
+      "source": "user session: closing keyword missing from the PR body; milestone API lagged after a write",
+      "baseline_failures": []
+    }
+  ]
+}
