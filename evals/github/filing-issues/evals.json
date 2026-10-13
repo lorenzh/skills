@@ -1,0 +1,79 @@
+{
+  "skill_name": "filing-issues",
+  "note": "Plan-only prompts on fresh `claude -p --model haiku --tools \"\" --disable-slash-commands` sessions in an empty folder; the prompt goes in as the argument; control without the skill, with-skill run gets SKILL.md prepended. Grade from the answer text. Baseline 2026-10-13 (haiku, one run, scenario plan-new-issue) plus failures recorded from a real session in which about eight issues were filed by hand. The with-skill run has not been done yet.",
+  "evals": [
+    {
+      "id": "plan-new-issue",
+      "prompt": "File a GitHub issue in lorenzh/rabe for this idea: show the cost of each subagent in the pane. Plan only: give the exact commands you would run and the exact shape of the issue body. Do not run anything.",
+      "expected_output": "searches existing issues first; verifies code claims against origin/<default branch> with file:line from grep; body with Idea or Problem, Data, Behaviour, Acceptance checkboxes, Open questions, Related issues; Conventional Commits title; private body file named for the issue; creates through gh api repos/{owner}/{repo}/issues with -F body=@file; reads milestone descriptions and picks by rule or says none fits; labels from gh label list via a second call; comments on related issues; reports URL and what was set",
+      "assertions": [
+        "gh issue list --search runs before any create",
+        "the plan verifies code claims with git grep on the default branch and does not assert unverified facts",
+        "the body has an Acceptance checkbox list",
+        "the body file name is specific to this issue",
+        "creation uses gh api repos/{owner}/{repo}/issues, not gh issue create",
+        "milestone descriptions are read before one is chosen, or the reply says none fits",
+        "labels come from the repo's label list",
+        "related issues receive a comment with the new number"
+      ],
+      "source": "claude -p --model haiku, 2026-10-13, tools disabled, empty folder",
+      "baseline_failures": [
+        "no duplicate search: the plan went straight to writing and creating",
+        "wrote the body to a shared fixed name (/tmp/rabe-issue/body.md)",
+        "used gh issue create and gh issue view, not the REST API",
+        "stated 'subagent cost is only visible in aggregate today' as fact without checking the code",
+        "no milestone step: milestones were not read or set",
+        "labels planned from a guess ('enhancement, only if it exists') with no second call",
+        "no comment on related issues, no Related issues section",
+        "title was a plain sentence, not Conventional Commits"
+      ],
+      "with_skill_result": "not run"
+    },
+    {
+      "id": "parallel-bodies",
+      "prompt": "You file three issues in one session, each in a separate background job, in lorenzh/skills. Give the exact path each job writes its body to and the exact create command.",
+      "expected_output": "one private file per issue, named for the issue; no shared body.md; REST create with -F body=@<that file>",
+      "assertions": [
+        "three different body file names",
+        "each create command reads its own file",
+        "creation through gh api"
+      ],
+      "source": "real session: a shared body.md was overwritten by a parallel job and would have closed two issues wrongly",
+      "baseline_failures": [
+        "body written to a shared temp file and overwritten by a parallel job"
+      ],
+      "with_skill_result": "not run"
+    },
+    {
+      "id": "graphql-error",
+      "prompt": "`gh issue create` on lorenzh/rabe fails with 'GraphQL: Resource not accessible ... projectCards'. What do you do next? Give the exact commands.",
+      "expected_output": "does not retry gh issue create, view or edit; creates through gh api repos/{owner}/{repo}/issues, sets labels with a second call, re-reads the issue through gh api",
+      "assertions": [
+        "no retry of gh issue create",
+        "REST create with -f title and -F body=@file",
+        "labels in a second call",
+        "verification read through gh api"
+      ],
+      "source": "real session: gh issue create/view/edit failed on a repo with Projects (classic) data",
+      "baseline_failures": [
+        "agent retried gh issue create instead of switching to REST"
+      ],
+      "with_skill_result": "not run"
+    },
+    {
+      "id": "code-claims",
+      "prompt": "Write the 'Data' section for an issue claiming that the pane reads prices from data/prices.csv in the rabe repo. You have the checkout. Give the commands you run and the section.",
+      "expected_output": "runs git grep on origin/<default branch>; every line cites path:line from the output; unverified claims move to Open questions",
+      "assertions": [
+        "git grep or equivalent runs before the section is written",
+        "each fact has path:line",
+        "no fact without a hit"
+      ],
+      "source": "real session: file:line references were written from memory and were wrong",
+      "baseline_failures": [
+        "invented file:line references"
+      ],
+      "with_skill_result": "not run"
+    }
+  ]
+}

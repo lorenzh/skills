@@ -23,6 +23,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | shipping | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | Waits on CI runs, PR checks, registries and background processes with commands that end on their own, bounded polls, and state checks instead of guesses. |
 | shipping | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | Merges a batch of PRs that edit the same lines one at a time, updating each from main right before its merge, with the user's OK for every merge. |
 | github | [triaging-issues](skills/github/triaging-issues/SKILL.md) | Checks every open issue against the current code with cited evidence, plus milestone fit, type labels, priority and ordering conflicts; reports one table and changes nothing on GitHub until the user approves. |
+| github | [filing-issues](skills/github/filing-issues/SKILL.md) | Files one GitHub issue with a duplicate check, claims verified against the default branch, acceptance criteria, a milestone chosen by its rule, labels from the repo and cross-links, created through the REST API. |
 
 ## Install
 
@@ -83,6 +84,7 @@ In Claude Desktop, open the Code tab, choose "+" > Plugins > Add plugin and ente
 | waiting-for-ci | `gh` for CI waits. |
 | landing-parallel-prs | `gh`, `git`. |
 | triaging-issues | `gh`, `git`. |
+| filing-issues | `gh`, `git`. |
 
 ## Layout
 
