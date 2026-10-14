@@ -58,6 +58,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [reproducing-bugs](skills/github/reproducing-bugs/SKILL.md) | `github` |
 | [planning-milestones](skills/github/planning-milestones/SKILL.md) | `github` |
 | [filing-issues](skills/github/filing-issues/SKILL.md) | `github` |
+| [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | `github` |
 
 ## Conventions
 

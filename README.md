@@ -26,6 +26,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | github | [reproducing-bugs](skills/github/reproducing-bugs/SKILL.md) | Reproduces reported bugs of terminal apps in a real run on a clean checkout of the default branch, judges only text the app drew, and records reproduced, not reproduced or not run in the issue after a privacy check. |
 | github | [planning-milestones](skills/github/planning-milestones/SKILL.md) | Plans which open issue ships in which release: groups by shared files and dependencies, orders by severity, spreads count and size evenly, marks owner-blocked items, and applies milestones only after the owner approves one table. |
 | github | [filing-issues](skills/github/filing-issues/SKILL.md) | Files one GitHub issue with a duplicate check, claims verified against the default branch, acceptance criteria, a milestone chosen by its rule, labels from the repo and cross-links, created through the REST API. |
+| github | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | REST fallback when gh porcelain fails with `projectCards` on Projects (classic) data: `gh api` calls for issue and PR work, with a read-back after each write. |
 
 ## Install
 
@@ -98,6 +99,7 @@ Then run `/reload-plugins` or start a new session.
 | reproducing-bugs | `gh`, `git`, `tmux`, Node.js 18+; builds on `driving-terminal-apps`, `triaging-issues` and `checking-before-publishing`. |
 | planning-milestones | `gh`, `git`. Verdicts come from `triaging-issues`. |
 | filing-issues | `gh`, `git`. |
+| using-gh-rest | `gh`, authenticated. `git` for the `{owner}/{repo}` placeholders. |
 
 ## Layout
 
