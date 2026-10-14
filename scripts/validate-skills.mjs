@@ -9,10 +9,11 @@
 //   and, when .claude-plugin/ exists: missing or unreadable plugin.json or marketplace.json,
 //   plugin.json "skills" not equal to the category folders that hold skills,
 //   plugin name missing from marketplace.json, a plugin or marketplace name
-//   starting with "claude-", "anthropic-" or "cc-plugin-"; and, when .codex-plugin/plugin.json or
-//   .agents/plugins/marketplace.json exists: the other one missing, a Codex plugin name that differs
-//   from the Claude one, Codex "skills" neither "./skills/" nor covering every category, plugin
-//   name missing from the Codex marketplace.
+//   starting with "claude-", "anthropic-" or "cc-plugin-", a "version" in plugin.json
+//   or on a marketplace.json plugin entry (the commit SHA is the version); and, when
+//   .codex-plugin/plugin.json or .agents/plugins/marketplace.json exists: the other one missing,
+//   a Codex plugin name that differs from the Claude one, Codex "skills" neither "./skills/" nor
+//   covering every category, plugin name missing from the Codex marketplace.
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger, not third person, or still holding the
 //   template's TODO, reference not linked from SKILL.md, skill folder without SKILL.md.
@@ -206,7 +207,8 @@ const readJson = (file) => {
     return null;
   }
 };
-const RESERVED_PREFIX = /^(claude-|anthropic-|cc-plugin-)/;
+const NO_VERSION = `remove "version"; the commit SHA is the plugin version (see AGENTS.md Conventions)`;
+const RESERVED_PREFIX =/^(claude-|anthropic-|cc-plugin-)/;
 const checkName = (file, what, name) => {
   if (typeof name !== "string" || !name) errors.push(`${rel(file)}: missing ${what} name`);
   else if (RESERVED_PREFIX.test(name))
@@ -226,6 +228,7 @@ if (plugin) {
   const expected = [...skillCategories].map((c) => `skills/${c}`);
   const missing = expected.filter((d) => !listed.includes(d));
   const extra = listed.filter((d) => !expected.includes(d));
+  if ("version" in plugin) errors.push(`${rel(pluginFile)}: ${NO_VERSION}`);
   if (missing.length || extra.length || listed.length !== new Set(listed).size)
     errors.push(`${rel(pluginFile)}: "skills" must list each category folder that holds skills once` +
       (missing.length ? `; missing ${missing.map((d) => `./${d}`).join(", ")}` : "") +
@@ -234,7 +237,11 @@ if (plugin) {
 if (market) {
   checkName(marketFile, "marketplace", market.name);
   const entries = Array.isArray(market.plugins) ? market.plugins : [];
-  for (const entry of entries) checkName(marketFile, "plugin entry", entry?.name);
+  for (const entry of entries) {
+    checkName(marketFile, "plugin entry", entry?.name);
+    if (entry && typeof entry === "object" && "version" in entry)
+      errors.push(`${rel(marketFile)}: plugin entry "${entry.name}": ${NO_VERSION}`);
+  }
   if (plugin && !entries.some((entry) => entry?.name === plugin.name))
     errors.push(`${rel(marketFile)}: no plugin entry named "${plugin.name}" (the name in plugin.json)`);
 }

@@ -242,6 +242,12 @@ for (const name of ['claude-tools', 'anthropic-tools', 'cc-plugin-tools']) {
   });
 }
 
+test('rejects a version in plugin.json or a marketplace plugin entry', (t) => {
+  const r = pluginFixture(t, { version: '1.0.0' }, { plugins: [{ name: 'lorenzh', source: './', version: '1.0.0' }] }).run();
+  assert.equal(r.status, 1);
+  assert.equal((r.stdout.match(/the commit SHA is the plugin version/g) ?? []).length, 2, r.stdout);
+});
+
 for (const file of ['plugin.json', 'marketplace.json']) {
   test(`reports a missing ${file} once .claude-plugin/ exists`, (t) => {
     const f = pluginFixture(t);
