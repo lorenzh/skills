@@ -1,6 +1,6 @@
 {
   "skill_name": "filing-issues",
-  "note": "Plan-only prompts on fresh `claude -p --effort high --tools \"\" --disable-slash-commands` sessions in an empty folder. Control: the prompt alone. With skill: SKILL.md, a blank line, then the prompt, fed on stdin (a prompt argument that starts with `---` is read as an option). Grade from the answer text. Runs 2026-10-14: claude-opus-5-5 and haiku, one run each per scenario and mode, with the SKILL.md of this commit. First baseline 2026-10-13 (haiku, scenario plan-new-issue) plus failures recorded from a real session in which about eight issues were filed by hand.",
+  "note": "Plan-only prompts on fresh `claude -p --effort high --tools \"\" --disable-slash-commands` sessions in an empty folder. Control: the prompt alone. With skill: SKILL.md, a blank line, then the prompt, fed on stdin (a prompt argument that starts with `---` is read as an option). Grade from the answer text. Graded runs 2026-10-14: `--model claude-opus-5-5 --output-format json`, one run per scenario and mode, all eight launched together, with the SKILL.md of this commit. Each verdict quotes the answer line (l.N) that settles it; elapsed_s, tokens and cost_usd come from the JSON reply. Input tokens include the user-level config that `claude -p` loads, the same for both modes. The haiku blocks are from an earlier run whose transcripts were not kept: they are not graded results. First baseline 2026-10-13 (haiku, scenario plan-new-issue) plus failures recorded from a real session in which about eight issues were filed by hand.",
   "evals": [
     {
       "id": "plan-new-issue",
@@ -30,14 +30,46 @@
       "control_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "gh issue list --search runs before any create": "pass",
-          "the plan verifies code claims with git grep on the default branch and does not assert unverified facts": "fail",
-          "the body has an Acceptance checkbox list": "fail",
-          "the body file name is specific to this issue": "fail",
-          "creation uses gh api repos/{owner}/{repo}/issues, not gh issue create": "fail",
-          "milestone descriptions are read before one is chosen, or the reply says none fits": "fail",
-          "labels come from the repo's label list": "pass",
-          "related issues receive a comment with the new number": "fail"
+          "elapsed_s": 21.8,
+          "tokens": {
+            "input": 254159,
+            "output": 1378
+          },
+          "cost_usd": 0.11,
+          "assertions": {
+            "gh issue list --search runs before any create": {
+              "verdict": "pass",
+              "evidence": "l.10: gh issue list -R lorenzh/rabe --state all --search \"subagent cost in:title,body\" (before the create in l.59)"
+            },
+            "the plan verifies code claims with git grep on the default branch and does not assert unverified facts": {
+              "verdict": "fail",
+              "evidence": "l.67: \"The body is a draft written without reading rabe's code\"; no git grep; l.31 states \"The pane shows which subagents run but not what each one costs\" as fact"
+            },
+            "the body has an Acceptance checkbox list": {
+              "verdict": "pass",
+              "evidence": "l.48-52: \"## Acceptance criteria\" with \"- [ ] Each subagent row in the pane shows its cost.\""
+            },
+            "the body file name is specific to this issue": {
+              "verdict": "pass",
+              "evidence": "l.24: cat > /tmp/rabe-subagent-cost.md (named for the issue, but in shared /tmp)"
+            },
+            "creation uses gh api repos/{owner}/{repo}/issues, not gh issue create": {
+              "verdict": "fail",
+              "evidence": "l.59: gh issue create -R lorenzh/rabe --title ... --body-file /tmp/rabe-subagent-cost.md"
+            },
+            "milestone descriptions are read before one is chosen, or the reply says none fits": {
+              "verdict": "fail",
+              "evidence": "no milestone command or mention in the reply"
+            },
+            "labels come from the repo's label list": {
+              "verdict": "pass",
+              "evidence": "l.13: gh label list -R lorenzh/rabe; l.65: keep the label \"only if step 1 shows the repo has that label\""
+            },
+            "related issues receive a comment with the new number": {
+              "verdict": "fail",
+              "evidence": "no comment on any related issue in the reply"
+            }
+          }
         },
         "haiku": {
           "gh issue list --search runs before any create": "pass",
@@ -47,21 +79,54 @@
           "creation uses gh api repos/{owner}/{repo}/issues, not gh issue create": "fail",
           "milestone descriptions are read before one is chosen, or the reply says none fits": "fail",
           "labels come from the repo's label list": "pass",
-          "related issues receive a comment with the new number": "fail"
+          "related issues receive a comment with the new number": "fail",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results; haiku had an Acceptance checklist"
         },
-        "note": "opus: no grep, no Acceptance checkboxes, random mktemp name, gh issue create, no milestone, no cross-link comments. haiku: same except it had an Acceptance checklist. Both planned labels from gh label list."
+        "note": "The file-name assertion did not discriminate in this run: the control also named its file for the issue (/tmp/rabe-subagent-cost.md), so its with-skill pass does not count for the skill; the Acceptance and label assertions also pass in the control. The four failing control assertions pass with the skill."
       },
       "with_skill_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "gh issue list --search runs before any create": "pass",
-          "the plan verifies code claims with git grep on the default branch and does not assert unverified facts": "pass",
-          "the body has an Acceptance checkbox list": "pass",
-          "the body file name is specific to this issue": "pass",
-          "creation uses gh api repos/{owner}/{repo}/issues, not gh issue create": "pass",
-          "milestone descriptions are read before one is chosen, or the reply says none fits": "pass",
-          "labels come from the repo's label list": "pass",
-          "related issues receive a comment with the new number": "pass"
+          "elapsed_s": 24.7,
+          "tokens": {
+            "input": 256303,
+            "output": 2391
+          },
+          "cost_usd": 0.187,
+          "assertions": {
+            "gh issue list --search runs before any create": {
+              "verdict": "pass",
+              "evidence": "l.11: gh issue list -R lorenzh/rabe --state all --search \"$q\" (step 1, before the create in step 5)"
+            },
+            "the plan verifies code claims with git grep on the default branch and does not assert unverified facts": {
+              "verdict": "pass",
+              "evidence": "l.24-26: git grep -n -i 'subagent' \"origin/$main\" ...; l.35: \"Any claim without a search hit moves to 'Open questions'\""
+            },
+            "the body has an Acceptance checkbox list": {
+              "verdict": "pass",
+              "evidence": "l.61-62: \"## Acceptance\" / \"- [ ] Each subagent row in the pane shows its cost once usage data arrives.\""
+            },
+            "the body file name is specific to this issue": {
+              "verdict": "pass",
+              "evidence": "l.40: body=\"$work/issue-subagent-cost-in-pane.md\""
+            },
+            "creation uses gh api repos/{owner}/{repo}/issues, not gh issue create": {
+              "verdict": "pass",
+              "evidence": "l.93: gh api repos/lorenzh/rabe/issues -f title='feat: show cost of each subagent in the pane' -F body=@\"$body\""
+            },
+            "milestone descriptions are read before one is chosen, or the reply says none fits": {
+              "verdict": "pass",
+              "evidence": "l.90: gh api --paginate 'repos/lorenzh/rabe/milestones?state=open' --jq '.[] | {number,title,description,due_on}'"
+            },
+            "labels come from the repo's label list": {
+              "verdict": "pass",
+              "evidence": "l.91: gh label list -R lorenzh/rabe --limit 200; l.100: \"Labels come only from the repo's label list\""
+            },
+            "related issues receive a comment with the new number": {
+              "verdict": "pass",
+              "evidence": "l.107: gh api repos/lorenzh/rabe/issues/<m>/comments -f body='Filed #<n>: ...'"
+            }
+          }
         },
         "haiku": {
           "gh issue list --search runs before any create": "pass",
@@ -71,9 +136,10 @@
           "creation uses gh api repos/{owner}/{repo}/issues, not gh issue create": "pass",
           "milestone descriptions are read before one is chosen, or the reply says none fits": "pass",
           "labels come from the repo's label list": "pass",
-          "related issues receive a comment with the new number": "pass"
+          "related issues receive a comment with the new number": "pass",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results"
         },
-        "note": "both models followed all seven steps; the title used feat: only conditionally on the step-1 title style."
+        "note": "All eight assertions pass."
       }
     },
     {
@@ -92,30 +158,66 @@
       "control_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "three different body file names": "pass",
-          "each create command reads its own file": "pass",
-          "creation through gh api": "fail"
+          "elapsed_s": 22.4,
+          "tokens": {
+            "input": 254136,
+            "output": 1554
+          },
+          "cost_usd": 0.113,
+          "assertions": {
+            "three different body file names": {
+              "verdict": "pass",
+              "evidence": "l.6/13/20: scratchpad/issue-1-body.md, issue-2-body.md, issue-3-body.md"
+            },
+            "each create command reads its own file": {
+              "verdict": "pass",
+              "evidence": "l.9/16/23: --body-file .../issue-1-body.md, issue-2-body.md, issue-3-body.md"
+            },
+            "creation through gh api": {
+              "verdict": "fail",
+              "evidence": "l.9: gh issue create --repo lorenzh/skills --title \"<title 1>\" --body-file ..."
+            }
+          }
         },
         "haiku": {
           "three different body file names": "pass",
           "each create command reads its own file": "pass",
-          "creation through gh api": "fail"
+          "creation through gh api": "fail",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results"
         },
-        "note": "the shared body.md failure did not reproduce: both models used one numbered file per job. Both created with gh issue create --body-file."
+        "note": "The shared body.md failure did not reproduce: the control used one numbered file per job. Only the gh api assertion discriminates."
       },
       "with_skill_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "three different body file names": "pass",
-          "each create command reads its own file": "pass",
-          "creation through gh api": "pass"
+          "elapsed_s": 13.1,
+          "tokens": {
+            "input": 256280,
+            "output": 1237
+          },
+          "cost_usd": 0.164,
+          "assertions": {
+            "three different body file names": {
+              "verdict": "pass",
+              "evidence": "l.6/14/21: \"$d1/issue-<slug-1>.md\", \"$d2/issue-<slug-2>.md\", \"$d3/issue-<slug-3>.md\""
+            },
+            "each create command reads its own file": {
+              "verdict": "pass",
+              "evidence": "l.8/15/22: -F body=@\"$body1\", @\"$body2\", @\"$body3\""
+            },
+            "creation through gh api": {
+              "verdict": "pass",
+              "evidence": "l.8: gh api repos/lorenzh/skills/issues -f title='<title-1>' -F body=@\"$body1\""
+            }
+          }
         },
         "haiku": {
-          "three different body file names": "pass",
+          "three different body file names": "fail",
           "each create command reads its own file": "pass",
-          "creation through gh api": "pass"
+          "creation through gh api": "pass",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results; haiku used /tmp/filing-issues/job-N/issue.md: three directories but one basename, not named for the issue (SKILL.md step 3), so 'three different body file names' fails"
         },
-        "note": "opus: $(mktemp -d)/issue-<slug>.md per job. haiku: distinct directories /tmp/filing-issues/job-N/ but the same basename issue.md, not named for the issue."
+        "note": "One mktemp -d directory and one issue-<slug>.md per job, created through gh api."
       }
     },
     {
@@ -135,34 +237,76 @@
       "control_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "no retry of gh issue create": "fail",
-          "REST create with -f title and -F body=@file": "pass",
-          "labels in a second call": "fail",
-          "verification read through gh api": "fail"
+          "elapsed_s": 13.2,
+          "tokens": {
+            "input": 254146,
+            "output": 1048
+          },
+          "cost_usd": 0.103,
+          "assertions": {
+            "no retry of gh issue create": {
+              "verdict": "fail",
+              "evidence": "l.27-30: upgrade gh, then \"If it still fails after the upgrade ... Run gh auth refresh -s project\", which plans to run gh issue create again"
+            },
+            "REST create with -f title and -F body=@file": {
+              "verdict": "pass",
+              "evidence": "l.13-15: gh api repos/lorenzh/rabe/issues -f title='<title>' -F body=@body.md"
+            },
+            "labels in a second call": {
+              "verdict": "fail",
+              "evidence": "l.16: -f 'labels[]=<label>' inline in the create call"
+            },
+            "verification read through gh api": {
+              "verdict": "fail",
+              "evidence": "no read of the created issue; the only gh api read (l.6) runs before the create"
+            }
+          }
         },
         "haiku": {
           "no retry of gh issue create": "fail",
           "REST create with -f title and -F body=@file": "pass",
           "labels in a second call": "fail",
-          "verification read through gh api": "fail"
+          "verification read through gh api": "fail",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results"
         },
-        "note": "both switched to REST for the create but planned to run gh issue create again after a gh upgrade or a read:project scope refresh; labels inline or none; no gh api re-read."
+        "note": "The control switched to REST for the create but planned to retry gh after an upgrade or scope refresh, set labels inline and did not re-read the issue."
       },
       "with_skill_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "no retry of gh issue create": "pass",
-          "REST create with -f title and -F body=@file": "pass",
-          "labels in a second call": "pass",
-          "verification read through gh api": "pass"
+          "elapsed_s": 9,
+          "tokens": {
+            "input": 256290,
+            "output": 763
+          },
+          "cost_usd": 0.155,
+          "assertions": {
+            "no retry of gh issue create": {
+              "verdict": "pass",
+              "evidence": "l.1: \"Don't retry gh issue create. ... a retry fails the same way.\""
+            },
+            "REST create with -f title and -F body=@file": {
+              "verdict": "pass",
+              "evidence": "l.5-7: gh api repos/lorenzh/rabe/issues -f title='<title>' -F body=@\"$body_file\""
+            },
+            "labels in a second call": {
+              "verdict": "pass",
+              "evidence": "l.12-13: gh api repos/lorenzh/rabe/issues/<n>/labels -f 'labels[]=<label1>' (separate call)"
+            },
+            "verification read through gh api": {
+              "verdict": "pass",
+              "evidence": "l.16-17: gh api repos/lorenzh/rabe/issues/<n> --jq '{url: .html_url, ...}'"
+            }
+          }
         },
         "haiku": {
           "no retry of gh issue create": "pass",
           "REST create with -f title and -F body=@file": "pass",
           "labels in a second call": "pass",
-          "verification read through gh api": "pass"
+          "verification read through gh api": "pass",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results"
         },
-        "note": "both said not to retry, created through REST, labelled in a second call and re-read through gh api."
+        "note": "Said not to retry, created through REST, labelled in a second call and re-read through gh api."
       }
     },
     {
@@ -181,30 +325,66 @@
       "control_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "git grep or equivalent runs before the section is written": "pass",
-          "each fact has path:line": "fail",
-          "no fact without a hit": "fail"
+          "elapsed_s": 14.1,
+          "tokens": {
+            "input": 254147,
+            "output": 983
+          },
+          "cost_usd": 0.102,
+          "assertions": {
+            "git grep or equivalent runs before the section is written": {
+              "verdict": "pass",
+              "evidence": "l.10: grep -rn \"prices.csv\" --exclude-dir=.git . (working tree, not the default branch)"
+            },
+            "each fact has path:line": {
+              "verdict": "fail",
+              "evidence": "l.19: \"The price pane reads its data from data/prices.csv (commit <sha>).\" with no path:line"
+            },
+            "no fact without a hit": {
+              "verdict": "fail",
+              "evidence": "l.19 states the claim as fact before any grep hit"
+            }
+          }
         },
         "haiku": {
           "git grep or equivalent runs before the section is written": "pass",
           "each fact has path:line": "fail",
-          "no fact without a hit": "fail"
+          "no fact without a hit": "fail",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results"
         },
-        "note": "invented file:line did not reproduce (placeholders instead), but both drafts state 'The pane reads its prices from data/prices.csv' as fact before any hit, and grep the working tree, not the default branch."
+        "note": "Invented file:line did not reproduce (placeholders instead), but the control states the claim as fact; with the skill it moves to Open questions."
       },
       "with_skill_result": {
         "date": "2026-10-14",
         "claude-opus-5-5": {
-          "git grep or equivalent runs before the section is written": "pass",
-          "each fact has path:line": "pass",
-          "no fact without a hit": "pass"
+          "elapsed_s": 14.7,
+          "tokens": {
+            "input": 256291,
+            "output": 1273
+          },
+          "cost_usd": 0.165,
+          "assertions": {
+            "git grep or equivalent runs before the section is written": {
+              "verdict": "pass",
+              "evidence": "l.14: git grep -n 'prices.csv' \"origin/$main\", listed before the section"
+            },
+            "each fact has path:line": {
+              "verdict": "pass",
+              "evidence": "l.25: Data holds no fact (\"None verified yet\"); l.36 requires the path:line from git grep output before a line moves to Data"
+            },
+            "no fact without a hit": {
+              "verdict": "pass",
+              "evidence": "l.28-29: the claim sits under Open questions: \"Unverified: no git grep hit for prices.csv has been checked\""
+            }
+          }
         },
         "haiku": {
           "git grep or equivalent runs before the section is written": "pass",
           "each fact has path:line": "pass",
-          "no fact without a hit": "pass"
+          "no fact without a hit": "pass",
+          "evidence": "none: the earlier haiku run kept no transcript, so these verdicts are not graded results"
         },
-        "note": "both grep origin/<default branch>; opus puts the unverified claim under Open questions, haiku templates path:line and moves anything without a hit to Open questions."
+        "note": "Greps origin/<default branch> and keeps the unverified claim under Open questions."
       }
     }
   ]
