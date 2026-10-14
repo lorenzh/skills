@@ -1,0 +1,157 @@
+{
+  "skill_name": "planning-milestones",
+  "note": "Plan-only prompts on fresh `claude -p --model claude-opus-5-5 --effort high --tools \"\" --disable-slash-commands --no-session-persistence --output-format json` sessions in an empty folder; the prompt goes in on stdin. Control without the skill; the with-skill run gets this SKILL.md and triaging-issues' SKILL.md (the skill its step 1 points to) prepended. Grade from the answer text. Each run records the model and session id from the CLI's JSON result (`modelUsage`, `session_id`), elapsed time, cost and tokens; input tokens include about 254k of harness and user context that every run shares. The control's answer is kept verbatim in `control.output`; the raw JSON results go to `results/` (gitignored). Runs 2026-10-14, control and with-skill launched in the same turn. near-miss-triage is a trigger test: the model sees both skill descriptions and names the one it loads (TRIAGE_DESC and PLAN_DESC in the prompt are replaced by the frontmatter descriptions); control uses the description without the closing negative trigger, the with-skill run the current one.",
+  "evals": [
+    {
+      "id": "spread-evenly",
+      "prompt": "Repo lorenzh/demo. Open milestones: v0.7 (due 2026-11-01, \"bug fixes and polish\"), v0.8 (due 2026-12-01, \"new sources\"), v0.9 (due 2027-01-15, \"layout rework\"). All 12 issues below are open and in no milestone. Spread them over v0.7, v0.8 and v0.9 so that they fit together best. Plan only: give your answer and the exact gh commands you would run. Do not run anything.\n\n#1 Crash when prices.csv is missing (hooks/prices.ts, S)\n#2 Pane flickers on resize (hooks/ui/pane.tsx, M)\n#3 Add cron source (hooks/sources/crons.ts, M)\n#4 Show cron next run in band (hooks/ui/band.tsx, S) - blocked by #3\n#5 New pane layout with split columns (hooks/ui/pane.tsx, hooks/ui/render.tsx, L)\n#6 Fix off-by-one in cost sum (hooks/prices.ts, S)\n#7 Add workflows source (hooks/sources/workflows.ts, M)\n#8 Export history as JSON (hooks/export.ts, M)\n#9 Windows path handling in worktrees source (hooks/sources/worktrees.ts, S) - agent has only Linux, cannot test\n#10 Rename the rabe.worktrees key (hooks/sources/worktrees.ts, S) - owner has not decided the name\n#11 Pane header spacing (hooks/ui/pane.tsx, S)\n#12 Theme colors for the new layout (hooks/ui/cells/palette.ts, S) - after #5",
+      "expected_output": "issues #9 (needs Windows, cannot be tested) and #10 (name undecided) are marked blocked on owner and not counted; #4 after #3 and #12 after #5 sit in the same or a later milestone; #5 (the layout rework) is in the last milestone; count and S/M/L size are reported per milestone; one table with issue, milestone, reason, depends on; an approval question before any gh command; each move is re-read until it shows the new milestone",
+      "assertions": [
+        "#9 and #10 are marked blocked on owner and are not counted in any milestone's count or size",
+        "every dependency sits in the same or an earlier milestone than the issue that needs it",
+        "count and size are reported for each milestone",
+        "the answer is one table (issue, milestone, reason, depends on) and a question for approval before any change",
+        "every apply command is followed by a re-read that confirms the new milestone"
+      ],
+      "source": "user request: spread open issues over the upcoming minors so that they fit together best",
+      "baseline_failures": [
+        "assertion 1: #9 in v0.7 and #10 in v0.8 as ordinary work: \"| **v0.7** bug fixes and polish | #1, #6, #9 |\" and \"| **v0.8** new sources | #3, #4, #7, #8, #10 |\"",
+        "assertion 3: no count or size per milestone; the table has only `Milestone | Issues | Why`",
+        "assertion 4: one row per milestone, no per-issue table with a depends-on column, and no approval question; the answer ends on \"Commands (not run):\" and three `gh issue edit` lines",
+        "assertion 5: no re-read after the edits"
+      ],
+      "control": {
+        "model": "claude-opus-5-5",
+        "session_id": "967269c0-fffa-4dce-8794-cc7e1122d859",
+        "duration_seconds": 25.6,
+        "cost_usd": 0.13,
+        "input_tokens": 254641,
+        "output_tokens": 2182,
+        "result": "fail on assertions 1, 3, 4 and 5; pass on assertion 2 (\"#4 is blocked by #3, so both go in the same milestone\", \"#12 comes after #5\")",
+        "output": "I'd keep each file in one milestone where possible, so nothing gets fixed and then rewritten later.\n\n| Milestone | Issues | Why |\n|---|---|---|\n| **v0.7** bug fixes and polish | #1, #6, #9 | #1 and #6 are both small fixes in `hooks/prices.ts`, so one PR can do both. #9 is a small bug in the worktrees source. |\n| **v0.8** new sources | #3, #4, #7, #8, #10 | #4 is blocked by #3, so both go in the same milestone. #7 is the other new source. #8 is a new feature that matches neither of the other milestones' themes. #10 also touches `hooks/sources/worktrees.ts`. |\n| **v0.9** layout rework | #5, #12, #2, #11 | #12 comes after #5. #2 and #11 edit `hooks/ui/pane.tsx`, which #5 rewrites. Fixing them in v0.7 would mean doing the work twice and risking merge conflicts. |\n\nThings to settle before work starts:\n- **#2 (flicker):** I put it in v0.9 to avoid rework. If users are hitting it now, move it to v0.7 and accept that it gets reworked with #5.\n- **#9:** The agent only has Linux and can't test Windows paths. Someone with Windows has to verify it before v0.7 ships.\n- **#10:** The owner hasn't chosen the new key name, so it's blocked. Renaming a key is also a breaking change, so it shouldn't go in a bug-fix release. I put it in v0.8 for now. If there's no name by about mid-November, move it to v0.9 or take it out of the milestones.\n\nCommands (not run):\n\n```bash\ngh issue edit 1 6 9 --repo lorenzh/demo --milestone v0.7\ngh issue edit 3 4 7 8 10 --repo lorenzh/demo --milestone v0.8\ngh issue edit 2 5 11 12 --repo lorenzh/demo --milestone v0.9\n```\n\nIf your `gh` version only edits one issue per call, run it once per issue with the same `--milestone` value.\n"
+      },
+      "with_skill": {
+        "model": "claude-opus-5-5",
+        "session_id": "7162464c-855f-429a-9093-92fc02f44a22",
+        "duration_seconds": 34.7,
+        "cost_usd": 0.22,
+        "input_tokens": 259434,
+        "output_tokens": 2715,
+        "result": "fail: pass on assertions 1-4, fail on assertion 5. 1: \"| #9 Windows path handling in worktrees source | blocked on owner: needs a Windows test; the agent has only Linux |\", \"| #10 Rename the rabe.worktrees key | blocked on owner: the new key name is not decided |\", \"#9 and #10 do not count toward capacity.\" 2: \"| #4 Show cron next run in band | v0.8 | It is the visible part of the cron source, so users see #3 and #4 as one change. | #3 |\", \"| #12 Theme colors for the new layout | v0.9 | It is part of the layout rework. | #5 |\". 3: \"- v0.7: 4 issues (3 S, 1 M)\", \"- v0.8: 3 issues (1 S, 2 M)\", \"- v0.9: 2 issues (1 S, 1 L)\". 4: \"| Issue | Proposed milestone | Reason | Depends on |\" and \"Apply this plan, and record it?\" before the commands. 5 fails: the comment says \"# Verify each issue, up to 3 reads, 5 s apart\" but the loop reads each issue once and never compares the read with the new milestone: \"for n in 1 6 2 11 3 4 7 5 12; do\" / \"  gh api repos/lorenzh/demo/issues/$n --jq '{number, milestone: .milestone.title, state}'\" / \"done\"."
+      }
+    },
+    {
+      "id": "pick-next-patch",
+      "prompt": "Repo lorenzh/demo has 9 open issues, all of verdict still valid from a fresh triage, and two open milestones: v0.7.1 (patch, due in 2 weeks, description \"crash and data-loss fixes only\") and v0.8 (due in 6 weeks, description \"features and polish\"). No issue is in a milestone yet. I want the next patch to be about crashes and data loss. Pick what goes into v0.7.1 and what into v0.8. Plan only: say what you would read, what you would answer and the exact commands you would run. Do not run anything.\n\n#31 Crash on start when config.toml is empty (src/config.ts, S)\n#32 History file truncated when two sessions write at once (src/history.ts, M)\n#33 Typo in --help output (src/cli.ts, S)\n#34 Export history as JSON (src/history.ts, M)\n#35 Crash when the network drops during sync (src/sync.ts, S)\n#36 Show history size in the status bar (src/ui/status.ts, S) - after #34\n#37 Crash on macOS when the keychain is locked (src/secrets.ts, S) - agent has only Linux, cannot reproduce or test\n#38 Keychain unlock prompt (src/secrets.ts, S) - after #37\n#39 Dark theme (src/ui/theme.ts, M)",
+      "expected_output": "#37 (macOS crash, cannot be tested) is blocked on owner and #38 is blocked because it waits for #37, neither counted; #31, #32 and #35 (crash and data loss) go into v0.7.1 first; #33 (typo) goes to v0.8 under the patch's rule; #36 sits with or after #34; count and S/M/L size per milestone; one table and an approval question before any gh command; no issue closed",
+      "assertions": [
+        "#37 is blocked on owner because it cannot be tested, #38 is blocked because it waits for #37, and neither counts toward a milestone",
+        "#31, #32 and #35 are in v0.7.1 and ordered first; #33 is not in v0.7.1",
+        "#36 sits in the same or a later milestone than #34",
+        "count and size are reported for each milestone",
+        "one table with a reason and depends-on column, and a question before any change",
+        "no issue is closed and no milestone description is rewritten"
+      ],
+      "source": "real session: picking the issues for the next patch and minor",
+      "baseline_failures": [
+        "assertion 1: #37 in v0.7.1 and #38 in v0.8, both counted: \"| **v0.7.1** | #31, #32, #35, #37 |\", \"| **v0.8** | #33, #34, #36, #38, #39 |\", \"v0.7.1 has three S issues and one M issue (#32) for two weeks\"",
+        "assertion 4: no count or size for v0.8",
+        "assertion 5: one row per milestone (`Milestone | Issues | Reason`), no per-issue table with a depends-on column; the questions are \"**Who can test it on macOS?**\" and an OK on #37 and #33, not whether to apply the plan"
+      ],
+      "control": {
+        "model": "claude-opus-5-5",
+        "session_id": "b97a8d3f-2316-42f5-aa0a-66a1fe4b9e0e",
+        "duration_seconds": 22.6,
+        "cost_usd": 0.12,
+        "input_tokens": 254522,
+        "output_tokens": 1904,
+        "result": "fail on assertions 1, 4 and 5; pass on assertions 2, 3 and 6",
+        "output": "## Recommendation\n\n| Milestone | Issues | Reason |\n|---|---|---|\n| **v0.7.1** | #31, #32, #35, #37 | Three crashes and one data-loss bug. This matches the milestone description exactly. |\n| **v0.8** | #33, #34, #36, #38, #39 | Features and polish. #36 follows #34, and #38 follows #37, so every dependency lands in the same or an earlier milestone. |\n\nTwo calls need your confirmation:\n\n- **#37 (macOS keychain crash) is in scope but at risk.** The agent can't reproduce or test it on Linux. A blind fix to secrets handling shouldn't ship in a patch release. I'd keep it in v0.7.1 only if someone with a Mac verifies it. If nobody has verified it within about a week, move it to v0.8 so it doesn't hold up the release. **Who can test it on macOS?**\n- **#33 (typo in `--help`) goes to v0.8** even though it's small. It's polish, not a crash or data loss, and \"crash and data-loss fixes only\" rules it out. If you'd rather slip it into the patch, say so.\n\nThe workload is fine: v0.7.1 has three S issues and one M issue (#32) for two weeks.\n\n## What I'd read first\n\n1. The exact milestone titles, because `gh issue edit --milestone` matches on title, and a check that both are open:\n   ```bash\n   gh api repos/lorenzh/demo/milestones --jq '.[] | [.number, .title, .state, .due_on] | @tsv'\n   ```\n2. #37 and #32, to see whether a comment already names a macOS tester or shows #32 is bigger than M:\n   ```bash\n   gh issue view 37 --repo lorenzh/demo --comments\n   gh issue view 32 --repo lorenzh/demo --comments\n   ```\n\nI wouldn't re-triage the other issues. The verdicts are fresh.\n\n## Commands I'd run (after your OK on #37 and #33)\n\n```bash\ngh issue edit 31 32 35 37 --repo lorenzh/demo --milestone \"v0.7.1\"\ngh issue edit 33 34 36 38 39 --repo lorenzh/demo --milestone \"v0.8\"\n\ngh issue comment 37 --repo lorenzh/demo --body \"In v0.7.1, but it needs verification on macOS before release (no macOS environment available to the agent). If nobody has verified it by about a week before the due date, it moves to v0.8.\"\n\n# Check the result\ngh issue list --repo lorenzh/demo --milestone \"v0.7.1\" --state open\ngh issue list --repo lorenzh/demo --milestone \"v0.8\" --state open\n```\n\nI'd skip new labels such as `needs-macos`, since the comment covers it. Add a label if you track this kind of blocker across repos.\n"
+      },
+      "with_skill": {
+        "model": "claude-opus-5-5",
+        "session_id": "a4bcbc1b-27dd-483d-8a16-d4b401e0c158",
+        "duration_seconds": 33.7,
+        "cost_usd": 0.23,
+        "input_tokens": 259315,
+        "output_tokens": 3541,
+        "result": "pass on all 6 assertions. 1: \"| #37 Crash on macOS when the keychain is locked | blocked on owner: needs a macOS reproduction and test, and the agent has only Linux |\", \"| #38 Keychain unlock prompt | blocked on owner: waits for #37 |\", \"lorenzh/demo @ <main sha>: 7 ready, 2 blocked on owner\". 2: #32, #31 and #35 are the first three rows, all v0.7.1; \"| #33 Typo in --help output | v0.8 | polish; not a crash, so v0.7.1 does not allow it |\". 3: \"| #36 Show history size in the status bar | v0.8 | feature | #34 |\" with #34 in v0.8. 4: \"v0.7.1: 3 issues (2 S, 1 M)\", \"v0.8: 4 issues (2 S, 2 M)\". 5: \"| Issue | Proposed milestone | Reason | Depends on |\" and \"Apply this plan, and record it?\" before the commands. 6: \"I would not close any issue or edit any milestone description.\" It also re-reads until the new milestone shows: `[ \"$got\" = \"$want\" ] && { echo \"#$n -> $got ok\"; break; }`."
+      }
+    },
+    {
+      "id": "near-miss-triage",
+      "prompt": "You are a coding agent. These skills are available; load at most one by naming it.\n\n- triaging-issues: TRIAGE_DESC\n- planning-milestones: PLAN_DESC\n\nUser request: \"Is #12 in the right milestone? It sits in v0.8, whose description is 'new sources', and #12 is 'Pane header spacing'.\"\n\nAnswer with only the name of the skill you would load first, or \"none\".",
+      "expected_output": "names triaging-issues, not planning-milestones: a fit check of one issue against its milestone is triage",
+      "assertions": [
+        "the answer names triaging-issues"
+      ],
+      "source": "near-miss trigger: both descriptions mention milestones",
+      "baseline_failures": [],
+      "control": {
+        "result": "pass in 3 of 3 runs (`triaging-issues`, `triaging-issues`, `triaging-issues`)",
+        "runs": [
+          {
+            "model": "claude-opus-5-5",
+            "session_id": "42f1c9a9-d6f5-4705-81cf-a3142291b908",
+            "duration_seconds": 3.9,
+            "cost_usd": 0.08,
+            "input_tokens": 254376,
+            "output_tokens": 78,
+            "output": "triaging-issues"
+          },
+          {
+            "model": "claude-opus-5-5",
+            "session_id": "392e918b-eaf6-4924-b07f-cd7720214dd9",
+            "duration_seconds": 5.2,
+            "cost_usd": 0.08,
+            "input_tokens": 254376,
+            "output_tokens": 92,
+            "output": "triaging-issues"
+          },
+          {
+            "model": "claude-opus-5-5",
+            "session_id": "cd5835ce-4a1a-498c-9460-c53d2eea3b56",
+            "duration_seconds": 5.4,
+            "cost_usd": 0.08,
+            "input_tokens": 254376,
+            "output_tokens": 73,
+            "output": "triaging-issues"
+          }
+        ]
+      },
+      "with_skill": {
+        "result": "pass in 3 of 3 runs (`triaging-issues`, `triaging-issues`, `triaging-issues`)",
+        "runs": [
+          {
+            "model": "claude-opus-5-5",
+            "session_id": "78d91d60-5721-414a-969e-f91296eb0b2c",
+            "duration_seconds": 3.1,
+            "cost_usd": 0.05,
+            "input_tokens": 254406,
+            "output_tokens": 48,
+            "output": "triaging-issues"
+          },
+          {
+            "model": "claude-opus-5-5",
+            "session_id": "8888ada0-e6e3-4587-80be-43ad253fe5f2",
+            "duration_seconds": 4.6,
+            "cost_usd": 0.08,
+            "input_tokens": 254406,
+            "output_tokens": 8,
+            "output": "triaging-issues"
+          },
+          {
+            "model": "claude-opus-5-5",
+            "session_id": "70ae9882-d719-49f7-8b09-6813982589d8",
+            "duration_seconds": 4.3,
+            "cost_usd": 0.08,
+            "input_tokens": 254406,
+            "output_tokens": 39,
+            "output": "triaging-issues"
+          }
+        ]
+      },
+      "discrimination": "control and with-skill both pass, so it stays as a regression guard, not as a separating scenario"
+    }
+  ]
+}

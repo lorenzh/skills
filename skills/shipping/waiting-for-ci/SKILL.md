@@ -1,6 +1,6 @@
 ---
 name: waiting-for-ci
-description: Waiting on CI runs, PR checks, package registries and background processes without hanging. Use when an agent must wait for a GitHub Actions run or PR checks to finish, wait until a published version appears on npm or another registry, wait for a background job or another agent, stop a background process or local server, or when a wait loop never ends or an agent has gone silent or finished without a completion notice.
+description: Waiting on CI runs, PR checks, package registries and background processes without hanging. Use when an agent must wait for a GitHub Actions run or PR checks to finish, wait until a published version appears on npm or another registry, wait for a background job or another agent, stop a background process or local server, or when a wait loop never ends, an agent has gone silent or finished without a completion notice, or a PR check or CI job failed and its log is empty or the cause is unclear.
 ---
 
 # Waiting for CI
@@ -75,11 +75,29 @@ When a background wait, a run or another agent goes quiet, look before you repor
 
 A silent agent may have finished, crashed or be stuck in a loop. Report what the check showed, not what you expect.
 
-If a job failed with a timeout or a network error on a step that passed before, rerun it once with `gh run rerun <run-id> --failed`. A second failure is real: report it with the failing step's log.
+Done when the report states each wait's observed status.
 
-Done when the report states the observed status (passed, failed with the step, still running with its last log line) for every wait.
+## 5. Diagnose a failed check
 
-## 5. A background agent with no completion notice
+When a job failed and its log is empty or the cause is unclear, find the cause before you change the PR:
+
+1. Read the raw job log. Get the job id from `gh run view <run-id> --json jobs`, then run `gh api repos/{owner}/{repo}/actions/jobs/<job-id>/logs`. It holds the step output even when `gh run view <run-id> --log-failed` or `--log` prints nothing, and names the failing test or step.
+2. Compare the failure with the PR's changed files: `gh pr view <n> --json files -q '.files[].path'`.
+3. Check the default branch's recent runs of the same workflow:
+
+   ```bash
+   default=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
+   gh run list --branch "$default" --workflow <workflow> -L 5 --json conclusion,headSha,createdAt
+   ```
+
+   If the default branch fails the same test, report it as broken there, not caused by the PR, and leave the PR unchanged.
+4. Run that single test locally 5 times (a tunable default).
+5. For a failure unrelated to the diff, or a timeout or network error on a step that passed before, rerun only the failed jobs once with `gh run rerun <run-id> --failed` and watch with a deadline. A second failure is real; report its log.
+6. If the unrelated test passes on the rerun, offer to open an issue for the flaky test instead of changing the PR.
+
+Done when the report states each wait's observed status and, for a failed job, includes its raw log evidence and whether the failure matches the PR diff.
+
+## 6. A background agent with no completion notice
 
 An agent can finish without the harness telling you. Once its expected time has passed (a tunable default: twice the time similar tasks took, at least 10 minutes), stop waiting for the notice and look:
 
