@@ -1,0 +1,37 @@
+{
+  "note": "Baseline not measured yet. Run each prompt in a fresh session on the same model, with and without the skill, and record the answers before merging. A scenario counts only if the run without the skill fails it.",
+  "scenarios": [
+    {
+      "id": "list-codex-models-offline",
+      "prompt": "Which models can I dispatch to in Codex right now? I have no login on this machine. Answer with the exact commands you would run and what they print.",
+      "expected": [
+        "uses an empty CODEX_HOME so no login or settings are read",
+        "uses --bundled so no online refresh runs",
+        "separates visibility list from hide and dispatches only to list models",
+        "gives the command, not a remembered model list"
+      ],
+      "baseline_failures": []
+    },
+    {
+      "id": "claude-model-list-without-running-binary",
+      "prompt": "List the Claude Code models and their effort levels. Do not start a Claude Code session. Show the steps.",
+      "expected": [
+        "does not run the claude binary to list models",
+        "checks the catalog marker in the resolved binary before parsing",
+        "parses the object literal without evaluating it",
+        "states that the lists are package defaults and access may differ"
+      ],
+      "baseline_failures": []
+    },
+    {
+      "id": "stale-list-after-upgrade",
+      "prompt": "I upgraded Codex yesterday and a dispatch now names a model I do not recognise. Which model can I use? Write the answer from the installed tool only.",
+      "expected": [
+        "reads the list from the installed tool, not from memory",
+        "reports the model as unavailable if the list does not contain it",
+        "does not substitute another model silently"
+      ],
+      "baseline_failures": []
+    }
+  ]
+}
