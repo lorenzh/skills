@@ -31,7 +31,7 @@ When the repository is on GitHub and every branch is in that same repository, ch
 gh api graphql -F owner=<owner> -F repo=<repo> -F n=<top-pr> -f query='query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$n){stack{number size baseRefName entries(first:100){nodes{position pullRequest{number}}}}}}}'
 ```
 
-If `stack` is absent, ask the user to link the chain from the recommendation banner on the top PR, or with the `gh stack` extension: `gh stack link <bottom-pr> ... <top-pr>` links existing PRs, listed bottom to top. GitHub recommends linking same-repository chains without forks; the banner opens a top-to-bottom preview, and the stack map then appears in each PR header. GraphQL has no stack mutation.
+GraphQL has no stack mutation, so the API cannot link an existing chain. If `stack` is absent, tell the user that and ask them to link the chain from the recommendation banner on the top PR, or with the `gh stack` extension: `gh stack link <bottom-pr> ... <top-pr>` links existing PRs, listed bottom to top. GitHub recommends linking same-repository chains without forks; the banner opens a top-to-bottom preview, and the stack map then appears in each PR header.
 
 - **Link:** Once linked, `pull_request` workflows targeting `<main>` run on every PR in the stack.
 - **Merge requirements:** Merging the top PR lands all unmerged PRs below it onto `<main>` in one operation; each must be approved and have passing checks, the history must be linear (otherwise use **Rebase stack**), and a mid-stack PR cannot merge alone. After a merge, GitHub rebases the next unmerged PR onto the stack base. Merge queues work; auto-merge does not.
@@ -68,7 +68,12 @@ Done when `gh pr view <n> --json baseRefName` shows `<main>`.
 
 ## 4. Verify each head against the current main
 
-Verify every head on its own, in a brand-new worktree. Reusing one worktree across heads, or checking only the top head, gives results that do not hold for the lower PRs: deleting `dist/` alone can leave `*.tsbuildinfo`, so TypeScript skips a needed build and gives a false green, and generated files that a lower head does not ignore make lint or packaging give a false red. In an unlinked chain, a PR whose base is not `<main>` has no `pull_request` CI result when the workflow filters on `<main>`, so this run is the only check of that head against `<main>`.
+Verify every head on its own, in a brand-new worktree. Checking only the top head says nothing about the lower PRs, and a reused worktree has two traps; name both when you tell the user why an earlier local pass does not count:
+
+- **False green:** deleting `dist/` alone can leave `*.tsbuildinfo`, so TypeScript skips a needed build.
+- **False red:** generated files that a lower head does not ignore make lint or packaging fail.
+
+In an unlinked chain, a PR whose base is not `<main>` has no `pull_request` CI result when the workflow filters on `<main>`, so this run is the only check of that head against `<main>`.
 
 Run it once per head before the first merge, and again for the remaining heads after each loop back to step 3. For each head, merge the current `origin/<main>`, install dependencies fresh and run the repository's full CI command set:
 
@@ -77,10 +82,12 @@ git fetch origin
 git worktree add --detach <fresh-path> origin/<head-branch>
 cd <fresh-path>
 git merge origin/<main>
-<fresh-install-command>   # the creating-worktrees skill checks the install resolves inside <fresh-path>
+<fresh-install-command>
 <full-ci-command-set>
 cd - && git worktree remove <fresh-path>
 ```
+
+Follow [creating-worktrees](../../git/creating-worktrees/SKILL.md) to install dependencies so they resolve inside `<fresh-path>` and not in the main checkout.
 
 Done when every head has passed the full CI command set in its own fresh worktree after merging current `<main>`, and `git worktree list` no longer shows those worktrees.
 
