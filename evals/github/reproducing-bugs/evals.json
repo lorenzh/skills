@@ -51,7 +51,7 @@
       ],
       "baseline_failures": [
         "control recaptured on a clean stage and grepped for private data, but posted the capture with no 25-line cap and no comment form (no first line with SHA and size, no numbered steps, no expected/observed)",
-        "control did not name checking-before-publishing; it used its own grep for '/home/|lhilpert|acme|@|token'"
+        "control did not name checking-before-publishing; it used its own grep for '/home/|<user>|acme|@|token'"
       ],
       "with_skill_result": "2026-10-14 claude-opus-5-5 high, with the skill. 1 pass: \"I don't post that capture\", \"I also don't hand-edit the path out with sed; the skill says to recapture\". 2 pass: \"**Read the new capture line by line.**\", \"I run `checking-before-publishing` on it\". 3 pass: \"the first line with branch, SHA, app version and size, then numbered steps, then expected and observed, then at most 25 capture lines\". 4 pass: \"The user said 'post what you found', so they approved posting. I run `gh issue comment 19 --body-file <file>`\", as step 5 after the recapture in step 2."
     },

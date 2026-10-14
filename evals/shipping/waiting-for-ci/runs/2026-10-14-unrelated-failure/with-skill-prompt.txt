@@ -1,6 +1,6 @@
 First line of your answer: `Model: <your model id>`.
 
-Read the skill at /tmp/claude-1004/-home-lhilpert-projects-skills/7274b08f-760a-4386-94b0-d51d506646a0/scratchpad/ci-eval/b/SKILL.md and follow it where it applies. Plan only: run no command, change nothing, answer from reasoning.
+Read the skill at <scratch>/ci-eval/b/SKILL.md and follow it where it applies. Plan only: run no command, change nothing, answer from reasoning.
 
 Task: The user says "check PR 50, CI fails". PR #50 in a GitHub repo changes only `AGENTS.md`. Its CI run has one failed job, `check`, which runs `bun run check` (lint, typecheck, a ~6-minute test suite of 3,300 tests, build). The other jobs passed. `gh run view <run-id> --log-failed` printed no lines, and `gh run view <run-id> --log` printed nothing either.
 

@@ -13,7 +13,11 @@
 //   or on a marketplace.json plugin entry (the commit SHA is the version); and, when
 //   .codex-plugin/plugin.json or .agents/plugins/marketplace.json exists: the other one missing,
 //   a Codex plugin name that differs from the Claude one, Codex "skills" neither "./skills/" nor
-//   covering every category, plugin name missing from the Codex marketplace.
+//   covering every category, plugin name missing from the Codex marketplace; a local path in a
+//   file under skills/ or evals/ (/home/<name>, /Users/<name>, <drive>:\Users\<name>, a
+//   /tmp/claude-<uid>/-… scratchpad; ASCII names of letters, digits, ".", "_", "-" only);
+//   allowed: placeholders such as /home/<user>, the exact fake fixture names in FIXTURE_NAMES,
+//   and the gitignored evals/**/results/ folders, which are not read.
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger, not third person, or still holding the
 //   template's TODO, reference not linked from SKILL.md, skill folder without SKILL.md.
@@ -29,7 +33,12 @@ Validates skills/<category>/<name>/SKILL.md: layout, frontmatter, name rules, de
 quality, that relative markdown links in skills, AGENTS.md and README.md resolve,
 that .claude-plugin/plugin.json and marketplace.json match the skill categories, and that
 .codex-plugin/plugin.json and .agents/plugins/marketplace.json exist together, use the Claude
-plugin name, cover every skill category ("./skills/" or one entry per category) and list the plugin.
+plugin name, cover every skill category ("./skills/" or one entry per category) and list the plugin, and
+that no file under skills/ or evals/ (except evals/**/results/) holds a home path
+(/home/<name>, /Users/<name>, C:\\Users\\<name>) or a /tmp/claude-<uid>/-… scratchpad path.
+It covers ASCII names of letters, digits, ".", "_" and "-" only.
+Placeholders like /home/<user> pass, and so do these exact fake fixture names: jdoe,
+jdoe-noreply, alice, alice.meyer, user, user-admin, runner.dev.
 
 Exit 0  no errors (warnings may still be printed)
 Exit 1  at least one error`);
@@ -195,6 +204,18 @@ if (fs.existsSync(evalsDir)) {
     }
   }
 }
+
+// Local paths leak a username or session id into a public repo; the listed names are fixture fakes.
+const FIXTURE_NAMES = "jdoe|jdoe-noreply|alice|alice\\.meyer|user|user-admin|runner\\.dev";
+const LOCAL_PATH = new RegExp(
+  String.raw`(?:/(?:home|Users)/|\b[A-Za-z]:\\+[Uu][Ss][Ee][Rr][Ss]\\+)(?!(?:${FIXTURE_NAMES})(?![\w.-]))[\w.-]+|/tmp/claude-\d+/-`,
+);
+for (const dir of [skillsDir, evalsDir].filter(fs.existsSync))
+  for (const file of walkFiles(dir)) {
+    if (/^evals\/(?:.*\/)?results\//.test(rel(file))) continue; // gitignored eval run output
+    const hit = fs.readFileSync(file, "utf8").match(LOCAL_PATH);
+    if (hit) errors.push(`${rel(file)}: local path "${hit[0]}"; use a placeholder like <scratch> or /home/<user>`);
+  }
 
 // Claude plugin manifests: the plugin's skill scan is not recursive, so each category needs an entry.
 const pluginDir = path.join(repoRoot, ".claude-plugin");
