@@ -1,6 +1,6 @@
 ---
 name: filing-issues
-description: Files one well-formed GitHub issue: duplicate check, claims verified against the default branch, acceptance criteria, milestone, labels and cross-links. Use when the user asks to "file an issue", "open an issue for this", "write this up as an issue", "create a ticket for this idea", or wants a bug, idea or follow-up from the current session recorded in a GitHub repo.
+description: "GitHub issue filing workflow. Use when the user asks to 'file an issue', 'open an issue for this', 'write this up as an issue', 'create a ticket for this idea', or wants a bug, idea or follow-up from the current session recorded in a GitHub repo."
 ---
 
 # Filing issues
@@ -17,6 +17,7 @@ Run in the repo's checkout. Search open and closed issues with the words a repor
 
 ```bash
 gh issue list --state all --search '<keywords>' --limit 20 --json number,title,state
+gh issue list --state all --limit 20 --json title   # recent titles, for the title style in step 3
 ```
 
 Read every hit that looks close. A match that fully covers the idea ends the task: report its number and file nothing. A partial match becomes a "Related issues" entry in the new issue.
@@ -37,7 +38,7 @@ git grep -n '<symbol>' "origin/$main"
 - A data claim (a field in a log, a transcript or an API reply) quotes one observed value, copied from the file or reply. A field seen once is "seen in one sample", not "always present".
 - A claim about behaviour is checked by running the command or reading the code path, and the issue says which.
 
-Done when every statement in the draft facts list has a `path:line` or a quoted value next to it, or sits under "Open questions".
+Done when every statement in the Data section of the draft has a `path:line` or a quoted value next to it, or sits under "Open questions".
 
 ## 3. Write the body to a private file
 
@@ -70,9 +71,9 @@ What the user or caller sees after the change.
 
 Acceptance items are things a reviewer can check by running or reading, not "works well". An issue without acceptance items cannot be closed with confidence.
 
-The title follows Conventional Commits and describes the result: `feat:`, `fix:`, `chore:`, `ci:`, `refactor:` or `docs:`, imperative, lower case, no period.
+The title describes the result in the style of the recent titles from step 1. When those use Conventional Commits, use a type prefix (`feat:`, `fix:`, `chore:`, `ci:`, `refactor:` or `docs:`), imperative, lower case, no period.
 
-Done when the private file holds the sections above, and the title is one line with a type prefix.
+Done when the private file holds the sections above, and the title is one line in the repo's title style.
 
 ## 4. Keep private data out
 
@@ -104,7 +105,7 @@ Omit `-F milestone` when no milestone fits. Take the issue number and `html_url`
 The milestone API can lag a few seconds. Re-read before reporting:
 
 ```bash
-gh api repos/{owner}/{repo}/issues/<n> --jq '{url: .html_url, milestone: .milestone.title, labels: [.labels[].name]}'
+gh api repos/{owner}/{repo}/issues/<n> --jq '{url: .html_url, title: .title, milestone: .milestone.title, labels: [.labels[].name]}'
 ```
 
 Done when the re-read shows the title, the milestone (or none, on purpose) and the labels you set.
@@ -125,4 +126,4 @@ Done when each related issue has one comment naming the new number, and the new 
 
 Reply with the issue URL, the title, the milestone and labels that were set (or why none), the issues commented on, and the open questions left for the user. Do not paste the whole body back.
 
-Done when the reply holds the URL and each item set, and nothing else on GitHub changed.
+Done when the reply holds the URL and each item set, and the reply lists every gh api write this run made, and it holds only the create, the labels call and the step-6 comments.
