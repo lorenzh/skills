@@ -77,6 +77,21 @@ claude plugin update lorenzh@lorenzh-skills
 
 Then run `/reload-plugins` or start a new session.
 
+### Install as a Codex plugin
+
+With the Codex CLI, add this repo as a plugin marketplace, then install the `lorenzh` plugin. It holds all skills:
+
+```bash
+codex plugin marketplace add lorenzh/skills
+codex plugin add lorenzh@lorenzh-skills
+```
+
+Install either the plugin or the skills through `npx skills add`, not both; otherwise Codex loads every skill twice (bare and as `lorenzh:<name>`).
+
+To use a local clone, run `codex plugin marketplace add ./` in the clone. The install copies the whole checkout, so run it from a clean clone.
+
+Tested with codex-cli 0.162.1.
+
 ## Requirements per skill
 
 | Skill | Needs |

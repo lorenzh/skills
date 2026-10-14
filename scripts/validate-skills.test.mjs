@@ -265,3 +265,44 @@ test('reports invalid plugin JSON', (t) => {
   assert.equal(r.status, 1);
   assert.match(r.stdout, /plugin\.json: invalid JSON/);
 });
+
+function codexFixture(t, plugin = {}, market = {}) {
+  const f = pluginFixture(t);
+  f.write('.codex-plugin/plugin.json', JSON.stringify({ name: 'lorenzh', version: '0.1.0', skills: './skills/', ...plugin }));
+  f.write('.agents/plugins/marketplace.json', JSON.stringify({ name: 'lorenzh-skills', plugins: [{ name: 'lorenzh', source: { source: 'local', path: './' } }], ...market }));
+  return f;
+}
+
+for (const [label, skills] of [['root folder', './skills/'], ['every category', ['./skills/agents', './skills/terminal']]]) {
+  test(`accepts Codex manifests listing ${label}`, (t) => {
+    const r = codexFixture(t, { skills }).run();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  });
+}
+
+test('Codex plugin.json skills must cover every category', (t) => {
+  const r = codexFixture(t, { skills: ['./skills/agents'] }).run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /\.codex-plugin\/plugin\.json: "skills" .*missing \.\/skills\/terminal/);
+});
+
+test('Codex marketplace must list the plugin', (t) => {
+  const r = codexFixture(t, {}, { plugins: [{ name: 'other', source: { source: 'local', path: './' } }] }).run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /marketplace\.json: no plugin entry named "lorenzh"/);
+});
+
+test('Codex plugin name must equal the Claude plugin name', (t) => {
+  const r = codexFixture(t, { name: 'other' }, { plugins: [{ name: 'other', source: { source: 'local', path: './' } }] }).run();
+  assert.doesNotMatch(r.stdout, /no plugin entry/);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /name "other" differs/);
+});
+
+test('reports a missing Codex marketplace once the Codex manifest exists', (t) => {
+  const f = codexFixture(t);
+  fs.rmSync(path.join(f.root, '.agents'), { recursive: true });
+  const r = f.run();
+  assert.equal(r.status, 1);
+  assert.ok(r.stdout.includes('.agents/plugins/marketplace.json: missing'), r.stdout);
+});

@@ -10,7 +10,10 @@
 //   plugin.json "skills" not equal to the category folders that hold skills,
 //   plugin name missing from marketplace.json, a plugin or marketplace name
 //   starting with "claude-", "anthropic-" or "cc-plugin-", a "version" in plugin.json
-//   or on a marketplace.json plugin entry (the commit SHA is the version).
+//   or on a marketplace.json plugin entry (the commit SHA is the version); and, when
+//   .codex-plugin/plugin.json or .agents/plugins/marketplace.json exists: the other one missing,
+//   a Codex plugin name that differs from the Claude one, Codex "skills" neither "./skills/" nor
+//   covering every category, plugin name missing from the Codex marketplace.
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger, not third person, or still holding the
 //   template's TODO, reference not linked from SKILL.md, skill folder without SKILL.md.
@@ -24,7 +27,9 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
 
 Validates skills/<category>/<name>/SKILL.md: layout, frontmatter, name rules, description
 quality, that relative markdown links in skills, AGENTS.md and README.md resolve,
-and that .claude-plugin/plugin.json and marketplace.json match the skill categories.
+that .claude-plugin/plugin.json and marketplace.json match the skill categories, and that
+.codex-plugin/plugin.json and .agents/plugins/marketplace.json exist together, use the Claude
+plugin name, cover every skill category ("./skills/" or one entry per category) and list the plugin.
 
 Exit 0  no errors (warnings may still be printed)
 Exit 1  at least one error`);
@@ -239,6 +244,31 @@ if (market) {
   }
   if (plugin && !entries.some((entry) => entry?.name === plugin.name))
     errors.push(`${rel(marketFile)}: no plugin entry named "${plugin.name}" (the name in plugin.json)`);
+}
+
+// Codex plugin manifests: Codex scans "./skills/" recursively, so one root entry covers every category.
+const codexPluginFile = path.join(repoRoot, ".codex-plugin", "plugin.json");
+const codexMarketFile = path.join(repoRoot, ".agents", "plugins", "marketplace.json");
+if ([codexPluginFile, codexMarketFile].some(fs.existsSync))
+  for (const file of [codexPluginFile, codexMarketFile]) if (!fs.existsSync(file)) errors.push(`${rel(file)}: missing`);
+const codexPlugin = readJson(codexPluginFile);
+const codexMarket = readJson(codexMarketFile);
+if (codexPlugin) {
+  checkName(codexPluginFile, "plugin", codexPlugin.name);
+  if (plugin && codexPlugin.name !== plugin.name)
+    errors.push(`${rel(codexPluginFile)}: name "${codexPlugin.name}" differs from ${rel(pluginFile)} name "${plugin.name}"`);
+  const listed = (Array.isArray(codexPlugin.skills) ? codexPlugin.skills : [codexPlugin.skills ?? ""]).map((s) =>
+    path.posix.normalize(String(s)).replace(/\/$/, ""),
+  );
+  const missing = listed.includes("skills") ? [] : [...skillCategories].filter((c) => !listed.includes(`skills/${c}`));
+  if (missing.length)
+    errors.push(`${rel(codexPluginFile)}: "skills" must be "./skills/" or list every category; missing ${missing.map((c) => `./skills/${c}`).join(", ")}`);
+}
+if (codexMarket) {
+  checkName(codexMarketFile, "marketplace", codexMarket.name);
+  const entries = Array.isArray(codexMarket.plugins) ? codexMarket.plugins : [];
+  if (codexPlugin && !entries.some((entry) => entry?.name === codexPlugin.name))
+    errors.push(`${rel(codexMarketFile)}: no plugin entry named "${codexPlugin.name}" (the name in .codex-plugin/plugin.json)`);
 }
 
 for (const w of warnings) console.log(`WARN  ${w}`);
