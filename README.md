@@ -20,7 +20,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | video | [editing-videos](skills/video/editing-videos/SKILL.md) | Crops, zooms and captions recordings into per-beat clips, joins them with crossfades, and exports square, vertical or landscape MP4s with ffmpeg. |
 | shipping | [cutting-releases](skills/shipping/cutting-releases/SKILL.md) | Takes a release from version bump through tag, workflow and registry to a back-merge into main and a verified installed version, following the project's release document. |
 | shipping | [retargeting-stacked-prs](skills/shipping/retargeting-stacked-prs/SKILL.md) | Retargets stacked pull requests onto main after their base merges, gets CI to run on them again, and merges the stack in order. |
-| shipping | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | Waits on CI runs, PR checks, registries and background processes with commands that end on their own, bounded polls, and state checks instead of guesses. |
+| shipping | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | Waits on CI runs, PR checks, registries and background processes with commands that end on their own, bounded polls, state checks instead of guesses, and a diagnosis for failed checks. |
 | shipping | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | Merges a batch of PRs that edit the same lines one at a time, updating each from main right before its merge, with the user's OK for every merge. |
 | github | [triaging-issues](skills/github/triaging-issues/SKILL.md) | Checks every open issue against the current code with cited evidence, plus milestone fit, type labels, priority and ordering conflicts; reports one table and changes nothing on GitHub until the user approves. |
 
