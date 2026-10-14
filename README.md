@@ -19,10 +19,11 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | agents | [suggesting-skills](skills/agents/suggesting-skills/SKILL.md) | Reviews the current session for repeated workflows and hard-won fixes, checks them against existing skills, and offers a ranked list of new skills or updates. Creates nothing without consent. |
 | video | [editing-videos](skills/video/editing-videos/SKILL.md) | Crops, zooms and captions recordings into per-beat clips, joins them with crossfades, and exports square, vertical or landscape MP4s with ffmpeg. |
 | shipping | [cutting-releases](skills/shipping/cutting-releases/SKILL.md) | Takes a release from version bump through tag, workflow and registry to a back-merge into main and a verified installed version, following the project's release document. |
-| shipping | [retargeting-stacked-prs](skills/shipping/retargeting-stacked-prs/SKILL.md) | Retargets stacked pull requests onto main after their base merges, gets CI to run on them again, and merges the stack in order. |
-| shipping | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | Waits on CI runs, PR checks, registries and background processes with commands that end on their own, bounded polls, and state checks instead of guesses. |
+| shipping | [retargeting-stacked-prs](skills/shipping/retargeting-stacked-prs/SKILL.md) | Checks whether a PR stack is ready, merges it as a native GitHub stack or retargets each PR onto main after its base merges, and gets fresh CI on every head. |
+| shipping | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | Waits on CI runs, PR checks, registries and background processes with commands that end on their own, bounded polls, state checks instead of guesses, and a diagnosis for failed checks. |
 | shipping | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | Merges a batch of PRs that edit the same lines one at a time, updating each from main right before its merge, with the user's OK for every merge. |
 | github | [triaging-issues](skills/github/triaging-issues/SKILL.md) | Checks every open issue against the current code with cited evidence, plus milestone fit, type labels, priority and ordering conflicts; reports one table and changes nothing on GitHub until the user approves. |
+| github | [reproducing-bugs](skills/github/reproducing-bugs/SKILL.md) | Reproduces reported bugs of terminal apps in a real run on a clean checkout of the default branch, judges only text the app drew, and records reproduced, not reproduced or not run in the issue after a privacy check. |
 | github | [planning-milestones](skills/github/planning-milestones/SKILL.md) | Plans which open issue ships in which release: groups by shared files and dependencies, orders by severity, spreads count and size evenly, marks owner-blocked items, and applies milestones only after the owner approves one table. |
 
 ## Install
@@ -65,6 +66,15 @@ In Claude Code, add this repo as a plugin marketplace, then install the `lorenzh
 
 In Claude Desktop, open the Code tab, choose "+" > Plugins > Add plugin and enter `lorenzh/skills`.
 
+The plugin has no version number: each commit on `main` is a new version. Claude Code does not update third-party marketplaces on its own. Turn on auto-update for `lorenzh-skills` under `/plugin` > Marketplaces, or update by hand:
+
+```bash
+claude plugin marketplace update lorenzh-skills
+claude plugin update lorenzh@lorenzh-skills
+```
+
+Then run `/reload-plugins` or start a new session.
+
 ## Requirements per skill
 
 | Skill | Needs |
@@ -80,10 +90,11 @@ In Claude Desktop, open the Code tab, choose "+" > Plugins > Add plugin and ente
 | suggesting-skills | Nothing. Creating a chosen skill uses a skill-authoring skill such as `writing-skills`. |
 | editing-videos | Node.js 18+ and `ffmpeg` with the `drawtext` and `xfade` filters (for example the BtbN static build; the johnvansickle 7.0.2 static build has no `drawtext`). |
 | cutting-releases | `gh`, `git`. Registry CLI for the package (for example `npm`). |
-| retargeting-stacked-prs | `gh`, `git`. |
+| retargeting-stacked-prs | `gh`, `git`. Optional for native GitHub stacks: the `gh stack` extension (`gh extension install github/gh-stack`). |
 | waiting-for-ci | `gh` for CI waits. |
 | landing-parallel-prs | `gh`, `git`. |
 | triaging-issues | `gh`, `git`. |
+| reproducing-bugs | `gh`, `git`, `tmux`, Node.js 18+; builds on `driving-terminal-apps`, `triaging-issues` and `checking-before-publishing`. |
 | planning-milestones | `gh`, `git`. Verdicts come from `triaging-issues`. |
 
 ## Layout

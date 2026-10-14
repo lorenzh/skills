@@ -55,6 +55,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | `shipping` |
 | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | `shipping` |
 | [triaging-issues](skills/github/triaging-issues/SKILL.md) | `github` |
+| [reproducing-bugs](skills/github/reproducing-bugs/SKILL.md) | `github` |
 | [planning-milestones](skills/github/planning-milestones/SKILL.md) | `github` |
 
 ## Conventions
@@ -67,6 +68,7 @@ No build and no dependencies — the deliverables are the skill folders.
 - Put eval scenarios and eval run output under `evals/<category>/<name>/`, outside the skill folder. Each eval folder must match a skill in the same category. `evals/**/results/` is gitignored.
 - Link every file in `references/` from `SKILL.md`; the validator fails on a link to a missing file.
 - Write skill scripts in Node ≥18 ESM (`.mjs`) or Python 3, standard library only. Repo tooling under `scripts/` stays Node. Name a skill's runtime in the README requirements table.
+- Leave `version` out of `.claude-plugin/plugin.json` and `marketplace.json`. The commit SHA is the plugin version, so every merge to main ships an update. Do not bump a version in PRs. `claude plugin validate --strict` flags the missing version; run it without `--strict`.
 - Before a commit that touches `skills/`, run `node scripts/validate-skills.mjs`; it must exit 0.
 
 ## Writing a skill
