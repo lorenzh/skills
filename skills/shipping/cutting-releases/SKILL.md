@@ -44,7 +44,7 @@ done
 timeout 60m gh run watch "$id" --exit-status
 ```
 
-If a job fails with a timeout or a network error, rerun it once with `gh run rerun <run-id> --failed`. A second failure, or any other error, is real: stop and report the failing step and its log.
+If a job fails, diagnose it with [waiting-for-ci step 5](../waiting-for-ci/SKILL.md#5-diagnose-a-failed-check) before you rerun or change anything.
 
 For waits that hang, time out or need another approach, see the `waiting-for-ci` skill.
 
