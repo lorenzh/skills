@@ -1,21 +1,19 @@
 ---
 name: reproducing-bugs
-description: Live reproduction of reported bugs in terminal apps (TUI, CLI, REPL, coding-agent mod) on a clean checkout of the default branch, with the finding recorded in the issue. Use when the user asks to "reproduce the bugs", "check whether this bug really happens", "verify the open bug issues in a real run", or wants triaged bug issues confirmed before a fix or a release.
+description: Live reproduction of reported bugs in terminal apps (TUI, CLI, REPL, coding-agent mod). Use when the user asks to "reproduce the bugs", "check whether this bug really happens", "verify the open bug issues in a real run", or wants triaged bug issues confirmed before a fix or a release.
 ---
 
 # Reproducing bugs
 
-Run a reported bug of a terminal app on a clean checkout of the default branch, through the real screen, and record reproduced, not reproduced or not run in the issue.
+Run a reported bug of a terminal app on a clean checkout of the default branch, through the real screen, and record reproduced, not reproduced, inconclusive or not run in the issue.
 
 **Only text the app drew counts as evidence, and one failed run never closes or downgrades an issue.** A run that matches a transcript quote, or that lost keys, reports a bug that is not there or hides one that is.
 
-Builds on [triaging-issues](../triaging-issues/SKILL.md) for verdicts and on `driving-terminal-apps` for every start, key, wait, capture and stop; its `references/screen-checks.md` and, for Claude Code mods, `references/claude-code.md` apply in full. This skill does not repeat them.
-
-A run finds what code reading cannot: a unit test kit can be green while focus landing, key timing or layout under the renderer is broken (a pinned list drew only every second row; only a live run showed it).
+Builds on [triaging-issues](../triaging-issues/SKILL.md) for verdicts and on `driving-terminal-apps` for every start, key, wait, capture and stop; for an app with a frame its `references/screen-checks.md` applies in full, and for Claude Code mods also `references/claude-code.md`. This skill does not repeat them.
 
 ## 1. Pick candidates
 
-Read each open issue with `gh issue view <n> --json number,title,body,comments,labels`. Take issues typed `bug` or with steps, whose triage verdict is `still valid` or `unclear`; run the triaging-issues steps first when no verdict exists. Order by priority and take at most about 10 per run.
+Read each open issue with `gh issue view <n> --json number,title,body,comments,labels`. Take issues typed `bug` or with steps, whose triage verdict is `still valid` or `unclear`; run the triaging-issues steps first when no verdict exists. Order by priority and take at most 10 per run (tunable default).
 
 Skip with a reason, recorded as `not run`:
 
@@ -47,26 +45,28 @@ Done when the worktree sits at the default branch SHA, dependencies are installe
 
 Use the `driving-terminal-apps` process with its own tmux socket per issue, named after the issue (`repro-<n>`).
 
-1. Turn the issue's steps into keys. After each action `wait` on text the app draws for that action; keep at least 0.2 s between redrawing keys. A key that was dropped looks like "bug not present", so a missing wait result is an inconclusive run, not a pass.
-2. Capture the start screen and the screen at the failing step with `cap`.
-3. Judge by the rules in `screen-checks.md`: check inside the app's own frame, and treat a label that only a transcript quotes as not drawn.
-4. Stop the server with `stop`, then check with a bracketed `pgrep` that no process of this run is left.
+1. Turn the issue's steps into keys and drive them per `driving-terminal-apps` step 4, with at least 0.2 s between redrawing keys. A dropped key looks like "bug not present", so a `wait` that never matched makes the run `inconclusive`, not a pass.
+2. Capture the start screen and the screen at the failing step with `cap`. For a highlight, focus or colour bug capture with `cap -e` (keeps ANSI attributes) and check the attribute on the expected row, not just the drawn text.
+3. Judge an app with a frame by `screen-checks.md`. For plain CLI or REPL output, `type` a unique marker (`echo repro-<n>-start`) before the command and judge only the output after it; there no frame is expected, so "no frame found" is not a setup error.
+4. Stop and clean up per `driving-terminal-apps` step 6.
 
 Use the user's real login only where the app under test requires it and the project's own live-check rules allow it. Never copy credentials and never print the environment.
 
-Done when the capture files exist, `stop` exited 0 and no process of the run is left.
+Done when the capture files exist and the Done-when of `driving-terminal-apps` step 6 holds.
 
-## 4. Climb the model ladder
+## 4. Confirm before not reproduced
 
-Run the first attempt with the cheap model the app's test rules name. When the result is inconclusive, escalate one model step and run again. Before reporting `not reproduced`, confirm with the next model or with a second run at the size or timing the issue names (slow typing, narrow terminal, big list).
+Before reporting `not reproduced`, confirm it. If the app calls a model, start with the cheap model its test rules name and escalate one step; otherwise confirm with a second run at the size or timing the issue names (slow typing, narrow terminal, big list).
+
+Rerun an inconclusive run. After 2 inconclusive runs (tunable default) the issue gets `inconclusive` with the reason (for example, the wait for `<text>` never matched); the verdict stays unchanged.
 
 A failed reproduction never closes an issue and never overrides a code reading that still shows the bug: it stays `still valid`, with the note that one live run did not show it.
 
-Done when each issue has `reproduced`, `not reproduced` after a confirming run, or `not run` with a reason.
+Done when each issue has `reproduced`, `not reproduced` after a confirming run, `inconclusive` with its reason, or `not run` with a reason.
 
 ## 5. Write the result per issue
 
-One row per issue: `# | result | steps | seen | expected | capture path | effect on verdict`. Reproduced moves `unclear` to `still valid`; not reproduced and not run leave the verdict as it was.
+One row per issue: `# | result | steps | seen | expected | capture path | effect on verdict`. Reproduced moves `unclear` to `still valid`; not reproduced, inconclusive and not run leave the verdict as it was.
 
 Done when every candidate has a row and every row names a capture file or the skip reason.
 
@@ -86,7 +86,9 @@ Observed: <one sentence>
 
 `Not reproduced on …` has the same first line and steps, then what was tried (models, sizes, timing) and what would help: an exact version, a terminal size, a file the app opens, a recording.
 
-Done when each comment has the first line, numbered steps, one sentence for expected and observed, and a capture of at most 25 lines or the tried-and-needed list.
+`Inconclusive on …` has the same first line and steps, then the reason (for example, the wait for `<text>` never matched in 2 runs) and what would help.
+
+Done when each comment has the first line, numbered steps, one sentence for expected and observed, and a capture of at most 25 lines, the tried-and-needed list, or the inconclusive reason.
 
 ## 7. Check, then post
 
@@ -94,6 +96,6 @@ Read every capture line by line. Remove home paths with user names, tokens, host
 
 Post with `gh issue comment <n> --body-file <file>` only when the user approved it, or when the calling workflow's rules allow comments. Otherwise return the comment files and ask.
 
-Finally remove the worktree: `git worktree remove .worktrees/repro-$sha`.
+Finally remove the worktree by its literal path, with the SHA from step 2 (the shell that set `sha` may be gone): `git worktree remove .worktrees/repro-<sha>`.
 
-Done when each posted comment shows in `gh issue view <n> --json comments` and the reply lists posted, held-for-approval and not-run issues.
+Done when each posted comment shows in `gh issue view <n> --json comments` the reply lists posted, held-for-approval and not-run issues, and `git worktree list` no longer shows repro-<sha>.
