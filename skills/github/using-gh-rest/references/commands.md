@@ -2,30 +2,28 @@
 
 Every row is one `gh api` call. `{owner}` and `{repo}` expand in a git checkout. `<n>` is the issue or PR number. `-F` sends typed values and `@file` contents; `-f` sends strings. Add `--jq '<expr>'` to print one value. Add `--paginate` to a list call that may exceed 30 items.
 
-Calls marked "read" were run against public repos. Calls marked "write" were not run: no throwaway repo was available. Their syntax follows the REST docs and `gh api --help`.
-
-| Task | Command | Kind |
-|---|---|---|
-| Read an issue | `gh api repos/{owner}/{repo}/issues/<n> --jq '[.title,.state,.body]\|@tsv'` | read |
-| Read its comments | `gh api --paginate repos/{owner}/{repo}/issues/<n>/comments --jq '.[]\|[.user.login,.body]\|@tsv'` | read |
-| Create an issue | `gh api repos/{owner}/{repo}/issues -f title='<t>' -F body=@"$f" -f 'labels[]=<l>' -F milestone=<number>` | write |
-| Add labels | `gh api repos/{owner}/{repo}/issues/<n>/labels -f 'labels[]=<l1>' -f 'labels[]=<l2>'` | write |
-| Replace all labels | `gh api -X PUT repos/{owner}/{repo}/issues/<n>/labels -f 'labels[]=<l>'` | write |
-| Remove one label | `gh api -X DELETE repos/{owner}/{repo}/issues/<n>/labels/<l>` | write |
-| List milestones (number and title) | `gh api 'repos/{owner}/{repo}/milestones?state=open' --jq '.[]\|[.number,.title]\|@tsv'` | read |
-| Set a milestone | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -F milestone=<number>` | write |
-| Clear a milestone | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -F milestone=null` | write |
-| Close as done | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -f state=closed -f state_reason=completed` | write |
-| Close as not planned | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -f state=closed -f state_reason=not_planned` | write |
-| Reopen | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -f state=open` | write |
-| Comment on an issue or PR | `gh api repos/{owner}/{repo}/issues/<n>/comments -F body=@"$f"` | write |
-| Create a PR | `gh api repos/{owner}/{repo}/pulls -f head=<branch> -f base=<base> -f title='<t>' -F body=@"$f"` | write |
-| Edit PR title or body | `gh api -X PATCH repos/{owner}/{repo}/pulls/<n> -f title='<t>' -F body=@"$f"` | write |
-| Retarget a PR (stacked) | `gh api -X PATCH repos/{owner}/{repo}/pulls/<n> -f base=<main>` | write |
-| Read PR base, head SHA, state | `gh api repos/{owner}/{repo}/pulls/<n> --jq '[.base.ref,.head.sha,.state,.merged]\|@tsv'` | read |
-| Read checks of a SHA | `gh api repos/{owner}/{repo}/commits/<sha>/check-runs --jq '.check_runs[]\|[.name,.status,.conclusion]\|@tsv'` | read |
-| Read combined status of a SHA | `gh api repos/{owner}/{repo}/commits/<sha>/status --jq .state` | read |
-| Squash merge with SHA guard | `gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge -f merge_method=squash -f sha=<head>` | write |
+| Task | Command |
+|---|---|
+| Read an issue | `gh api repos/{owner}/{repo}/issues/<n> --jq '[.title,.state,.body]\|@tsv'` |
+| Read its comments | `gh api --paginate repos/{owner}/{repo}/issues/<n>/comments --jq '.[]\|[.user.login,.body]\|@tsv'` |
+| Create an issue | `gh api repos/{owner}/{repo}/issues -f title='<t>' -F body=@"$f" -f 'labels[]=<l>' -F milestone=<number>` |
+| Add labels | `gh api repos/{owner}/{repo}/issues/<n>/labels -f 'labels[]=<l1>' -f 'labels[]=<l2>'` |
+| Replace all labels | `gh api -X PUT repos/{owner}/{repo}/issues/<n>/labels -f 'labels[]=<l>'` |
+| Remove one label | `gh api -X DELETE repos/{owner}/{repo}/issues/<n>/labels/<l>` |
+| List milestones (number and title) | `gh api 'repos/{owner}/{repo}/milestones?state=open' --jq '.[]\|[.number,.title]\|@tsv'` |
+| Set a milestone | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -F milestone=<number>` |
+| Clear a milestone | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -F milestone=null` |
+| Close as done | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -f state=closed -f state_reason=completed` |
+| Close as not planned | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -f state=closed -f state_reason=not_planned` |
+| Reopen | `gh api -X PATCH repos/{owner}/{repo}/issues/<n> -f state=open` |
+| Comment on an issue or PR | `gh api repos/{owner}/{repo}/issues/<n>/comments -F body=@"$f"` |
+| Create a PR | `gh api repos/{owner}/{repo}/pulls -f head=<branch> -f base=<base> -f title='<t>' -F body=@"$f"` |
+| Edit PR title or body | `gh api -X PATCH repos/{owner}/{repo}/pulls/<n> -f title='<t>' -F body=@"$f"` |
+| Retarget a PR (stacked) | `gh api -X PATCH repos/{owner}/{repo}/pulls/<n> -f base=<main>` |
+| Read PR base, head SHA, state | `gh api repos/{owner}/{repo}/pulls/<n> --jq '[.base.ref,.head.sha,.state,.merged]\|@tsv'` |
+| Read checks of a SHA | `gh api repos/{owner}/{repo}/commits/<sha>/check-runs --jq '.check_runs[]\|[.name,.status,.conclusion]\|@tsv'` |
+| Read combined status of a SHA | `gh api repos/{owner}/{repo}/commits/<sha>/status --jq .state` |
+| Squash merge with SHA guard | `gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge -f merge_method=squash -f sha=<head>` |
 
 ## Notes
 

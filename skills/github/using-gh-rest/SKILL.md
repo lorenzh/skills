@@ -1,11 +1,11 @@
 ---
 name: using-gh-rest
-description: GitHub REST fallback for gh commands that fail on repos with Projects (classic) data, plus the REST calls for milestones, state, PRs and guarded merges that gh has no flag for. Use when gh issue view, gh issue edit, gh pr view, gh pr edit or gh pr create fails with a GraphQL error naming projectCards, when the user asks to clear a milestone, close an issue as not planned, retarget a PR or merge only the commit that was approved, or when a milestone, closing keyword or check result on GitHub looks stale.
+description: GitHub REST fallback when gh porcelain fails with projectCards on repos with Projects (classic) data. Use when gh issue view, gh issue edit, gh pr view, gh pr edit or gh pr create fails with a GraphQL error naming projectCards or "Projects (classic) is being deprecated", or when a milestone, label or PR body written through gh api still reads the old value.
 ---
 
 # Using gh REST
 
-Do GitHub issue and pull request work through `gh api` when the porcelain commands fail or have no flag for the change.
+Do GitHub issue and pull request work through `gh api` when the porcelain commands fail with `projectCards`.
 
 **Switch to REST at the first `projectCards` error and read back every write.** A retry hits the same deprecated GraphQL field, and an unread write can report a state that GitHub has not reached yet.
 
@@ -24,10 +24,10 @@ Done when no `gh issue|pr view|edit|create` call that already failed with `proje
 Three rules decide most calls:
 
 - **`-F` sends typed values and files, `-f` sends strings.** Use `-F milestone=12`, `-F milestone=null` and `-F body=@file`; use `-f title='...'` and `-f 'labels[]=bug'`. `-f body=@file` would post the text `@file`.
-- **Clear a milestone with `-F milestone=null`.** `gh issue edit` has no `--remove-milestone`; a guessed flag fails and costs a round trip.
+- **Clear a milestone:** check `gh issue edit --help`; if it has no `--remove-milestone`, use `-F milestone=null`. A guessed flag fails and costs a round trip.
 - **A PR is also an issue.** Labels, milestone, state and comments of a PR go through `issues/<n>`; title, body, base and merge go through `pulls/<n>`.
 
-Read one value with `--jq`: `gh api repos/{owner}/{repo}/pulls/<n> --jq .head.sha`. Never print `gh auth token` or a raw header dump; a token in the transcript is a leak.
+Read one value with `--jq`: `gh api repos/{owner}/{repo}/pulls/<n> --jq .head.sha`.
 
 Done when the call is a `gh api` command from the table with `--jq` selecting only the value the next step needs.
 
@@ -51,7 +51,7 @@ State on GitHub lags for a few seconds after a write, the milestone most often. 
 gh api repos/{owner}/{repo}/issues/<n> --jq '[.state,.state_reason,.milestone.number,([.labels[].name]|join(","))]|@tsv'
 ```
 
-If the value is still the old one, wait 5 seconds and read again, up to three times; then report the mismatch instead of the change.
+If the value is still the old one, wait 5 seconds and read again, up to three times (both tunable defaults); then report the mismatch instead of the change.
 
 Done when each reported change comes from a read that came after the write.
 
@@ -61,42 +61,23 @@ After a push, the checks API still returns the previous head's runs for a short 
 
 ```bash
 pushed=$(git rev-parse HEAD)
-timeout 5m bash -c 'until [ "$(gh api repos/{owner}/{repo}/pulls/<n> --jq .head.sha)" = "'"$pushed"'" ]; do sleep 5; done'
-gh api repos/{owner}/{repo}/commits/$pushed/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv'
+timeout 5m bash -c 'until [ "$(gh api repos/{owner}/{repo}/pulls/<n> --jq .head.sha)" = "'"$pushed"'" ]; do sleep 5; done' \
+  || { echo "head never reached $pushed"; exit 1; }
+gh api --paginate repos/{owner}/{repo}/commits/$pushed/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv'
 ```
 
-Wait for `completed` on every run with the bounded loops in `waiting-for-ci`. The run list is empty until the workflow starts; an empty list is not a pass.
+`5m` and `sleep 5` are tunable defaults. Hand the wait for the runs to finish to `waiting-for-ci`. The run list is empty until the workflow starts; an empty list is not a pass.
 
-Done when every check line you report belongs to `$pushed` and shows `completed` with a conclusion.
+Done when every check line you report belongs to `$pushed` and every required check shows conclusion `success`.
 
-## 6. Merge with a SHA guard
+## 6. Merge with the SHA guard
 
-Merge only the commit the user approved and the checks passed. Name that SHA in the call, so a push after the approval makes the merge fail instead of landing unseen code:
+Run the merge as `landing-parallel-prs` describes it: the user's OK names the PR and its head SHA, and the merge names that SHA. When `gh pr merge` fails with `projectCards`, send the REST form. `$pushed` is the SHA checked in step 5 and named in the OK request:
 
 ```bash
-sha=$(gh api repos/{owner}/{repo}/pulls/<n> --jq .head.sha)
-gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge -f merge_method=squash -f sha="$sha"
+gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge -f merge_method=squash -f sha="$pushed"
 ```
 
-HTTP 409 means the head moved: go back to step 5 for the new head and ask for a new OK. `merge_method` is `merge`, `squash` or `rebase`; use the way the repo merges. The merge itself needs the user's OK; this skill supplies the call, not the permission.
+HTTP 409 means the head moved after the OK: the new head needs its own checks and its own OK. `merge_method` is `merge`, `squash` or `rebase`; use the way the repo merges.
 
-Done when the response shows `"merged": true` and `gh api repos/{owner}/{repo}/pulls/<n> --jq .merge_commit_sha` returns the SHA.
-
-## 7. Check what the merge was meant to close
-
-A closing keyword (`Closes #12`) closes an issue only when it is in the PR body or a commit message and the PR merges into the default branch. After the merge, read each issue the PR named:
-
-```bash
-gh api repos/{owner}/{repo}/issues/<n> --jq '[.state,.state_reason]|@tsv'
-```
-
-If it is still open, close it with a comment that names the PR; the body-file rule of step 3 applies to the comment:
-
-```bash
-gh api -X POST repos/{owner}/{repo}/issues/<n>/comments -F body=@"$f"
-gh api -X PATCH repos/{owner}/{repo}/issues/<n> -f state=closed -f state_reason=completed
-```
-
-Use `not_planned` for duplicates and obsolete issues.
-
-Done when every issue the PR was meant to close reads `closed` and the manual closes carry a comment that names the PR.
+Done when the response shows `"merged": true`.

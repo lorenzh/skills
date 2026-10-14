@@ -23,7 +23,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | shipping | [waiting-for-ci](skills/shipping/waiting-for-ci/SKILL.md) | Waits on CI runs, PR checks, registries and background processes with commands that end on their own, bounded polls, and state checks instead of guesses. |
 | shipping | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | Merges a batch of PRs that edit the same lines one at a time, updating each from main right before its merge, with the user's OK for every merge. |
 | github | [triaging-issues](skills/github/triaging-issues/SKILL.md) | Checks every open issue against the current code with cited evidence, plus milestone fit, type labels, priority and ordering conflicts; reports one table and changes nothing on GitHub until the user approves. |
-| github | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | Switches issue and PR work to `gh api` REST calls when gh fails on Projects (classic) data, and covers milestone clearing, closing reasons, retargeting and SHA-guarded squash merges, with read-back after each write. |
+| github | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | REST fallback when gh porcelain fails with `projectCards` on Projects (classic) data: `gh api` calls for issue and PR work, with a read-back after each write. |
 
 ## Install
 
