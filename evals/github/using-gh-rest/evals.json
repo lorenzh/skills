@@ -1,7 +1,46 @@
 {
   "skill_name": "using-gh-rest",
-  "note": "Plan-only prompts on fresh `claude -p --model claude-opus-5-5 --effort high --tools \"\" --disable-slash-commands` sessions in an empty folder; the prompt goes in on stdin; control without the skill, with-skill run gets SKILL.md and references/commands.md prepended. Grade from the answer text. The baseline failures come from one real long session on a repo with Projects (classic) data. Run 2026-10-14, one run each, same model: projectcards-switch control passed (gh api PATCH with -F body=@, labels via issues/12, read-back named), 28 s, $0.14; with skill passed, 26 s, $0.16. clear-milestone control passed (PATCH -F milestone=null, re-read .milestone), 27 s, $0.13; with skill passed, 24 s, $0.16. shared-body-file control passed (one file per PR, each body read back), 35 s, $0.15; with skill passed, 34 s, $0.18. These three were dropped because the control passes them. closing-keyword-check was dropped with step 7 (no baseline failure). guarded-merge: see results.",
+  "note": "Plan-only prompts on fresh `claude -p --model claude-opus-5-5 --effort high --tools \"\" --disable-slash-commands --output-format json` sessions in an empty folder; the prompt goes in on stdin; control without the skill, with-skill run gets SKILL.md and references/commands.md prepended. Grade from the answer text against the assertions. The baseline failures come from one real long session on a repo with Projects (classic) data. Run 2026-10-14 after the rescope: all five scenarios, one control and one with-skill run each, all ten launched in the same turn on the same model. Tokens are from the JSON usage: \"in\" sums input, cache-read and cache-creation tokens (about 245k of it is the cached default session context), \"out\" is output tokens. A scenario counts only when its control fails and the skill would load for its prompt; \"counts\" in each result says which ones do.",
   "evals": [
+    {
+      "id": "projectcards-switch",
+      "prompt": "`gh pr edit 12 --body-file body.md` just failed with: \"GraphQL: Projects (classic) is being deprecated in favor of the new Projects experience ... (repository.pullRequest.projectCards)\". Update the title and body of PR 12 and set label `bug` on it. Exact commands only; do not run them.",
+      "expected_output": "no second gh pr edit; PATCH repos/{owner}/{repo}/pulls/12 with -f title and -F body=@file; POST .../issues/12/labels with -f 'labels[]=bug'; reads the body back",
+      "assertions": [
+        "does not retry gh pr edit",
+        "uses gh api PATCH on pulls/12 with -F body=@<file>",
+        "sets the label through issues/12/labels",
+        "reads the body back after the edit"
+      ],
+      "source": "user session: gh pr edit retried three times on the same projectCards error",
+      "baseline_failures": [
+        "retried gh pr edit three times on the same GraphQL error"
+      ],
+      "results": {
+        "counts": true,
+        "control": "fail, 28 s, $0.10, 254189 in / 783 out tokens: PATCH pulls/12 with -F body=@body.md, POST issues/12/labels, no retry of gh pr edit, but no read-back of the body (assertion 4 fails). The 2026-10-14 control run before the rescope passed this scenario, so the baseline is 1 failure in 2 runs.",
+        "with_skill": "pass, 30 s, $0.17, 257670 in / 1138 out tokens: copies the body to $(mktemp -d)/pr-12.md, PATCH with -F body=@\"$f\", labels through issues/12/labels, 'gh api repos/{owner}/{repo}/pulls/12 --jq .body | diff - \"$f\" && echo same'"
+      }
+    },
+    {
+      "id": "clear-milestone",
+      "prompt": "Issue 40 is in milestone v0.6 and must have no milestone. `gh issue edit` is failing with a projectCards GraphQL error on this repo. Exact commands only; do not run them.",
+      "expected_output": "gh api -X PATCH repos/{owner}/{repo}/issues/40 -F milestone=null, then a re-read of .milestone",
+      "assertions": [
+        "does not use --remove-milestone",
+        "sends milestone=null with -F through PATCH on issues/40",
+        "re-reads the milestone before reporting it cleared"
+      ],
+      "source": "user session: used a nonexistent --remove-milestone flag",
+      "baseline_failures": [
+        "used a nonexistent --remove-milestone flag"
+      ],
+      "results": {
+        "counts": false,
+        "control": "pass, 25 s, $0.09, 254147 in / 550 out tokens: 'gh api -X PATCH repos/{owner}/{repo}/issues/40 -F milestone=null', then reads .milestone back",
+        "with_skill": "pass, 26 s, $0.16, 257628 in / 702 out tokens: same PATCH, read-back loop of three tries 5 s apart"
+      }
+    },
     {
       "id": "guarded-merge",
       "prompt": "PR 12 is approved at head abc1234. I pushed one more commit a minute ago. Wait for its checks and squash merge it. `gh pr view` fails with a projectCards error here. Exact commands only; do not run them.",
@@ -18,8 +57,45 @@
         "polled checks of the previous head"
       ],
       "results": {
-        "control": "fail, 35 s, $0.15: reads head with gh pr view --json and tells the user to eyeball that it is not abc1234 (no comparison with the pushed SHA, no wait); gh pr checks --watch; gh pr merge --match-head-commit; no handling of a refused merge or moved head (assertion 4 fails, assertion 1 partial)",
-        "with_skill": "pass, 40 s, $0.19: waits until .head.sha equals git rev-parse HEAD, reads check-runs of $pushed with --paginate, merges with -f sha=\"$pushed\", 'HTTP 409 means the head moved again. Start over at step 1.'"
+        "counts": true,
+        "control": "fail, 31 s, $0.10, 254156 in / 1095 out tokens: reads .head.sha once and tells the user to check by eye that it is not abc1234 (no comparison with the pushed SHA, no wait; assertion 1 fails); gh pr checks 12 --watch reads the PR's current head, not a pinned SHA (assertion 2 fails); gh pr merge --match-head-commit \"$HEAD\" (assertion 3 passes); no handling of a refused merge or moved head (assertion 4 fails)",
+        "with_skill": "pass, 36 s, $0.19, 257637 in / 1952 out tokens: waits until .head.sha equals git rev-parse HEAD, reads check-runs of $pushed with --paginate, 'gh api -X PUT repos/{owner}/{repo}/pulls/12/merge -f merge_method=squash -f sha=\"$pushed\"', 'HTTP 409 means the head moved again. That new head needs its own checks and your OK, so go back to step 1.'"
+      }
+    },
+    {
+      "id": "shared-body-file",
+      "prompt": "I have PR 31 (closes #28) and PR 32 (closes #29). Write the body of each and update both PRs. `gh pr edit` fails with projectCards here. Exact commands only; do not run them.",
+      "expected_output": "one private body file per PR; -F body=@<file> for each; reads each body back and diffs against its file",
+      "assertions": [
+        "uses a separate body file for each PR",
+        "reads each body back after the edit"
+      ],
+      "source": "user session: a shared body.md overwrote another PR's body and would have closed two issues wrongly",
+      "baseline_failures": [
+        "edited a PR body from a shared temp file"
+      ],
+      "results": {
+        "counts": false,
+        "control": "pass, 33 s, $0.11, 254150 in / 1413 out tokens: /tmp/pr31-body.md and /tmp/pr32-body.md, PATCH each with -F body=@, reads both bodies back with --jq .body",
+        "with_skill": "pass, 36 s, $0.18, 257631 in / 1727 out tokens: one mktemp file per PR, PATCH with -F body=@, diffs each body against its own file"
+      }
+    },
+    {
+      "id": "closing-keyword-check",
+      "prompt": "PR 45 body says \"Closes #44\" and it just merged into main. Report that #44 is closed and set its milestone to v0.7. Exact commands only; do not run them.",
+      "expected_output": "reads issues/44 state after the merge; closes it with a comment naming PR 45 if still open; sets milestone by number from the milestones list; re-reads the milestone before reporting",
+      "assertions": [
+        "verifies the state of #44 instead of assuming the keyword closed it",
+        "sets the milestone by number found in the milestones list",
+        "re-reads the milestone before reporting it applied"
+      ],
+      "source": "user session: closing keyword missing from the PR body; milestone API lagged after a write",
+      "baseline_failures": [],
+      "results": {
+        "counts": false,
+        "control": "fail, 26 s, $0.14, 254138 in / 666 out tokens: checks state with gh issue view 44 --json state,stateReason (assertion 1 passes); sets the milestone with gh issue edit 44 --milestone v0.7 by title (assertion 2 fails) and does not read it back (assertion 3 fails)",
+        "with_skill": "pass, 32 s, $0.18, 257619 in / 1376 out tokens: reads issues/44 state up to three times, finds the v0.7 number in milestones?state=all, PATCH -F milestone=\"$m\", reads the milestone back",
+        "why_not_counted": "the prompt has no projectCards error, so the rescoped description does not load the skill; assertion 2 only matters under REST. The skill no longer has a closing-keyword step."
       }
     }
   ]

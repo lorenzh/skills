@@ -1,6 +1,6 @@
 ---
 name: using-gh-rest
-description: GitHub REST fallback when gh porcelain fails with projectCards on repos with Projects (classic) data. Use when gh issue view, gh issue edit, gh pr view, gh pr edit or gh pr create fails with a GraphQL error naming projectCards or "Projects (classic) is being deprecated", or when a milestone, label or PR body written through gh api still reads the old value.
+description: GitHub REST fallback when gh porcelain fails with projectCards on repos with Projects (classic) data. Use when gh issue view, gh issue edit, gh pr view, gh pr edit or gh pr create fails with a GraphQL error naming projectCards or "Projects (classic) is being deprecated".
 ---
 
 # Using gh REST
