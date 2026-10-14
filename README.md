@@ -73,9 +73,11 @@ codex plugin marketplace add lorenzh/skills
 codex plugin add lorenzh@lorenzh-skills
 ```
 
-The `lorenzh/skills` GitHub form is unverified until the Codex files are on `main`. To use a local clone, run `codex plugin marketplace add ./` in the clone instead.
+Install either the plugin or the skills through `npx skills add`, not both; otherwise Codex loads every skill twice (bare and as `lorenzh:<name>`).
 
-Verified with codex-cli 0.162.1 on a local clone, with an empty `CODEX_HOME`. `codex plugin marketplace add ./`, `codex plugin add lorenzh@lorenzh-skills` and `codex debug prompt-input` each exited 0. The prompt input listed all 15 skills as `lorenzh:<skill>`, so Codex finds the nested `skills/<category>/<name>/` folders from `"skills": "./skills/"`: checking-before-publishing, competing-implementations, creating-worktrees, cutting-releases, directing-videos, driving-terminal-apps, editing-videos, landing-parallel-prs, listing-a-project, researching-with-two-models, retargeting-stacked-prs, reviewing-across-families, suggesting-skills, triaging-issues, waiting-for-ci.
+To use a local clone, run `codex plugin marketplace add ./` in the clone. The install copies the whole checkout, so run it from a clean clone.
+
+Tested with codex-cli 0.162.1.
 
 ## Requirements per skill
 
