@@ -1,45 +1,57 @@
 {
   "skill_name": "planning-milestones",
-  "note": "Plan-only prompts on fresh `claude -p --model haiku --tools \"\" --disable-slash-commands` sessions in an empty folder; the prompt goes in on stdin; control without the skill, with-skill run gets SKILL.md prepended. Grade from the answer text. One baseline run (haiku, 2026-10-13) exists for spread-evenly. The failures listed under pick-next-patch come from a real session with a larger model and were not rerun here. No with-skill run is recorded yet.",
+  "note": "Plan-only prompts on fresh `claude -p --model claude-opus-5-5 --effort high --tools \"\" --disable-slash-commands` sessions in an empty folder; the prompt goes in on stdin. Control without the skill; the with-skill run gets this SKILL.md and triaging-issues' SKILL.md (the skill its step 1 points to) prepended. Grade from the answer text. Runs 2026-10-14 (claude-opus-5-5, effort high): spread-evenly and pick-next-patch fail in the control and pass with the skill. near-miss-triage is a trigger test: the model sees both skill descriptions and names the one it loads (TRIAGE_DESC and PLAN_DESC in the prompt are replaced by the frontmatter descriptions); control uses the description without the closing negative trigger, the with-skill run the current one. Both picked triaging-issues in 3 of 3 runs, so it stays as a regression guard, not as a separating scenario.",
   "evals": [
     {
       "id": "spread-evenly",
       "prompt": "Repo lorenzh/demo. Open milestones: v0.7 (due 2026-11-01, \"bug fixes and polish\"), v0.8 (due 2026-12-01, \"new sources\"), v0.9 (due 2027-01-15, \"layout rework\"). All 12 issues below are open and in no milestone. Spread them over v0.7, v0.8 and v0.9 so that they fit together best. Plan only: give your answer and the exact gh commands you would run. Do not run anything.\n\n#1 Crash when prices.csv is missing (hooks/prices.ts, S)\n#2 Pane flickers on resize (hooks/ui/pane.tsx, M)\n#3 Add cron source (hooks/sources/crons.ts, M)\n#4 Show cron next run in band (hooks/ui/band.tsx, S) - blocked by #3\n#5 New pane layout with split columns (hooks/ui/pane.tsx, hooks/ui/render.tsx, L)\n#6 Fix off-by-one in cost sum (hooks/prices.ts, S)\n#7 Add workflows source (hooks/sources/workflows.ts, M)\n#8 Export history as JSON (hooks/export.ts, M)\n#9 Windows path handling in worktrees source (hooks/sources/worktrees.ts, S) - agent has only Linux, cannot test\n#10 Rename the rabe.worktrees key (hooks/sources/worktrees.ts, S) - owner has not decided the name\n#11 Pane header spacing (hooks/ui/pane.tsx, S)\n#12 Theme colors for the new layout (hooks/ui/cells/palette.ts, S) - after #5",
-      "expected_output": "issues #9 (needs Windows, cannot be tested) and #10 (name undecided) are marked blocked on owner and not counted; #4 after #3 and #12 after #5 sit in the same or a later milestone; #5 (the layout rework) is in the last milestone; count and S/M/L size are reported per milestone; one table with issue, milestone, reason, depends on; an approval question before any gh command; apply by milestone number via the REST API and re-read afterwards",
+      "expected_output": "issues #9 (needs Windows, cannot be tested) and #10 (name undecided) are marked blocked on owner and not counted; #4 after #3 and #12 after #5 sit in the same or a later milestone; #5 (the layout rework) is in the last milestone; count and S/M/L size are reported per milestone; one table with issue, milestone, reason, depends on; an approval question before any gh command; each move is re-read until it shows the new milestone",
       "assertions": [
         "#9 and #10 are marked blocked on owner and are not counted in any milestone's count or size",
         "every dependency sits in the same or an earlier milestone than the issue that needs it",
         "count and size are reported for each milestone",
         "the answer is one table (issue, milestone, reason, depends on) and a question for approval before any change",
-        "the apply commands use milestone numbers through the REST API and are followed by a re-read"
+        "every apply command is followed by a re-read that confirms the new milestone"
       ],
       "source": "user request: spread open issues over the upcoming minors so that they fit together best",
       "baseline_failures": [
-        "control placed #9 (cannot be tested on this platform) and #10 (name undecided) into milestones as ordinary work and noted the block only as an open point",
-        "control reported no count or size per milestone (3, 5 and 4 issues, sizes not summed)",
-        "control gave a table and gh commands in one answer with no approval question",
-        "control applied by milestone title with `gh issue edit --milestone` and named no re-read of the result"
-      ]
+        "control put #9 into v0.7 and #10 into v0.8 as ordinary work and noted only: \"#10: the owner has to choose the new key name before v0.8 starts\" and \"#9: the agent only has Linux, so the issue needs a Windows tester\"",
+        "control gave one row per milestone (\"v0.7 bug fixes and polish | #1, #6, #2, #9\"), no per-issue table with a depends-on column, and no count or size per milestone",
+        "control ended on `gh issue edit` commands with no approval question",
+        "control named no re-read of the result after the edits"
+      ],
+      "with_skill_result": "2026-10-14 claude-opus-5-5 with the skill: pass on all assertions. #9 and #10 blocked on owner and left out of the counts; #4 with #3 in v0.8, #12 with #5 in v0.9; #2 and #11 in v0.7 before the #5 rewrite; #8 reported as `unassigned: no milestone fits`; per-milestone lines `v0.7: 4 issues (3 S, 1 M)`; one question before any edit; `gh issue edit --milestone` with the REST fallback and a re-read loop. Weak spot: its re-read loop stops on the first successful read, not on the new milestone."
     },
     {
       "id": "pick-next-patch",
-      "prompt": "Repo lorenzh/demo has 9 open issues of verdict still valid and two open milestones, v0.7.1 (patch, due in 2 weeks) and v0.8 (due in 6 weeks). I want the next patch to be about crashes and data loss. Pick what goes into v0.7.1 and what into v0.8. Plan only: say what you would read, what you would answer and the exact commands you would run. Do not run anything.",
-      "expected_output": "reads open issues, milestones with descriptions and due dates; takes verdicts from triaging-issues rather than redoing them; groups by shared files and dependencies; crash and data-loss bugs first in v0.7.1; one table and an approval question; no gh change before approval; never closes an issue",
+      "prompt": "Repo lorenzh/demo has 9 open issues, all of verdict still valid from a fresh triage, and two open milestones: v0.7.1 (patch, due in 2 weeks, description \"crash and data-loss fixes only\") and v0.8 (due in 6 weeks, description \"features and polish\"). No issue is in a milestone yet. I want the next patch to be about crashes and data loss. Pick what goes into v0.7.1 and what into v0.8. Plan only: say what you would read, what you would answer and the exact commands you would run. Do not run anything.\n\n#31 Crash on start when config.toml is empty (src/config.ts, S)\n#32 History file truncated when two sessions write at once (src/history.ts, M)\n#33 Typo in --help output (src/cli.ts, S)\n#34 Export history as JSON (src/history.ts, M)\n#35 Crash when the network drops during sync (src/sync.ts, S)\n#36 Show history size in the status bar (src/ui/status.ts, S) - after #34\n#37 Crash on macOS when the keychain is locked (src/secrets.ts, S) - agent has only Linux, cannot reproduce or test\n#38 Keychain unlock prompt (src/secrets.ts, S) - after #37\n#39 Dark theme (src/ui/theme.ts, M)",
+      "expected_output": "#37 (macOS crash, cannot be tested) is blocked on owner and #38 is blocked because it waits for #37, neither counted; #31, #32 and #35 (crash and data loss) go into v0.7.1 first; #33 (typo) goes to v0.8 under the patch's rule; #36 sits with or after #34; count and S/M/L size per milestone; one table and an approval question before any gh command; no issue closed",
       "assertions": [
-        "verdicts come from triaging-issues or the same evidence rule, not from titles",
-        "issues are grouped by shared files and dependencies, and a blocked-by issue is never in an earlier milestone than its blocker",
-        "regressions and crash or data-loss bugs are ordered first",
+        "#37 is blocked on owner because it cannot be tested, #38 is blocked because it waits for #37, and neither counts toward a milestone",
+        "#31, #32 and #35 are in v0.7.1 and ordered first; #33 is not in v0.7.1",
+        "#36 sits in the same or a later milestone than #34",
+        "count and size are reported for each milestone",
         "one table with a reason and depends-on column, and a question before any change",
         "no issue is closed and no milestone description is rewritten"
       ],
       "source": "real session: picking the issues for the next patch and minor",
       "baseline_failures": [
-        "split issues by title keywords instead of dependencies and shared files",
-        "put an issue blocked by another into an earlier milestone than its blocker",
-        "filled one milestone with 14 issues and left another with 3",
-        "moved issues without presenting the table first",
-        "counted an issue that needs a platform the agent cannot test as ready"
-      ]
+        "control put #37 into v0.7.1 as ordinary work (\"It belongs in the patch, but the agent can only run on Linux, so it cannot reproduce or test the fix\") and #38 into v0.8, both counted (\"three S items and one M, which fits in two weeks\")",
+        "control gave two milestone lines and a 'Why' list, no per-issue table with a depends-on column, and no count or size for v0.8",
+        "control's only question was who can verify #37 on macOS, not whether to apply the plan"
+      ],
+      "with_skill_result": "2026-10-14 claude-opus-5-5 with the skill: pass on all assertions. `7 ready, 2 blocked on owner`; #37 `blocked on owner: needs a macOS check`, #38 `blocked on owner: waits for #37`; v0.7.1 #31, #35, #32 and v0.8 #33, #34, #36, #39 with `v0.7.1: 3 issues (2 S, 1 M)` and `v0.8: 4 issues (2 S, 2 M)`; one question; edits only after approval with the REST fallback and a re-read up to 3 times, 5 s apart."
+    },
+    {
+      "id": "near-miss-triage",
+      "prompt": "You are a coding agent. These skills are available; load at most one by naming it.\n\n- triaging-issues: TRIAGE_DESC\n- planning-milestones: PLAN_DESC\n\nUser request: \"Is #12 in the right milestone? It sits in v0.8, whose description is 'new sources', and #12 is 'Pane header spacing'.\"\n\nAnswer with only the name of the skill you would load first, or \"none\".",
+      "expected_output": "names triaging-issues, not planning-milestones: a fit check of one issue against its milestone is triage",
+      "assertions": [
+        "the answer names triaging-issues"
+      ],
+      "source": "near-miss trigger: both descriptions mention milestones",
+      "baseline_failures": [],
+      "with_skill_result": "2026-10-14 claude-opus-5-5: control (description without the negative trigger) and with-skill (current description) both answered `triaging-issues` in 3 of 3 runs."
     }
   ]
 }

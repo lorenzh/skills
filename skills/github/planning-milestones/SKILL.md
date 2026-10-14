@@ -1,6 +1,6 @@
 ---
 name: planning-milestones
-description: GitHub release planning for open issues. Use when the user asks which issues go into the next patch or minor release, to spread the backlog over the upcoming milestones, to balance milestones, to plan the next release, or to move issues so that they fit together best.
+description: GitHub release planning for open issues. Use when the user asks which issues go into the next patch or minor release, to spread the backlog over the upcoming milestones, to balance milestones, to plan the next release, or to move issues so that they fit together best. Not for judging whether single issues are still valid or fit their milestone (use triaging-issues).
 ---
 
 # Planning milestones
@@ -9,28 +9,23 @@ Decide which open issue ships in which release, show the plan as one table, and 
 
 **A milestone is a set of issues that can ship together: a dependency sits in the same or an earlier milestone, the work that touches the same files sits in one release, and no release holds more than the others can bear.** A plan that splits by title keywords breaks the dependency order and produces merge conflicts.
 
-This skill starts where `triaging-issues` ends. Take verdicts (still valid, already fixed, duplicate, obsolete, unclear) from that skill; this skill does not repeat them. When no triage is fresh, apply the same evidence rule: check each issue against `origin/<main>` with a `file:line`, SHA or PR, and leave a guess as `unclear`.
+This skill starts where `triaging-issues` ends. Take verdicts (still valid, partly fixed, already fixed, duplicate, obsolete, unclear) from that skill; this skill does not repeat them. When no triage is fresh, apply the same evidence rule: check each issue against `origin/$main` with a `file:line`, SHA or PR, and leave a guess as `unclear`.
 
 ## 1. Collect the inputs
 
-Run in the repo's checkout, writing to a temp directory:
+Collect the repo state with the commands of `triaging-issues` step 1: fetch, find the default branch `$main` and record its SHA, write the open issues and open milestones to a temp directory, and read single issues with `gh issue view --json`. Add `number` to the milestone fields, for the fallback in step 7:
 
 ```bash
-git fetch -q origin
-t=$(mktemp -d)
-gh issue list --state open --limit 1000 --json number,title,labels,milestone > "$t/issues.json"
-gh api --paginate 'repos/{owner}/{repo}/milestones?state=open' --jq '.[] | {number, title, description, due_on, open_issues}' > "$t/milestones.json"
+gh api --paginate 'repos/{owner}/{repo}/milestones?state=open' --jq '.[] | {number, title, description, due_on}' > "$t/milestones.json"
 ```
-
-Read an issue with `gh issue view <n> --json number,title,body,comments,labels,milestone`, never with `--comments`: it fails on repos with Projects (classic) data.
 
 Take three inputs:
 
-1. The open issues whose verdict is still valid. Leave out `already fixed`, `duplicate`, `obsolete` and `unclear`; report them as a note and route them back to `triaging-issues`.
+1. The open issues whose verdict is `still valid`, and for each `partly fixed` issue the remaining work the triage verified; plan that remaining work as the issue. Leave out `already fixed`, `duplicate`, `obsolete` and `unclear`; report them as a note and route them back to `triaging-issues`.
 2. The open milestones with number, description and due date. Order them by due date, otherwise by version.
-3. The owner's stated theme and caps for the next release. When the owner named none, ask once; do not invent a theme.
+3. The owner's stated theme and caps for the next release. If the request names no theme or caps, ask once in the same reply as the plan, or proceed with "none named"; do not invent a theme.
 
-Done when the temp directory holds both lists and you have written down the milestones in order, each with its rule, plus the theme and caps (or "none named").
+Done when the temp directory holds both lists and you have written down the main SHA, the milestones in order, each with its rule, plus the theme and caps (or "none named").
 
 ## 2. Mark what is not capacity
 
@@ -48,15 +43,19 @@ For each ready issue, read the code it touches and write down the files or modul
 
 A size comes from the code, never from the title. Dependencies come from the body ("blocked by", "after #"), from issue comments and from the code (one change needs a function another adds).
 
-Done when every ready issue has files or module, a size and a `depends on` entry (an issue number or `none`).
+An issue that depends on a `blocked on owner` issue is blocked too: mark it `blocked on owner: waits for #<n>` and take it out of the counts.
+
+Done when every ready issue has files or module, a size and a `depends on` entry (an issue number or `none`), and every issue that depends on a blocked issue is marked blocked.
 
 ## 4. Group and order
 
-Build the groups in this priority:
+Place the issues by these rules, in rank order; when two rules conflict, the higher one wins:
 
-1. Dependency order: a dependency sits in the same or an earlier milestone than the issue that needs it. A chain of issues across one file set stays together so one stack of PRs avoids merge conflicts.
-2. Same files or module: issues that edit the same file go in one release, one after another.
-3. Same user-visible theme: issues that a user sees as one change go together.
+1. Dependency order and milestone rules: a dependency sits in the same or an earlier milestone than the issue that needs it, and each issue fits its milestone's description rule ("bug fixes only"). An issue that breaks a rule is a mismatch to report, not a reason to rewrite the description.
+2. Urgency: regressions, crash and data-loss bugs go into the earliest milestone whose rule allows them.
+3. A big design change (a layout concept, a rewrite) goes into the last milestone; its small prerequisites go earlier.
+4. Same files: issues that edit the same file go into one release, one after another, so one stack of PRs avoids merge conflicts. A small fix to a file that a later redesign rewrites goes earlier than the redesign: `#2` and `#11` (small fixes in `pane.tsx`) ship before `#5` (the new pane layout that rewrites `pane.tsx`).
+5. Same user-visible theme: issues that a user sees as one change go together.
 
 Order inside a release:
 
@@ -64,9 +63,7 @@ Order inside a release:
 2. Fixes that other issues build on.
 3. Features.
 
-A big design change (a layout concept, a rewrite) goes to the last release; its small prerequisites go earlier. Honour each milestone's description rule ("bug fixes only"); an issue that breaks the rule is a mismatch to report, not a reason to rewrite the description.
-
-Done when every ready issue has one proposed milestone and each dependency sits in the same or an earlier one.
+Done when every ready issue has one proposed milestone, or `unassigned: no milestone fits` with the reason, and each dependency sits in the same or an earlier milestone.
 
 ## 5. Spread evenly
 
@@ -86,24 +83,45 @@ The answer is exactly these parts, in order:
 4. At most 5 notes, most important first: milestones whose description no longer matches their content (the owner decides whether the issues move or the description changes), ordering conflicts that remain, cap breaches, issues sent back to triage.
 5. One question: apply this plan, and record it?
 
+An answer in this shape (table cut to three rows):
+
+```
+lorenzh/demo @ 4f2a9c1: 9 ready, 2 blocked on owner
+
+| Issue | Proposed milestone | Reason | Depends on |
+|---|---|---|---|
+| #21 Data loss when the sync file is locked | v1.2 | data loss; fits "fixes only" | none |
+| #24 Sync over SSH | v1.3 | feature; needs the transport #22 adds | #22 |
+| #27 Sync to a NAS share | blocked on owner: needs a NAS the agent cannot reach | tentative v1.3 | none |
+
+v1.2: 4 issues (3 S, 1 M)
+v1.3: 5 issues (2 S, 2 M, 1 L)
+```
+
 Change nothing on GitHub before the owner replies. A move notifies every watcher and cannot be quietly undone.
 
 Done when the reply holds the table and the question and no GitHub state has changed.
 
 ## 7. Apply what the owner approved
 
-Apply by milestone number through the REST API, never by title:
+Apply each move by milestone title, the same way `triaging-issues` does:
+
+```bash
+gh issue edit <n> --milestone "<title>"
+```
+
+If that fails with a GraphQL error on `projectCards`, apply by milestone number through the REST API instead:
 
 ```bash
 gh api -X PATCH repos/{owner}/{repo}/issues/<n> -F milestone=<milestone number>
 ```
 
-Wait a few seconds, then re-read: the API lags and the first read can show the old state.
+Re-read up to 3 times, 5 s apart (tunable); report a move as applied only when the read shows the new milestone. The API lags, and the first read can show the old state.
 
 ```bash
-gh api repos/{owner}/{repo}/issues/<n> --jq '{number, milestone: .milestone.number, state}'
+gh api repos/{owner}/{repo}/issues/<n> --jq '{number, milestone: .milestone.title, state}'
 ```
 
 Never close an issue here, and never edit a milestone description; a closing is a `triaging-issues` decision, and a description is the owner's. Record the plan only when the owner agreed: one short comment or a tracking issue that lists each milestone's issue numbers.
 
-Done when each approved move shows the new milestone number in the re-read, and the reply lists what was applied, what was left and where the plan was recorded (or "not recorded").
+Done when each approved move shows the new milestone in the re-read, and the reply lists what was applied, what was left and where the plan was recorded (or "not recorded").
