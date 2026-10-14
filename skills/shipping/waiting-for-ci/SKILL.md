@@ -1,6 +1,6 @@
 ---
 name: waiting-for-ci
-description: Waiting on CI runs, PR checks, package registries and background processes without hanging. Use when an agent must wait for a GitHub Actions run or PR checks to finish, wait until a published version appears on npm or another registry, wait for a background job or another agent, or when a wait loop never ends or an agent has gone silent or finished without a completion notice.
+description: Waiting on CI runs, PR checks, package registries and background processes without hanging. Use when an agent must wait for a GitHub Actions run or PR checks to finish, wait until a published version appears on npm or another registry, wait for a background job or another agent, stop a background process or local server, or when a wait loop never ends or an agent has gone silent or finished without a completion notice.
 ---
 
 # Waiting for CI
@@ -35,6 +35,8 @@ done
 ```
 
 Never wait with `while pgrep -f "<pattern>"; do ...; done`. The loop's own shell has `<pattern>` on its command line, so `pgrep` always finds it and the loop never ends. The bracket form `[p]attern` still matches the target process but not the literal `[p]attern` text in the shell's command line. A PID is better still.
+
+The same trap kills: `pkill -f '<pattern>'` also matches the shell running it and ends that shell (exit 144) before the rest of the command runs. To stop a process you waited on or started, `kill <pid>`; for a server, take the PID from its port: `kill $(ss -ltnp | grep ':<port> ' | grep -o 'pid=[0-9]*' | cut -d= -f2)`.
 
 Done when the wait command is chosen and it ends by itself when the result is in.
 
