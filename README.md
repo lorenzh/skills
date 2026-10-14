@@ -24,6 +24,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | shipping | [landing-parallel-prs](skills/shipping/landing-parallel-prs/SKILL.md) | Merges a batch of PRs that edit the same lines one at a time, updating each from main right before its merge, with the user's OK for every merge. |
 | github | [triaging-issues](skills/github/triaging-issues/SKILL.md) | Checks every open issue against the current code with cited evidence, plus milestone fit, type labels, priority and ordering conflicts; reports one table and changes nothing on GitHub until the user approves. |
 | github | [reproducing-bugs](skills/github/reproducing-bugs/SKILL.md) | Reproduces reported bugs of terminal apps in a real run on a clean checkout of the default branch, judges only text the app drew, and records reproduced, not reproduced or not run in the issue after a privacy check. |
+| github | [planning-milestones](skills/github/planning-milestones/SKILL.md) | Plans which open issue ships in which release: groups by shared files and dependencies, orders by severity, spreads count and size evenly, marks owner-blocked items, and applies milestones only after the owner approves one table. |
 
 ## Install
 
@@ -94,6 +95,7 @@ Then run `/reload-plugins` or start a new session.
 | landing-parallel-prs | `gh`, `git`. |
 | triaging-issues | `gh`, `git`. |
 | reproducing-bugs | `gh`, `git`, `tmux`, Node.js 18+; builds on `driving-terminal-apps`, `triaging-issues` and `checking-before-publishing`. |
+| planning-milestones | `gh`, `git`. Verdicts come from `triaging-issues`. |
 
 ## Layout
 
