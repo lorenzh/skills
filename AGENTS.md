@@ -45,6 +45,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | `publishing` |
 | [competing-implementations](skills/agents/competing-implementations/SKILL.md) | `agents` |
 | [reviewing-across-families](skills/agents/reviewing-across-families/SKILL.md) | `agents` |
+| [dispatching-across-families](skills/agents/dispatching-across-families/SKILL.md) | `agents` |
 | [creating-worktrees](skills/git/creating-worktrees/SKILL.md) | `git` |
 | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | `terminal` |
 | [directing-videos](skills/video/directing-videos/SKILL.md) | `video` |

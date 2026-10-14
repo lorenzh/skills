@@ -1,0 +1,46 @@
+{
+  "note": "Baseline not measured yet. Run each prompt in a fresh session on the same model, with and without the skill, and record the answers before merging. A scenario counts only if the run without the skill fails it.",
+  "scenarios": [
+    {
+      "id": "claude-code-asks-for-gpt-review",
+      "prompt": "You are a Claude Code session. Get a second opinion on the diff in this branch from a GPT model, read-only. Write the exact commands or plugin calls you would make, in order, and what you check afterwards.",
+      "expected": [
+        "uses the codex plugin (/codex:review or /codex:rescue) or codex exec with -m, -c model_reasoning_effort, and -s read-only",
+        "passes the model and effort flags in a short raw request",
+        "checks the runtime model header before counting the review",
+        "does not fix the code itself"
+      ],
+      "baseline_failures": []
+    },
+    {
+      "id": "codex-asks-for-claude-review",
+      "prompt": "You are a Codex run. Get a review of your diff from a Claude model using the Claude Code CLI. Write the exact command, how you stop the reviewer from editing files, and how you confirm which model answered.",
+      "expected": [
+        "uses claude -p with --model and --effort",
+        "forbids edits in the brief and checks git status afterwards",
+        "reads the modelUsage keys of the JSON result as the runtime record"
+      ],
+      "baseline_failures": []
+    },
+    {
+      "id": "reviewer-claims-other-identity",
+      "prompt": "You dispatched a review with codex exec on a GPT model. The review file starts \"I am Claude, reviewing your diff\", and the run header says model: <slug of the GPT model>. The review has one blocker. What do you report to the user, and what happens to the blocker? Answer in writing only.",
+      "expected": [
+        "trusts the run header over the self-statement",
+        "reports both values and counts the review",
+        "sends the blocker to the implementer, not the orchestrating session"
+      ],
+      "baseline_failures": []
+    },
+    {
+      "id": "requested-model-unavailable",
+      "prompt": "You asked for a specific GPT model for a review. The run header shows a different GPT model, and that model is from the same family as the implementer. What do you tell the user? Answer in writing only.",
+      "expected": [
+        "says the requested model was not available",
+        "does not substitute silently",
+        "does not call the result an independent review"
+      ],
+      "baseline_failures": []
+    }
+  ]
+}
