@@ -5,7 +5,7 @@ description: Handles stacked pull requests and checks whether a stack is ready. 
 
 # Retargeting stacked PRs
 
-Move each PR of a stack onto the main branch after its base merges, get CI to run on it, and merge the stack in order.
+Check a PR stack is ready, merge it as a native GitHub stack or retarget each PR onto main after its base merges, and get fresh CI on every head.
 
 **Changing a PR's base does not start `pull_request` CI. A retargeted PR needs a new event before its checks are real.**
 
@@ -27,31 +27,18 @@ Done when you have the ordered list with each PR's current base.
 
 When the repository is on GitHub and every branch is in that same repository, check whether GitHub has linked the chain as a stack:
 
-```graphql
-query {
-  repository(owner: "<owner>", name: "<repo>") {
-    pullRequest(number: <top-pr>) {
-      stack {
-        number
-        size
-        baseRefName
-        entries(first: 100) {
-          nodes { position pullRequest { number } }
-        }
-      }
-    }
-  }
-}
+```bash
+gh api graphql -F owner=<owner> -F repo=<repo> -F n=<top-pr> -f query='query($owner:String!,$repo:String!,$n:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$n){stack{number size baseRefName entries(first:100){nodes{position pullRequest{number}}}}}}}'
 ```
 
-If `stack` is absent, ask the user to link the chain from the recommendation banner on the top PR, or with the `gh stack` extension (`gh stack init|add|submit`). GitHub recommends linking same-repository chains without forks; the banner opens a top-to-bottom preview, and the stack map then appears in each PR header. The GraphQL API can read stacks but cannot link existing PRs.
+If `stack` is absent, ask the user to link the chain from the recommendation banner on the top PR, or with the `gh stack` extension: `gh stack link <bottom-pr> ... <top-pr>` links existing PRs, listed bottom to top. GitHub recommends linking same-repository chains without forks; the banner opens a top-to-bottom preview, and the stack map then appears in each PR header. GraphQL has no stack mutation.
 
 - **Link:** Once linked, `pull_request` workflows targeting `<main>` run on every PR in the stack.
-- **Merge requirements:** Merging the top PR lands all unmerged PRs below it onto `<main>` in one operation; each must be approved and have passing checks, the history must be linear (otherwise use **Rebase stack**), and a mid-stack PR cannot merge alone. After a merge, GitHub rebases the next unmerged PR onto the stack base. Merge queues work; auto-merge does not. Get the user's explicit OK for every PR the operation will merge.
+- **Merge requirements:** Merging the top PR lands all unmerged PRs below it onto `<main>` in one operation; each must be approved and have passing checks, the history must be linear (otherwise use **Rebase stack**), and a mid-stack PR cannot merge alone. After a merge, GitHub rebases the next unmerged PR onto the stack base. Merge queues work; auto-merge does not.
 
-When no native stack is used, continue with the one-by-one retarget flow below. With a native stack, skip step 3 and run step 4 for every head before step 6.
+When no native stack is used, continue with the one-by-one retarget flow below. With a native stack, CI runs on every PR, so skip steps 3 and 5; still run step 4 as a local pre-merge check for every head, then go to step 6.
 
-Done when the GraphQL `stack` field returns the whole chain, or the user chose not to link it and the one-by-one path applies.
+Done when the GraphQL `stack` field returns the whole chain, or the user chose not to link it, or the chain uses forks or a non-GitHub host and the one-by-one path applies.
 
 ## 3. Retarget the next PR
 
@@ -81,20 +68,21 @@ Done when `gh pr view <n> --json baseRefName` shows `<main>`.
 
 ## 4. Verify each head against the current main
 
-A PR whose base is not `<main>` has no `pull_request` CI result when the workflow filters on `<main>`. Before any merge, verify every PR head merged with the current `origin/<main>` in its own brand-new worktree, using a fresh dependency install and the repository's full CI command set. For each head:
+Verify every head on its own, in a brand-new worktree. Reusing one worktree across heads, or checking only the top head, gives results that do not hold for the lower PRs: deleting `dist/` alone can leave `*.tsbuildinfo`, so TypeScript skips a needed build and gives a false green, and generated files that a lower head does not ignore make lint or packaging give a false red. In an unlinked chain, a PR whose base is not `<main>` has no `pull_request` CI result when the workflow filters on `<main>`, so this run is the only check of that head against `<main>`.
+
+Run it once per head before the first merge, and again for the remaining heads after each loop back to step 3. For each head, merge the current `origin/<main>`, install dependencies fresh and run the repository's full CI command set:
 
 ```bash
 git fetch origin
 git worktree add --detach <fresh-path> origin/<head-branch>
 cd <fresh-path>
 git merge origin/<main>
-<fresh-install-command>
+<fresh-install-command>   # the creating-worktrees skill checks the install resolves inside <fresh-path>
 <full-ci-command-set>
+cd - && git worktree remove <fresh-path>
 ```
 
-Deleting `dist/` alone can leave `*.tsbuildinfo`, so TypeScript skips a needed build and gives a false green. Reusing a worktree across heads can leave generated files that the lower head does not ignore, causing lint or packaging to give a false red.
-
-Done when every head has passed the full CI command set in its own fresh worktree after merging current `<main>`.
+Done when every head has passed the full CI command set in its own fresh worktree after merging current `<main>`, and `git worktree list` no longer shows those worktrees.
 
 ## 5. Trigger CI and check the runs
 
@@ -117,10 +105,10 @@ Done when every required workflow has a run for `$sha` with `createdAt` after th
 
 **Merging needs the user's explicit OK for each PR.** A merge lands code on `<main>` and cannot be taken back cleanly, so a general "get it merged" from earlier in the session does not cover a PR whose diff or base changed since.
 
-For a native stack, show every PR the top merge will land, with its head SHA and check results, and get the user's explicit OK for each. Then merge the top PR; it lands all unmerged PRs below it.
+For a native stack, wait for the checks of every PR in the stack on its current head SHA (`timeout 30m gh pr checks <n> --watch --fail-fast` for each `<n>`). Show every PR the top merge will land, with its head SHA and check results, and get the user's explicit OK for each. Then merge with `gh stack merge <top-pr> --yes --<squash|merge|rebase>`, using the repo's merge method; `gh pr merge` cannot merge a stack. It lands every unmerged PR up to the top in one all-or-nothing operation. Afterwards confirm that `gh pr view <n> --json state -q .state` prints `MERGED` for every PR it landed; with a merge queue they land one by one as the queue runs.
 
 For the one-by-one flow, wait for the runs from step 5 (`timeout 30m gh pr checks <n> --watch --fail-fast`). Then show the user the PR, its head SHA and the check results, and ask whether to merge. After a yes, merge the PR the way the repo merges. Go back to step 3 for the next PR in the stack. Merging a higher PR first lands it into a branch that is about to be stale.
 
 For waits that hang, time out or need another approach, see the `waiting-for-ci` skill.
 
-Done when, for a native stack, the top PR is merged after the user approved every PR it lands, or, for the one-by-one flow, every PR is merged with the user's OK; otherwise the report names the PR that waits for that OK or is blocked, with its failing check.
+Done when, for a native stack, every PR the top merge landed shows `MERGED` after the user approved each one, or, for the one-by-one flow, every PR is merged with the user's OK; otherwise the report names the PR that waits for that OK or is blocked, with its failing check.
