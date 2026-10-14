@@ -107,6 +107,21 @@ test('keeps frontmatter, description and relative-link errors', (t) => {
     assert.match(r.stdout, error);
 });
 
+test('rejects local paths in skills and evals, allows placeholders and fixture names', (t) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + 'See /home/<user>/x, /home/jdoe/x, /Users/alice.meyer/x, /tmp/claude-1000/scratch.\n');
+  write('evals/agents/sample/evals.json', '{}');
+  write('evals/agents/sample/results/out.txt', '/home/bob/x');
+  assert.equal(run().status, 0, run().stdout);
+  write('evals/agents/sample/a.txt', 'cd /home/bob/projects');
+  write('evals/agents/sample/b.txt', 'cat /Users/bob/x');
+  write('skills/agents/sample/c.md', 'Read /tmp/claude-1004/-home-bob-x/scratchpad/a.md');
+  const r = run();
+  assert.equal(r.status, 1);
+  for (const hit of ['/home/bob', '/Users/bob', '/tmp/claude-1004/-'])
+    assert.ok(r.stdout.includes(`local path "${hit}"`), r.stdout);
+});
+
 for (const doc of ['AGENTS.md', 'README.md']) {
   test(`checks relative markdown links in ${doc}`, (t) => {
     const { root, write, run } = fixture(t);
