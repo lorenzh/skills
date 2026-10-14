@@ -96,6 +96,8 @@ lorenzh/demo @ 4f2a9c1: 9 ready, 2 blocked on owner
 
 v1.2: 4 issues (3 S, 1 M)
 v1.3: 5 issues (2 S, 2 M, 1 L)
+
+Apply this plan, and record it?
 ```
 
 Change nothing on GitHub before the owner replies. A move notifies every watcher and cannot be quietly undone.
