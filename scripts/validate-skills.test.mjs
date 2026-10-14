@@ -113,6 +113,7 @@ test('rejects local paths in skills and evals, allows placeholders and exact fix
     '"/home/runner.dev", C:\\Users\\jdoe\\x, C:\\\\Users\\\\<user>\\\\x, /tmp/claude-1000/scratch.\n');
   write('evals/agents/sample/evals.json', '{}');
   write('evals/agents/sample/results/out.txt', '/home/bob/x');
+  write('evals/results/out.txt', '/home/bob/x');
   const ok = run();
   assert.equal(ok.status, 0, ok.stdout);
   const hits = {
@@ -122,6 +123,8 @@ test('rejects local paths in skills and evals, allows placeholders and exact fix
     'evals/agents/sample/d.txt': ['ls /home/runnerx', '/home/runnerx'],
     'evals/agents/sample/e.txt': ['ls /home/alice.smith/x', '/home/alice.smith'],
     'evals/agents/sample/f.txt': ['type D:\\Users\\bob\\x', 'D:\\Users\\bob'],
+    'evals/agents/sample/f2.txt': ['dir c:\\users\\bob', 'c:\\users\\bob'],
+    'evals/agents/sample/f3.txt': ['dir C:\\USERS\\bob', 'C:\\USERS\\bob'],
     'evals/agents/sample/g.json': ['{"p": "C:\\\\Users\\\\bob\\\\x"}', 'C:\\\\Users\\\\bob'],
     'skills/agents/sample/h.md': ['Read /tmp/claude-1004/-home-bob-x/scratchpad/a.md', '/tmp/claude-1004/-'],
     'skills/agents/sample/results/x.txt': ['/home/bob/', '/home/bob'],
