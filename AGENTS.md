@@ -69,7 +69,7 @@ No build and no dependencies — the deliverables are the skill folders.
 - Keep `SKILL.md` out of the repo root, `skills/` and category folders. Those files shadow the skills below them.
 - Keep template files as `*.tmpl`. When `skills/` is empty the CLI searches the whole repo and scans any `SKILL.md` it finds, including a template's.
 - Put eval scenarios and eval run output under `evals/<category>/<name>/`, outside the skill folder. Each eval folder must match a skill in the same category. `evals/**/results/` is gitignored.
-- Write placeholders for local paths in `skills/` and `evals/`: `<scratch>/…`, `/home/<user>/…`. The validator rejects real home and `/tmp/claude-<uid>/` scratchpad paths; only the fixture names `jdoe`, `alice`, `user` and `runner` pass.
+- Write placeholders for local paths in `skills/` and `evals/`: `<scratch>/…`, `/home/<user>/…`. The validator rejects `/home/<name>`, `/Users/<name>`, `C:\Users\<name>` and `/tmp/claude-<uid>/-…` paths outside `evals/**/results/`; only placeholders and the exact fake names in `FIXTURE_NAMES` (`scripts/validate-skills.mjs`) pass.
 - Link every file in `references/` from `SKILL.md`; the validator fails on a link to a missing file.
 - Write skill scripts in Node ≥18 ESM (`.mjs`) or Python 3, standard library only. Repo tooling under `scripts/` stays Node. Name a skill's runtime in the README requirements table.
 - Leave `version` out of `.claude-plugin/plugin.json` and `marketplace.json`. The commit SHA is the plugin version, so every merge to main ships an update. Do not bump a version in PRs. `claude plugin validate --strict` flags the missing version; run it without `--strict`.

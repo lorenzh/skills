@@ -107,19 +107,30 @@ test('keeps frontmatter, description and relative-link errors', (t) => {
     assert.match(r.stdout, error);
 });
 
-test('rejects local paths in skills and evals, allows placeholders and fixture names', (t) => {
+test('rejects local paths in skills and evals, allows placeholders and exact fixture names', (t) => {
   const { write, run } = fixture(t);
-  write('skills/agents/sample/SKILL.md', markdown() + 'See /home/<user>/x, /home/jdoe/x, /Users/alice.meyer/x, /tmp/claude-1000/scratch.\n');
+  write('skills/agents/sample/SKILL.md', markdown() + 'See /home/<user>/x, /home/jdoe/x, /home/user-admin/src, /Users/alice.meyer/x,\n' +
+    '"/home/runner.dev", C:\\Users\\jdoe\\x, C:\\\\Users\\\\<user>\\\\x, /tmp/claude-1000/scratch.\n');
   write('evals/agents/sample/evals.json', '{}');
   write('evals/agents/sample/results/out.txt', '/home/bob/x');
-  assert.equal(run().status, 0, run().stdout);
-  write('evals/agents/sample/a.txt', 'cd /home/bob/projects');
-  write('evals/agents/sample/b.txt', 'cat /Users/bob/x');
-  write('skills/agents/sample/c.md', 'Read /tmp/claude-1004/-home-bob-x/scratchpad/a.md');
+  const ok = run();
+  assert.equal(ok.status, 0, ok.stdout);
+  const hits = {
+    'evals/agents/sample/a.txt': ['cd /home/bob/projects', '/home/bob'],
+    'evals/agents/sample/b.txt': ['cat /Users/bob/x', '/Users/bob'],
+    'evals/agents/sample/c.txt': ['cd /home/user-admin2/src', '/home/user-admin2'],
+    'evals/agents/sample/d.txt': ['ls /home/runnerx', '/home/runnerx'],
+    'evals/agents/sample/e.txt': ['ls /home/alice.smith/x', '/home/alice.smith'],
+    'evals/agents/sample/f.txt': ['type D:\\Users\\bob\\x', 'D:\\Users\\bob'],
+    'evals/agents/sample/g.json': ['{"p": "C:\\\\Users\\\\bob\\\\x"}', 'C:\\\\Users\\\\bob'],
+    'skills/agents/sample/h.md': ['Read /tmp/claude-1004/-home-bob-x/scratchpad/a.md', '/tmp/claude-1004/-'],
+    'skills/agents/sample/results/x.txt': ['/home/bob/', '/home/bob'],
+  };
+  for (const [file, [text]] of Object.entries(hits)) write(file, text);
   const r = run();
   assert.equal(r.status, 1);
-  for (const hit of ['/home/bob', '/Users/bob', '/tmp/claude-1004/-'])
-    assert.ok(r.stdout.includes(`local path "${hit}"`), r.stdout);
+  for (const [file, [, hit]] of Object.entries(hits))
+    assert.ok(r.stdout.includes(`${file}: local path "${hit}"`), file + '\n' + r.stdout);
 });
 
 for (const doc of ['AGENTS.md', 'README.md']) {
