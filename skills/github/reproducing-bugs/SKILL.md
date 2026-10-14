@@ -47,7 +47,7 @@ Use the `driving-terminal-apps` process with its own tmux socket per issue, name
 
 1. Turn the issue's steps into keys and drive them per `driving-terminal-apps` step 4, with at least 0.2 s between redrawing keys. A dropped key looks like "bug not present", so a `wait` that never matched makes the run `inconclusive`, not a pass.
 2. Capture the start screen and the screen at the failing step with `cap`. For a highlight, focus or colour bug capture with `cap -e` (keeps ANSI attributes) and check the attribute on the expected row, not just the drawn text.
-3. Judge an app with a frame by `screen-checks.md`. For plain CLI or REPL output, `type` a unique marker (`echo repro-<n>-start`) before the command and judge only the output after it; there no frame is expected, so "no frame found" is not a setup error.
+3. Judge an app with a frame by `screen-checks.md`. For plain CLI or REPL output, first run a unique marker in the app's own syntax (`type` it, then `key Enter`: `echo repro-<n>-start` in a shell, `print("repro-<n>-start")` in Python) and judge only the output after it; there no frame is expected, so "no frame found" is not a setup error.
 4. Stop and clean up per `driving-terminal-apps` step 6.
 
 Use the user's real login only where the app under test requires it and the project's own live-check rules allow it. Never copy credentials and never print the environment.
