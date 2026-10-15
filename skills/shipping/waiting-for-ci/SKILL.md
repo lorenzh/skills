@@ -120,3 +120,12 @@ An agent can finish without the harness telling you. Once its expected time has 
    - **Failed:** the runtime shows it ended, and the result does not exist. Report its last message.
 
 Done when each silent agent is reported as done (with its result), working (with its pending or latest call), stuck (with the repeated call) or failed (with its last message).
+
+## 7. A completion notice that is not the job
+
+A command that backgrounds itself (`nohup codex exec … &`, `cmd &` inside a background Bash call) ends at once: the harness's completion notice belongs to the launcher shell, not to the job. A subagent hand-back or background notice is a claim, not proof.
+
+1. Have the job write to an output file, and wait on that file in a background Bash call: `timeout 30m bash -c 'until [ -s out.txt ]; do sleep 15; done'`. Use this `until` loop for one expected result; the Monitor tool needs `description` and `timeout_ms`, and its schema loads first with ToolSearch (`select:Monitor`).
+2. Before you use the result, confirm the output file exists and is non-empty (`[ -s out.txt ]`).
+
+Done when each "completed" notice is matched to a non-empty result file, or reported as not yet finished.
