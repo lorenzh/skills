@@ -218,6 +218,26 @@ test('allows expression references and regex syntax as assignment values (R4-05)
   assert.equal(r.status, 0, r.stdout);
 });
 
+test('reads an unquoted value through a backslash and redacts all of it (R5-01)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word=R7p\\!X9vT2' + 'mQ4sN6kP8w');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + Array(30).fill('word').join(' ') + ' to' + 'ken=Zq9Xw8Vu7Ts6' +
+    'Rr5Qp4\\!Secret' + 'Suffix.\n');
+  const w = run();
+  assert.match(w.stdout, /\[sentence-length\].*\[redacted\]/, w.stdout);
+  assert.ok(!w.stdout.includes('Suffix'), w.stdout);
+});
+
+test('flags brackets and braces in a quoted value outside regex context (R5-02)', (t) => {
+  for (const line of ['pass' + 'word="River[Blue]' + '2026!Secret"', 'pass' + 'word="River{42}' + 'Blue2026!"']) {
+    const r = scanSecret(t, line);
+    assert.equal(r.status, 1, line + '\n' + r.stdout);
+    assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  }
+});
+
 test('matches a quoted value through its closing quote, spaces included (R4-06)', (t) => {
   const r = scanSecret(t, 'pass' + 'word="correct horse ' + 'battery staple"');
   assert.equal(r.status, 1, r.stdout);

@@ -352,21 +352,29 @@ const LOCAL_PATH = new RegExp(
 // values that scanner and eval fixtures hold on purpose, split so this file holds no literal match.
 const FIXTURE_SECRETS = ["gh" + "p_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8", "sk" + "-live-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c",
   "yourActual" + "Password123", "secret-do" + "-not-copy"];
-// Not a literal value: a placeholder, an expression reference (process.env.X, $VAR, ${{ … }},
-// os.environ[…]) or regex syntax (a character class or {n} quantifier).
-const NOT_LITERAL = /^(?:<|\$|x{3}|\*{3}|…|\.{3}|process\.env\b|os\.(?:environ|getenv)\b)|\[[^\]]+\]|\{\d+(?:,\d*)?\}/;
+// Not a literal value: a placeholder or an expression reference (process.env.X, $VAR, ${{ … }}, os.environ[…]).
+const NOT_LITERAL = /^(?:<|\$|x{3}|\*{3}|…|\.{3}|process\.env\b|os\.(?:environ|getenv)\b)/;
+// Regex syntax, exempt only in regex context: a character class with a range or escape (or \d, \w,
+// \s) followed by a quantifier, or brackets/braces in a value inside a /…/ literal on the line.
+// Plain brackets or braces in a quoted value are password punctuation.
+const CLASS_QUANTIFIER = /(?:\[[^\]]*(?:\w-\w|\\\w)[^\]]*\]|\\[dws])(?:[*+?]|\{\d+(?:,\d*)?\})/i;
+const REGEX_SYNTAX = /\[[^\]]+\]|\{\d+(?:,\d*)?\}/;
+const isRegex = (value, m) => CLASS_QUANTIFIER.test(value) ||
+  (REGEX_SYNTAX.test(value) && m.input.lastIndexOf("/", m.index) >= 0 && m.input.indexOf("/", m.index) >= 0);
 const SECRET_RULES = [
   ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_\w{20,})/g],
   ["sk-key", /\bsk-(?:ant-)?[\w-]{20,}/g],
   ["aws-access-key", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
   ["slack-token", /\bxox[abprs]-[\w-]{10,}/g],
   ["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
-  // A quoted value runs to its closing quote, spaces included; group 1 is the value.
-  ["secret-assignment", /(?:api_?key|secret|token|password)["']?\s*[:=]\s*(?:"([^"\n]*)"|'([^'\n]*)'|["']?([^\s"'`,;)\\]+))/gi],
+  // A quoted value runs to its closing quote, spaces included. An unquoted value keeps backslashes
+  // but ends at a literal \r or \n escape, a line end in printf strings and terminal recordings.
+  ["secret-assignment", /(?:api_?key|secret|token|password)["']?\s*[:=]\s*(?:"([^"\n]*)"|'([^'\n]*)'|["']?((?:[^\s"'`,;)\\]|\\(?![rn]))+))/gi],
 ];
 const isSecret = (rule, m) => {
   const value = rule === "secret-assignment" ? m[1] ?? m[2] ?? m[3] : m[0];
-  if (rule === "secret-assignment" && (value.length < 16 || NOT_LITERAL.test(value))) return false;
+  if (rule === "secret-assignment" && (value.length < 16 || NOT_LITERAL.test(value) || isRegex(value, m)))
+    return false;
   return !FIXTURE_SECRETS.includes(value);
 };
 // Diagnostics that echo file text pass through this so a likely secret never reaches the output.
