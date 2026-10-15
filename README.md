@@ -18,6 +18,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | video | [directing-videos](skills/video/directing-videos/SKILL.md) | Plans, scripts and paces a video (demo, screencast, tutorial, launch video), then checks the finished cut against the plan. |
 | publishing | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | Finds active awesome lists and directories for a project, follows each one's submission rules, and submits only with the owner's consent per target. |
 | agents | [suggesting-skills](skills/agents/suggesting-skills/SKILL.md) | Reviews the current session for repeated workflows and hard-won fixes, checks them against existing skills, and offers a ranked list of new skills or updates. Creates nothing without consent. |
+| agents | [auditing-repo-structure](skills/agents/auditing-repo-structure/SKILL.md) | Reviews a pull request or a repository for structure: measures size, dependencies and duplication first, then reports findings by weight with file references. |
 | video | [editing-videos](skills/video/editing-videos/SKILL.md) | Crops, zooms and captions recordings into per-beat clips, joins them with crossfades, and exports square, vertical or landscape MP4s with ffmpeg. |
 | shipping | [cutting-releases](skills/shipping/cutting-releases/SKILL.md) | Takes a release from version bump through tag, workflow and registry to a back-merge into main and a verified installed version, following the project's release document. |
 | shipping | [retargeting-stacked-prs](skills/shipping/retargeting-stacked-prs/SKILL.md) | Checks whether a PR stack is ready, merges it as a native GitHub stack or retargets each PR onto main after its base merges, and gets fresh CI on every head. |
@@ -118,6 +119,7 @@ See [settings.md](skills/agents/writing-skills/references/settings.md) for allow
 | directing-videos | Python 3 for the coverage check. It hands recording to a recorder skill, such as `driving-terminal-apps` or a browser automation skill. |
 | listing-a-project | `gh` CLI, authenticated. |
 | suggesting-skills | Nothing. Creating a chosen skill uses a skill-authoring skill such as `writing-skills`. |
+| auditing-repo-structure | `git`. For a pull request: `gh`. |
 | editing-videos | Node.js 18+ and `ffmpeg` with the `drawtext` and `xfade` filters (for example the BtbN static build; the johnvansickle 7.0.2 static build has no `drawtext`). |
 | cutting-releases | `gh`, `git`. Registry CLI for the package (for example `npm`). |
 | retargeting-stacked-prs | `gh`, `git`. Optional for native GitHub stacks: the `gh stack` extension (`gh extension install github/gh-stack`). |
