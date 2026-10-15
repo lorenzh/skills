@@ -136,6 +136,46 @@ test('rejects local paths in skills and evals, allows placeholders and exact fix
     assert.ok(r.stdout.includes(`${file}: local path "${hit}"`), file + '\n' + r.stdout);
 });
 
+// Fake secrets are split so this file holds no literal match for repo secret scanners.
+test('rejects likely secrets by file:line and rule, never printing the value', (t) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown());
+  const a36 = 'A1b2C3d4E5'.repeat(3) + 'F6g7H8';
+  const hits = {
+    'skills/agents/sample/gh.md': ['gh' + 'p_' + a36, 'github-token'],
+    'skills/agents/sample/gho.md': ['x gh' + 'o_' + a36, 'github-token'],
+    'skills/agents/sample/pat.md': ['github' + '_pat_' + '11ABCDEFG0abcdefghijkl_xyz', 'github-token'],
+    'evals/agents/sample/sk.txt': ['key sk' + '-ant-api03-' + 'Zq9Xw8Vu7Ts6Rr5Qp4Oo3', 'sk-key'],
+    'evals/agents/sample/aws.txt': ['id AK' + 'IA' + 'Q3EGRT7PWX2LMN4K', 'aws-access-key'],
+    'evals/agents/sample/slack.txt': ['xo' + 'xb-' + '1234567890-abc', 'slack-token'],
+    'evals/agents/sample/pem.txt': ['-----BEGIN RSA ' + 'PRIVATE KEY-----', 'private-key'],
+    'evals/agents/sample/env.txt': ['ok\nDB_PASS' + 'WORD="Tr0ub4dor&3horse9staple"', 'secret-assignment'],
+    'evals/agents/sample/c.json': ['{"api' + 'Key": "q8W2e4R6t8Y0u2I4o6P8"}', 'secret-assignment'],
+  };
+  for (const [file, [text]] of Object.entries(hits)) write(file, text);
+  const r = run();
+  assert.equal(r.status, 1);
+  for (const [file, [text, rule]] of Object.entries(hits)) {
+    const line = text.includes('\n') ? 2 : 1;
+    assert.ok(r.stdout.includes(`${file}:${line}: [${rule}] likely secret`), file + '\n' + r.stdout);
+    assert.ok(!r.stdout.includes(text.split('\n').pop().slice(-12)), 'value printed: ' + file);
+  }
+});
+
+test('allows secret placeholders and the checking-before-publishing scanner and fixtures', (t) => {
+  const { root, write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + [
+    'API_KEY=<your-api-key-goes-here>', 'token: ${{ secrets.GITHUB_TOKEN }}', 'export SECRET=$MY_LONG_SECRET_VARIABLE',
+    'password = "xxxxxxxxxxxxxxxxxxxx"', 'api_key: ****************', 'TOKEN=…', 'TOKEN=...........................',
+    'secret: short', 'Rotate the token: it may sit in git history.', 'gh' + 'p_tooShort', '',
+  ].join('\n'));
+  fs.cpSync(new URL('../skills/publishing/checking-before-publishing/', import.meta.url),
+    path.join(root, 'skills/publishing/checking-before-publishing'), { recursive: true });
+  const r = run();
+  assert.doesNotMatch(r.stdout, /likely secret/, r.stdout);
+  assert.equal(r.status, 0, r.stdout);
+});
+
 for (const doc of ['AGENTS.md', 'README.md']) {
   test(`checks relative markdown links in ${doc}`, (t) => {
     const { root, write, run } = fixture(t);

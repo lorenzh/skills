@@ -63,10 +63,10 @@ Done when the draft maps every observed failure to an instruction and every step
 
 ## 5. Prune the draft
 
-Remove duplicate rules, default behavior, unsupported cases, and creation history in one pass.
-Keep one authoritative location per rule; use a pointer when another step needs it.
+Remove duplicate rules, default behavior, unsupported cases, and creation history in one pass; keep one location per rule, with pointers elsewhere.
+Keep secrets (tokens, API keys, passwords, private keys), internal hostnames, private repo, employer or customer names, and machine paths out; write placeholders. If a privacy-check skill such as `checking-before-publishing` is available, run it on the bundle.
 Link every reference directly from the core with an observable read condition. Give each reference over 100 lines a contents list at the top.
-Done when the authoring record lists removed duplicates and every remaining rule names its supporting failure or requirement.
+Done when the authoring record lists removed duplicates, every remaining rule names its supporting failure or requirement, and no bundle file holds a secret, private name or machine path.
 
 ## 6. Check the bundle
 

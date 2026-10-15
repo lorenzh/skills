@@ -17,7 +17,10 @@
 //   file under skills/ or evals/ (/home/<name>, /Users/<name>, <drive>:\Users\<name>, a
 //   /tmp/claude-<uid>/-… scratchpad; ASCII names of letters, digits, ".", "_", "-" only);
 //   allowed: placeholders such as /home/<user>, the exact fake fixture names in FIXTURE_NAMES,
-//   and the gitignored evals/**/results/ folders, which are not read.
+//   and the gitignored evals/**/results/ folders, which are not read; a likely secret in the same
+//   files (SECRET_RULES: GitHub, sk-/sk-ant-, AWS access key id, Slack token, PEM private key,
+//   api_key/secret/token/password assignment of 16+ chars), reported as file:line and rule, never
+//   the value; allowed: placeholders (<…>, ${…}, $VAR, xxx…, ***, …) and the values in FIXTURE_SECRETS.
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger or not third person, a standalone unfilled body
 //   template slot, reference not linked from SKILL.md, skill folder without SKILL.md.
@@ -43,6 +46,11 @@ that no file under skills/ or evals/ (except evals/**/results/) holds a home pat
 It covers ASCII names of letters, digits, ".", "_" and "-" only.
 Placeholders like /home/<user> pass, and so do these exact fake fixture names: jdoe,
 jdoe-noreply, alice, alice.meyer, user, user-admin, runner.dev.
+The same files must hold no likely secret: a GitHub token (ghp_, gho_, ghu_, ghs_, ghr_,
+github_pat_), an sk- or sk-ant- key, an AWS access key id, a Slack token, a PEM private key
+header, or an api_key/secret/token/password assignment of 16+ chars. Errors print file:line
+and the rule name, never the value. Placeholders (<…>, \${…}, $VAR, xxx…, ***, …) and the
+exact fake values in FIXTURE_SECRETS pass.
 
 Body warnings (ignore frontmatter, fenced code, inline code and table rows):
   step-done-when   numbered ## N. or ### N. step without a Done when line
@@ -279,11 +287,31 @@ const FIXTURE_NAMES = "jdoe|jdoe-noreply|alice|alice\\.meyer|user|user-admin|run
 const LOCAL_PATH = new RegExp(
   String.raw`(?:/(?:home|Users)/|\b[A-Za-z]:\\+[Uu][Ss][Ee][Rr][Ss]\\+)(?!(?:${FIXTURE_NAMES})(?![\w.-]))[\w.-]+|/tmp/claude-\d+/-`,
 );
+// Likely secrets; the report names the rule, never the value. FIXTURE_SECRETS are the exact fake
+// values that scanner and eval fixtures hold on purpose, split so this file holds no literal match.
+const FIXTURE_SECRETS = ["gh" + "p_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8", "sk" + "-live-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c",
+  "yourActual" + "Password123", "secret-do" + "-not-copy"];
+const SECRET_PLACEHOLDER = String.raw`<|\$|x{3}|\*{3}|…|\.{3}`;
+const SECRET_RULES = [
+  ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_\w{20,})/],
+  ["sk-key", /\bsk-(?:ant-)?[\w-]{20,}/],
+  ["aws-access-key", /\bAKIA[0-9A-Z]{16}\b/],
+  ["slack-token", /\bxox[abprs]-[\w-]{10,}/],
+  ["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
+  ["secret-assignment", new RegExp(String.raw`(?:api_?key|secret|token|password)["']?\s*[:=]\s*["']?(?!${SECRET_PLACEHOLDER})[^\s"'\`,;)]{16,}`, "i")],
+];
 for (const dir of [skillsDir, evalsDir].filter(fs.existsSync))
   for (const file of walkFiles(dir)) {
     if (/^evals\/(?:.*\/)?results\//.test(rel(file))) continue; // gitignored eval run output
-    const hit = fs.readFileSync(file, "utf8").match(LOCAL_PATH);
+    const text = fs.readFileSync(file, "utf8");
+    const hit = text.match(LOCAL_PATH);
     if (hit) errors.push(`${rel(file)}: local path "${hit[0]}"; use a placeholder like <scratch> or /home/<user>`);
+    text.split("\n").forEach((line, i) => {
+      for (const [rule, re] of SECRET_RULES) {
+        const m = line.match(re)?.[0];
+        if (m && !FIXTURE_SECRETS.some((f) => m.includes(f))) errors.push(`${rel(file)}:${i + 1}: [${rule}] likely secret; use a placeholder like <token>`);
+      }
+    });
   }
 
 // Claude plugin manifests: the plugin's skill scan is not recursive, so each category needs an entry.
