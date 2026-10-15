@@ -21,6 +21,7 @@
 //   files (SECRET_RULES: GitHub, sk-/sk-ant-, AWS access key id, Slack token, PEM private key,
 //   api_key/secret/token/password assignment of 16+ chars), reported as file:line and rule, never
 //   the value; allowed: placeholders (<…>, ${…}, $VAR, xxx…, ***, …) and the values in FIXTURE_SECRETS.
+//   Settings error: settings-secret (credential name without an -env suffix; never prints values).
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger or not third person, a standalone unfilled body
 //   template slot, reference not linked from SKILL.md, skill folder without SKILL.md.
@@ -28,6 +29,9 @@
 //   (loop instruction without a digit), sentence-length (over 30 words),
 //   harness-name (Claude Code, Codex or AskUserQuestion with references/harness-notes.md).
 //   These four ignore frontmatter, fenced code, inline code and table rows.
+//   Settings warnings: settings-count (over 5 settings), settings-name (not kebab-case),
+//   settings-default (empty Default cell), settings-order (after the first numbered step),
+//   settings-resolution (no settings: line in the body). Only Settings table rows are parsed.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -59,6 +63,15 @@ Body warnings (ignore frontmatter, fenced code, inline code and table rows):
   sentence-length sentence over 30 words
   harness-name    Claude Code, Codex or AskUserQuestion in a skill with references/harness-notes.md
 
+Settings rules (only for skills with a ## Settings section):
+  settings-secret     error: name contains token, secret, password or key without ending in -env
+  settings-count      warning: more than 5 settings
+  settings-name       warning: setting name is not kebab-case
+  settings-default    warning: empty Default cell
+  settings-order      warning: Settings follows the first numbered step
+  settings-resolution warning: no body line contains settings:
+Only table rows in the Settings section are parsed. Secret errors never print values.
+
 Exit 0  no errors (warnings may still be printed)
 Exit 1  at least one error`);
   process.exit(0);
@@ -85,8 +98,8 @@ const rel = (p) => path.relative(repoRoot, p).replaceAll(path.sep, "/");
 const countLines = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 const stripCode = (text) => text.replace(/^```[\s\S]*?^```/gm, "").replace(/`[^`\n]*`/g, "");
 
-// Keep Markdown structure for step boundaries; remove content excluded from body warnings.
-const bodyProse = (text) => {
+// Keep Markdown structure, but ignore frontmatter and fenced examples.
+const bodyMarkdown = (text) => {
   let fence;
   const lines = text.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "")
     .split(/\r?\n/).map((line) => {
@@ -97,7 +110,13 @@ const bodyProse = (text) => {
       }
       if (marker) { fence = marker[1]; return ""; }
       return line;
-    }).join("\n").replace(/(`+)[\s\S]*?\1(?!`)/g, "").split("\n");
+    }).join("\n");
+  return lines;
+};
+
+// Keep Markdown structure for step boundaries; remove content excluded from body warnings.
+const bodyProse = (text) => {
+  const lines = bodyMarkdown(text).replace(/(`+)[\s\S]*?\1(?!`)/g, "").split("\n");
   const tableRows = new Set();
   for (let i = 0; i < lines.length; i++) {
     if (/^\s*\|/.test(lines[i])) tableRows.add(i);
@@ -106,6 +125,44 @@ const bodyProse = (text) => {
     for (let j = i; j < lines.length && lines[j].includes("|"); j++) tableRows.add(j);
   }
   return lines.map((line, i) => tableRows.has(i) ? "" : line).join("\n");
+};
+
+const validateSettings = (md, text) => {
+  const body = bodyMarkdown(text);
+  const heading = /^ {0,3}## Settings[ \t]*#*[ \t]*$/m.exec(body);
+  if (!heading) return;
+  const after = body.slice(heading.index + heading[0].length);
+  const section = after.split(/^ {0,3}#{1,2}\s+/m)[0];
+  const step = /^ {0,3}(?:#{2,3}\s+)?\d+\.\s/m.exec(body);
+  if (step && step.index < heading.index)
+    warnings.push(`${rel(md)}: [settings-order] Settings follows the first numbered step`);
+  if (!text.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "").includes("settings:"))
+    warnings.push(`${rel(md)}: [settings-resolution] body has no settings: resolution line`);
+
+  const cells = (line) => line.trim().replace(/^\|/, "").replace(/\|$/, "")
+    .split(/(?<!\\)\|/).map((cell) => cell.trim());
+  const lines = section.split("\n");
+  let count = 0;
+  for (let i = 1; i < lines.length; i++) {
+    if (!/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[i])) continue;
+    const header = cells(lines[i - 1]);
+    const nameColumn = header.indexOf("Setting");
+    const defaultColumn = header.indexOf("Default");
+    if (nameColumn < 0 || defaultColumn < 0) continue;
+    while (i + 1 < lines.length && lines[i + 1].includes("|")) {
+      const row = cells(lines[++i]);
+      const name = (row[nameColumn] ?? "").replace(/^`+|`+$/g, "");
+      count++;
+      if (/(^|-)(token|secret|password|passphrase|api-key|private-key|credentials?)(-|$)/i.test(name) && !name.endsWith("-env"))
+        errors.push(`${rel(md)}: [settings-secret] credential setting name must end in -env`);
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name))
+        warnings.push(`${rel(md)}: [settings-name] setting name must be kebab-case`);
+      if (!row[defaultColumn])
+        warnings.push(`${rel(md)}: [settings-default] setting has an empty Default cell`);
+    }
+  }
+  if (count > 5)
+    warnings.push(`${rel(md)}: [settings-count] ${count} settings (max 5)`);
 };
 
 const validateBody = (md, text, skillPath) => {
@@ -220,6 +277,7 @@ const validateSkill = (skillPath, folderName) => {
   }
 
   validateBody(md, text, skillPath);
+  validateSettings(md, text);
 
   const lines = countLines(text);
   if (lines > SKILL_MD_MAX_LINES)

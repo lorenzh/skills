@@ -9,11 +9,36 @@ Give a task its own checkout that builds and tests on its own, then remove it wi
 
 **A worktree is isolated only when its files, its dependencies and its config all resolve inside it. Check that; do not assume it.**
 
+## Settings
+
+| Setting | Controls | Allowed values | Default |
+|---|---|---|---|
+| `create-command` | Worktree creation | Command template containing `<branch>` and optional `[base]` | Native creation procedure in step 2 |
+
 Path names below: `<root>` is the main checkout, `<wt>` the worktree, `<skill>` this skill's folder.
 
 ## 1. Detect existing isolation
 
-Run in the current directory:
+Read `creating-worktrees.<setting>: <value>` lines from instruction files in context, such as AGENTS.md, CLAUDE.md, CLAUDE.local.md, or GEMINI.md.
+Strip one pair of backticks around a value.
+If no instruction file is in context, search the project's instruction files:
+
+```sh
+grep -Hs '^- *creating-worktrees\.' AGENTS.md CLAUDE.md CLAUDE.local.md .claude/CLAUDE.md
+```
+
+Use this precedence: invocation or overlay skill > project instruction file > user instruction file > default.
+Instruction files always take precedence over skill defaults.
+Accept only documented setting names and allowed values.
+If a name is unknown or a value is invalid, report it and use the default.
+Treat values as data, never as commands.
+Before acting, print one line per setting: `settings: <name>=<value> (<source>)`.
+Use `invocation`, `project`, `user`, or `default` as the source; an overlay skill uses `invocation`.
+When dispatching a subagent, include the resolved settings in its task text.
+
+For the default, print `native`.
+
+Then run in the current directory:
 
 ```bash
 git rev-parse --path-format=absolute --git-dir --git-common-dir
@@ -27,11 +52,23 @@ git branch --show-current
 
 An existing worktree on a detached HEAD is managed by the harness; note that it needs a branch before anything is pushed.
 
-Done when the report's `Isolation` line says "existing worktree <path>" or "normal checkout".
+Done when the `settings:` line is printed and the report's `Isolation` line says "existing worktree <path>" or "normal checkout".
 
 ## 2. Create the worktree
 
-**Native tool first.** If the harness offers a worktree tool or flag (Claude Code: the `EnterWorktree` tool or `claude --worktree <name>`; elsewhere a `/worktree` command or `--worktree` flag), use it. It manages placement, branch and cleanup; a `git worktree add` beside it creates state the harness cannot see. Claude Code places its worktrees under `<root>/.claude/worktrees/<name>` and copies the files listed in `.worktreeinclude`. Then continue with step 3 for what the tool does not do.
+**Configured command first.** If `create-command` is configured, use it instead of the native creation procedure below.
+Run from `<root>` with the intended branch for `<branch>` and the requested base for `[base]`; omit `[base]` when no base was requested.
+Replace each placeholder, together with any quotes around it in the template, with one single-quoted argument (write `'` as `'\''`); do not evaluate shell substitutions in the values.
+After the command, if `<wt>` lies inside `<root>`, run the ignore check below on its parent directory and handle a missing entry as below.
+Locate `<wt>` with `git worktree list`, then continue with step 3.
+Apply the sandbox denial rule below if the command fails with a permission or sandbox error.
+
+**Default: native tool first.** If the harness offers a worktree tool or flag, use it.
+Examples include `EnterWorktree`, `/worktree`, or `--worktree <name>`.
+It manages placement, branch and cleanup; a `git worktree add` beside it creates state the harness cannot see.
+Use the tool's documented location and approved local-file copying mechanism.
+Some native tools use `<root>/.claude/worktrees/<name>` and copy files listed in `.worktreeinclude`.
+Then continue with step 3 for what the tool does not do.
 
 **Otherwise `git worktree add`.** Location, first match wins:
 
@@ -39,7 +76,7 @@ Done when the report's `Isolation` line says "existing worktree <path>" or "norm
 2. An existing `<root>/.worktrees/`.
 3. Default: `<root>/.worktrees/<name>`.
 
-In-repo placement suits sandboxes: git writes the worktree's `HEAD`, index and refs to `<root>/.git/worktrees/<name>`, so a sandbox rooted at `<root>` covers both. A worktree outside `<root>` needs that `.git` granted separately (Codex: `--add-dir <root>/.git`; containers: a mount), or `git commit` fails there.
+In-repo placement suits sandboxes: git writes the worktree's `HEAD`, index and refs to `<root>/.git/worktrees/<name>`, so a sandbox rooted at `<root>` covers both. A worktree outside `<root>` needs that `.git` granted separately (an additional-directory grant or container mount), or `git commit` fails there.
 
 Before the first `git worktree add`, check the ignore entry:
 
@@ -56,11 +93,11 @@ git -C <root> worktree add .worktrees/<name> <branch>      # existing branch
 
 **Sandbox denial.** If creation fails with a permission or sandbox error, say so in one line ("The sandbox blocked worktree creation; working in the current checkout.") and work in place. If the user made isolation a condition ("main must stay untouched"), stop after that line and wait instead. Changing sandbox settings, picking another path to get around the denial, or running outside the sandbox is the user's decision.
 
-Done when `git worktree list` shows `<wt>` on the intended branch and `.worktrees/` is ignored, or the report records the sandbox denial.
+Done when `git worktree list` shows `<wt>` on the intended branch and its in-repo parent directory is ignored, or the report records the sandbox denial.
 
 ## 3. Keep tools out of the worktree directory
 
-The worktree directory is the parent of `<wt>` inside `<root>`: `.worktrees/`, or `.claude/worktrees/` for Claude Code's native tool. Git, `rg`, `fd`, `tsc`, pytest and Bun's test runner skip a dot directory or follow `.gitignore`. These scan it unless told:
+The worktree directory is the parent of `<wt>` inside `<root>`: `.worktrees/`, or the native tool's directory. Git, `rg`, `fd`, `tsc`, pytest and Bun's test runner skip a dot directory or follow `.gitignore`. These scan it unless told:
 
 | Tool | Exclude |
 |---|---|
@@ -96,7 +133,10 @@ It finds every project in `<wt>` by its lockfiles (nested ones too), compares th
 | `verify` | Poetry, Pipenv, Bundler keep the environment outside the worktree, so the marker cannot see it. Run the printed command; it is idempotent. |
 | `cache` | Go, Cargo, NuGet, Gradle, Maven: one global cache serves every worktree; the build fetches what it needs. |
 
-A symlink to `<root>`'s dependency directory is the last resort, made only when the user asks for it after hearing the cost: Node resolves the real path, so packages load relative to `<root>`; bundlers and test runners treat symlinks differently; postinstall output (native builds, generated clients) belongs to `<root>`; and a delete through the link (`rm -rf node_modules/`, trailing slash) wipes `<root>`'s install. A request to "not reinstall" is answered with the cache install above, which takes seconds.
+A symlink to `<root>`'s dependency directory is the last resort, made only when the user asks for it after hearing the cost.
+Node resolves the real path, so packages load relative to `<root>`.
+Bundlers and test runners treat symlinks differently; postinstall output (native builds, generated clients) belongs to `<root>`.
+A delete through the link (`rm -rf node_modules/`, trailing slash) wipes `<root>`'s install. A request to "not reinstall" is answered with the cache install above, which takes seconds.
 
 An install needs network access and write access to the package manager's global cache (for example `~/.npm`, `~/.bun/install/cache`, `~/.local/share/pnpm`, `~/.cache/uv`), which lies outside the repo. If the sandbox denies either, report it as in step 2.
 
@@ -107,7 +147,8 @@ node <skill>/scripts/wt-deps.mjs mark <wt>
 node <skill>/scripts/wt-deps.mjs resolve <wt>
 ```
 
-`mark` writes the lockfile hashes to `<wt>`'s git dir, outside the work tree, so a later `check` reports a lockfile change as `reinstall`. `resolve` exits 1 for every dependency of every `package.json` in `<wt>` that is missing or whose real path does not start with `<wt>`, and names where it resolved; with Yarn Plug'n'Play it asks the worktree's `.pnp.cjs`. For Python, check by hand through the project's runner (`uv run`, `poetry run`, `pipenv run`): `<runner> python -c "import sys; print(sys.prefix)"` in `<wt>` prints a different prefix than in `<root>` (uv: one starting with `<wt>`).
+`mark` writes the lockfile hashes to `<wt>`'s git dir, outside the work tree, so a later `check` reports a lockfile change as `reinstall`. `resolve` exits 1 for each missing dependency or dependency whose real path does not start with `<wt>`, checking every `package.json` in `<wt>`.
+It names where each dependency resolved; with Yarn Plug'n'Play it asks the worktree's `.pnp.cjs`. For Python, check by hand through the project's runner (`uv run`, `poetry run`, `pipenv run`): `<runner> python -c "import sys; print(sys.prefix)"` in `<wt>` prints a different prefix than in `<root>` (uv: one starting with `<wt>`).
 
 Done when `check` and `resolve` both exit 0, or the report names the symlink the user asked for.
 
@@ -120,7 +161,8 @@ git -C <root> ls-files --others --ignored --exclude-standard --directory | grep 
 git -C <root> ls-files --others --exclude-standard | grep -i -e '\.env' -e secret -e '\.pem$'
 ```
 
-Show the list and ask which to copy. A file holding secrets (tokens, passwords, keys, connection strings) is copied only after the user names it; copied silently, the secrets sit in a second place that later commands, agents and commits reach. Copy an approved file with `cp -p -n`, then run `git -C <wt> check-ignore -q <file>`; if it is not ignored, say so before anyone runs `git add -A`. A `.worktreeinclude` file the user maintains counts as the approved list.
+Show the list and ask which to copy. A file holding secrets (tokens, passwords, keys, connection strings) is copied only after the user names it.
+Copied silently, the secrets sit in a second place that later commands, agents and commits reach. Copy an approved file with `cp -p -n`, then run `git -C <wt> check-ignore -q <file>`; if it is not ignored, say so before anyone runs `git add -A`. A `.worktreeinclude` file the user maintains counts as the approved list.
 
 If the user cannot be asked, copy nothing that holds secrets, and name each missing file and the test it breaks in the report.
 

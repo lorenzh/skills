@@ -270,6 +270,74 @@ test('flags unfilled template slots outside code; an unfilled description fails 
   assert.doesNotMatch(r.stdout, /XML tag/);
 });
 
+const settingsTable = (rows) => '## Settings\n\n| Setting | Controls | Allowed values | Default |\n' +
+  '| --- | --- | --- | --- |\n' + rows.map(([name, value = 'auto']) => `| ${name} | Behavior | auto | ${value} |`).join('\n') + '\n';
+const resolutionStep = '## 1. Resolve settings\nPrint `settings: mode=auto (default)`.\nDone when printed.\n';
+
+for (const [rule, positive, negative, status] of [
+  ['settings-secret', settingsTable(['token', 'client-secret', 'password', 'api-key'].map((name) => [name, 'sensitive-cell-value'])) + resolutionStep,
+    settingsTable(['token-env', 'client-secret-env', 'password-env', 'api-key-env', 'prefix-key'].map((name) => [name])) + resolutionStep, 1],
+  ['settings-count', settingsTable(Array.from({ length: 6 }, (_, i) => [`mode-${i}`])) + resolutionStep,
+    settingsTable(Array.from({ length: 5 }, (_, i) => [`mode-${i}`])) + resolutionStep, 0],
+  ['settings-name', settingsTable([['Bad_Name']]) + resolutionStep,
+    settingsTable([['`run-mode`']]) + resolutionStep, 0],
+  ['settings-default', settingsTable([['mode', '   ']]) + resolutionStep,
+    settingsTable([['mode', 'auto']]) + resolutionStep, 0],
+  ['settings-order', resolutionStep + settingsTable([['mode']]),
+    settingsTable([['mode']]) + resolutionStep, 0],
+  ['settings-resolution', settingsTable([['mode']]) + '## 1. Resolve\nRead settings.\nDone when resolved.\n',
+    settingsTable([['mode']]) + resolutionStep, 0],
+]) {
+  test(`${rule} detects a violation`, (t) => {
+    const { write, run } = fixture(t);
+    write('skills/agents/sample/SKILL.md', markdown() + positive);
+    const r = run();
+    assert.equal(r.status, status, r.stdout + r.stderr);
+    assert.ok(r.stdout.includes(`[${rule}]`), r.stdout);
+    assert.ok(!r.stdout.includes('sensitive-cell-value'), r.stdout);
+  });
+
+  test(`${rule} accepts a valid setting`, (t) => {
+    const { write, run } = fixture(t);
+    write('skills/agents/sample/SKILL.md', markdown() + negative);
+    const r = run();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.doesNotMatch(r.stdout, /\[settings-/);
+  });
+}
+
+test('settings checks ignore tables outside Settings and fenced Settings examples', (t) => {
+  const { write, run } = fixture(t);
+  const invalid = settingsTable(Array.from({ length: 6 }, () => ['Secret_Key', '']));
+  write('skills/agents/sample/SKILL.md', markdown() + settingsTable([['mode']]) + resolutionStep +
+    '## Other\n' + invalid.replace('## Settings\n', '') + '\n```md\n' + invalid + '\n```\n');
+  const r = run();
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stdout, /\[settings-/);
+  write('skills/agents/sample/SKILL.md', markdown() + '```md\n' + invalid + '\n```\n');
+  assert.doesNotMatch(run().stdout, /\[settings-/);
+});
+
+test('settings parser accepts reordered columns, optional border pipes and escaped pipes', (t) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + '## Settings\n\n' +
+    'Default | Allowed values | Setting | Controls\n' +
+    '--- | --- | --- | ---\n' +
+    'auto | auto \\| manual | run-mode | Behavior\n\n' + resolutionStep);
+  const r = run();
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stdout, /\[settings-/);
+});
+
+test('settings resolution must occur in the body, not frontmatter', (t) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown('sample', description + ' settings: mode=auto') + settingsTable([['mode']]));
+  assert.match(run().stdout, /\[settings-resolution\]/);
+  write('skills/agents/sample/SKILL.md', markdown() + settingsTable([['mode']]) +
+    '```text\nsettings: mode=auto (default)\n```\n');
+  assert.doesNotMatch(run().stdout, /\[settings-resolution\]/);
+});
+
 test('help exits zero without inspecting layout', (t) => {
   const { write, run } = fixture(t);
   write('skills/SKILL.md', 'invalid');
@@ -278,7 +346,8 @@ test('help exits zero without inspecting layout', (t) => {
     assert.equal(r.status, 0);
     assert.match(r.stdout, /Usage: node scripts\/validate-skills.mjs/);
     assert.doesNotMatch(r.stdout, /ERROR/);
-    for (const rule of ['step-done-when', 'bounded-loop', 'sentence-length', 'harness-name'])
+    for (const rule of ['step-done-when', 'bounded-loop', 'sentence-length', 'harness-name',
+      'settings-secret', 'settings-count', 'settings-name', 'settings-default', 'settings-order', 'settings-resolution'])
       assert.ok(r.stdout.includes(rule), r.stdout);
   }
 });

@@ -33,7 +33,7 @@ Done when `brief.md` holds the five parts and names no other researcher or answe
 
 Start both in the same turn, each with only `brief.md`. Each returns its answer as text; the lead or the runtime saves it to its own file (`answer-a.md`, `answer-b.md`).
 
-- **Same family as the harness:** a subagent pinned to the model and effort (for example a Claude Code agent file with `model:` and `effort:` in its frontmatter), or a model router such as Spatz.
+- **Same family as the harness:** a subagent pinned to the model and effort, or a model router available in the environment.
 - **Other family:** its CLI in a read-only sandbox, for example `codex exec -m <model> -c model_reasoning_effort=high -s read-only --skip-git-repo-check -C <repo> -o answer-b.md - < brief.md`.
 
 Give each researcher read-only access (a read-only sandbox or read-only tools); a researcher with write access can change the code the other is reading. If a chosen model is unavailable, stop and tell the user; a substitute from the same family is no longer a two-family result.

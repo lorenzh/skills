@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Personal agent skills, installed by users with the `skills` CLI (`npx skills add lorenzh/skills`).
+Agent skills for anyone, installed with the `skills` CLI (`npx skills add lorenzh/skills`).
 No build and no dependencies — the deliverables are the skill folders.
 
 ## Commands
@@ -66,6 +66,7 @@ No build and no dependencies — the deliverables are the skill folders.
 
 ## Conventions
 
+- Keep skills generic; values that differ per user or project become settings; see [settings.md](skills/agents/writing-skills/references/settings.md).
 - `name` in frontmatter equals the folder name: lowercase letters, digits, hyphens, max. 64 characters, never "anthropic" or "claude".
 - Keep skills exactly two levels deep: `skills/<category>/<name>/`. Category names use lowercase letters and single hyphens.
 - Keep skill names unique across categories. The frontmatter name equals the leaf folder name.

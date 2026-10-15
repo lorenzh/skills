@@ -93,6 +93,17 @@ To use a local clone, run `codex plugin marketplace add ./` in the clone. The in
 
 Tested with codex-cli 0.162.1.
 
+## Customizing a skill
+
+Add `## Skill settings` lines to your user or project AGENTS.md or CLAUDE.md, using the skill's name and a documented setting:
+
+```markdown
+## Skill settings
+- creating-worktrees.create-command: `git worktree add -b <branch> .worktrees/<branch> [base]`
+```
+
+See [settings.md](skills/agents/writing-skills/references/settings.md) for allowed values, resolution rules and overlay skills.
+
 ## Requirements per skill
 
 | Skill | Needs |
