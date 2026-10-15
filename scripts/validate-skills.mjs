@@ -21,7 +21,7 @@
 //   files (SECRET_RULES: GitHub, sk-/sk-ant-, AWS access key id, Slack token, PEM private key,
 //   api_key/secret/token/password assignment of 16+ chars), reported as file:line and rule, never
 //   the value; allowed: placeholders (<…>, ${…}, $VAR, xxx…, ***, …), expression references
-//   (process.env.X, os.environ[…]), regex syntax and the exact values in FIXTURE_SECRETS. Every
+//   (process.env.X, os.environ[…]), regex syntax in regex context and the exact values in FIXTURE_SECRETS. Every
 //   diagnostic is printed with likely secrets replaced by [redacted].
 //   Settings error: settings-secret (credential name without an -env suffix; never prints values).
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
@@ -56,7 +56,8 @@ The same files must hold no likely secret: a GitHub token (ghp_, gho_, ghu_, ghs
 github_pat_), an sk- or sk-ant- key, an AWS access key id, a Slack token, a PEM private key
 header, or an api_key/secret/token/password assignment of 16+ chars. Errors print file:line
 and the rule name, never the value. Placeholders (<…>, \${…}, $VAR, xxx…, ***, …), expression
-references (process.env.X, os.environ[…]), regex syntax and the exact fake values in
+references (process.env.X, os.environ[…]), regex syntax inside a /…/ literal, RegExp(…),
+re.compile/search/match/findall(…) or grep -E/-P '…', and the exact fake values in
 FIXTURE_SECRETS pass. Every printed line has likely secrets replaced by [redacted].
 
 Body warnings (ignore frontmatter, fenced code, inline code and table rows):
@@ -354,22 +355,28 @@ const FIXTURE_SECRETS = ["gh" + "p_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8", "sk" +
   "yourActual" + "Password123", "secret-do" + "-not-copy"];
 // Not a literal value: a placeholder or an expression reference (process.env.X, $VAR, ${{ … }}, os.environ[…]).
 const NOT_LITERAL = /^(?:<|\$|x{3}|\*{3}|…|\.{3}|process\.env\b|os\.(?:environ|getenv)\b)/;
-// Regex syntax, exempt only in regex context: a character class with a range or escape (or \d, \w,
-// \s) followed by a quantifier, or brackets/braces in a value inside a /…/ literal on the line.
-// Plain brackets or braces in a quoted value are password punctuation.
-const CLASS_QUANTIFIER = /(?:\[[^\]]*(?:\w-\w|\\\w)[^\]]*\]|\\[dws])(?:[*+?]|\{\d+(?:,\d*)?\})/i;
-const REGEX_SYNTAX = /\[[^\]]+\]|\{\d+(?:,\d*)?\}/;
-const isRegex = (value, m) => CLASS_QUANTIFIER.test(value) ||
-  (REGEX_SYNTAX.test(value) && m.input.lastIndexOf("/", m.index) >= 0 && m.input.indexOf("/", m.index) >= 0);
+// Regex context on a line: a /…/ literal, or the string argument of new RegExp(…), RegExp(…),
+// re.compile/search/match/findall(…) or grep -E/-P. Only there a value holding a character class
+// or escape with a quantifier is regex syntax; anywhere else it is password punctuation.
+const REGEX_CONTEXT = new RegExp([
+  String.raw`(?<![\w)\]])/(?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\[\n])+/`,
+  String.raw`(?:\bnew\s+RegExp|\bRegExp|\bre\.(?:compile|search|match|findall))\s*\(\s*[rRbBuU]*(["'])(?:\\.|(?!\1).)*\1`,
+  String.raw`\bgrep(?:\s+-[A-Za-z]+)*\s+-[A-Za-z]*[EP][A-Za-z]*(?:\s+-[A-Za-z]+)*\s+(["'])(?:\\.|(?!\2).)*\2`,
+].join("|"), "g");
+const CLASS_QUANTIFIER = /(?:\[[^\]]+\]|\\[A-Za-z])(?:[*+?]|\{\d+(?:,\d*)?\})/;
+const isRegex = (value, m) => CLASS_QUANTIFIER.test(value) &&
+  [...m.input.matchAll(REGEX_CONTEXT)].some((c) => c.index < m.index && m.index < c.index + c[0].length);
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const SECRET_RULES = [
   ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_\w{20,})/g],
   ["sk-key", /\bsk-(?:ant-)?[\w-]{20,}/g],
   ["aws-access-key", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
   ["slack-token", /\bxox[abprs]-[\w-]{10,}/g],
   ["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
-  // A quoted value runs to its closing quote, spaces included. An unquoted value keeps backslashes
-  // but ends at a literal \r or \n escape, a line end in printf strings and terminal recordings.
-  ["secret-assignment", /(?:api_?key|secret|token|password)["']?\s*[:=]\s*(?:"([^"\n]*)"|'([^'\n]*)'|["']?((?:[^\s"'`,;)\\]|\\(?![rn]))+))/gi],
+  // A quoted value runs to its closing quote, spaces included. An unquoted value runs to whitespace
+  // or a terminator, literal \r and \n escapes included; such an escape ends it only right after an
+  // exact FIXTURE_SECRETS value (printf strings and terminal recordings), so the rest is scanned anew.
+  ["secret-assignment", new RegExp(String.raw`(?:api_?key|secret|token|password)["']?\s*[:=]\s*(?:"([^"\n]*)"|'([^'\n]*)'|["']?((?:${FIXTURE_SECRETS.map(escapeRe).join("|")})(?=\\[rn])|[^\s"'` + "`" + String.raw`,;)]+))`, "gi")],
 ];
 const isSecret = (rule, m) => {
   const value = rule === "secret-assignment" ? m[1] ?? m[2] ?? m[3] : m[0];

@@ -238,6 +238,42 @@ test('flags brackets and braces in a quoted value outside regex context (R5-02)'
   }
 });
 
+test('flags a regex-like escape in a quoted value outside regex context (R6-01)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word="River\\d+' + 'Blue2026!Secret"');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
+test('allows quantified classes without a range inside RegExp, re and grep calls (R6-02)', (t) => {
+  for (const line of ['new RegExp("to' + 'ken=[ABCDEFGHJKLMNPQRSTUVWXYZ]{32}")', 'RegExp(\'to' + 'ken=[ABCDEFGHJKLMNPQRSTUVWXYZ]{32}\')',
+    're.compile(r"to' + 'ken=[A-Z]{32}")', 're.findall(r"api_' + 'key=\\w{24,}", s)', "grep -nE 'pass" + "word=[A-Za-z0-9]{20,}' .env"]) {
+    const r = scanSecret(t, line);
+    assert.doesNotMatch(r.stdout, /likely secret/, line + '\n' + r.stdout);
+    assert.equal(r.status, 0, line + '\n' + r.stdout);
+  }
+});
+
+test('reads an unquoted value through literal \\r and \\n escapes and redacts all of it (R6-03)', (t) => {
+  const r = scanSecret(t, 'PASS' + 'WORD=River\\nBlue' + '2026!Secret');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + Array(30).fill('word').join(' ') + ' to' + 'ken=Zq9Xw8Vu7Ts6' +
+    'Rr5Qp4\\nSecret' + 'Suffix.\n');
+  const w = run();
+  assert.match(w.stdout, /\[sentence-length\].*\[redacted\]/, w.stdout);
+  assert.ok(!w.stdout.includes('Suffix'), w.stdout);
+});
+
+test('ends an unquoted value at a literal escape only after an exact fixture secret (R6-03)', (t) => {
+  const ok = scanSecret(t, ['[31.5, "o", "$ export API_TO' + 'KEN=gh' + 'p_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8\\r\\n"]',
+    "printf 'TO" + 'KEN=secret-do' + "-not-copy\\nDB_URL=postgres://localhost/dev\\n'"].join('\n'));
+  assert.equal(ok.status, 0, ok.stdout);
+  const r = scanSecret(t, "printf 'TO" + 'KEN=secret-do' + '-not-copy\\nPASS' + "WORD=River2026Blue!Secret\\n'");
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
 test('matches a quoted value through its closing quote, spaces included (R4-06)', (t) => {
   const r = scanSecret(t, 'pass' + 'word="correct horse ' + 'battery staple"');
   assert.equal(r.status, 1, r.stdout);
