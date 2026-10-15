@@ -10,6 +10,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 |---|---|---|
 | research | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | Has two researchers from different model families answer one brief, checks each disagreement against primary sources, and writes one report. |
 | publishing | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | Scans text, recordings and frames for private data (home paths, hosts, emails, tokens, internal names) before anything goes public. |
+| agents | [writing-skills](skills/agents/writing-skills/SKILL.md) | Authors skills with evidence, tiered checks and a bounded review budget. |
 | agents | [competing-implementations](skills/agents/competing-implementations/SKILL.md) | Runs two implementations of one brief, compares blind diffs, and ships the reviewed winner. |
 | agents | [reviewing-across-families](skills/agents/reviewing-across-families/SKILL.md) | Runs a review loop where a model of another family reviews an agent's change, the implementer fixes, and the orchestrating session ships the PR. |
 | git | [creating-worktrees](skills/git/creating-worktrees/SKILL.md) | Sets up git worktrees that are really isolated: in-repo placement, dependencies installed and resolving inside the worktree, local files copied only with consent, and safe cleanup. |
@@ -98,6 +99,7 @@ Tested with codex-cli 0.162.1.
 |---|---|
 | researching-with-two-models | Two agent runtimes of different model families, for example a pinned Claude subagent and the `codex` CLI. |
 | checking-before-publishing | Node.js 18+ for the scan. For GIF or video frames: `ffmpeg`. |
+| writing-skills | Node.js 18+ for repo tooling. Agent runtime for tier-1 and tier-2 checks. |
 | competing-implementations | Model router (such as Spatz), two implementer workers, one reviewer, `git`, Node.js 18+ for blind packets, and a PR CLI for publishing. |
 | reviewing-across-families | Two agent runtimes of different model families (for example a Claude harness and Codex CLI). For shipping: Node.js 18+, `git` and `gh`. |
 | creating-worktrees | Node.js 18+ and `git`. Uses the package managers the repo already uses. |
@@ -123,8 +125,10 @@ skills/<category>/<name>/   one skill; the CLI installs this folder
   SKILL.md
   references/               optional, read on demand
   scripts/                  optional, Node.js or Python 3, no dependencies
-evals/<category>/<name>/    test scenarios for the skill; not installed
-templates/                  source for new skills
+evals/<category>/<name>/    test scenarios per tier-2 skill; not installed
+skills/agents/writing-skills/templates/SKILL.md.tmpl
+                            source for new skills
+templates/evals/            source for tier-2 evals (--evals)
 scripts/                    validator and scaffolder
 ```
 
@@ -132,14 +136,14 @@ Evals sit outside `skills/`, so an install copies only what the agent reads.
 
 ## Contributing
 
-Issues and pull requests are welcome. A new skill needs evidence that it changes what an agent does:
+Issues and pull requests are welcome. Follow [writing-skills](skills/agents/writing-skills/SKILL.md), the authoritative authoring guide.
 
-1. Scaffold it: `node scripts/new-skill.mjs <category>/<name>`.
-2. Run the task on a fresh agent without the skill and write what goes wrong to `evals/<category>/<name>/evals.json`. If the agent already does the task well, the skill is not needed.
-3. Write the skill so that each failure is addressed, then run the same scenarios with the skill.
+1. Record the failure the skill must address and choose its test tier using the guide.
+2. Scaffold it: `node scripts/new-skill.mjs <category>/<name>`. For tier 2, add `--evals`.
+3. Write the skill and run the checks in [writing-skills](skills/agents/writing-skills/SKILL.md).
 4. Run `node scripts/validate-skills.mjs` and `npm test`. Both must pass.
 
-[AGENTS.md](AGENTS.md) has the full conventions.
+[AGENTS.md](AGENTS.md) has the repo conventions.
 
 ## License
 

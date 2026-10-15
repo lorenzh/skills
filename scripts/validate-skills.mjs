@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Errors (exit 1): missing frontmatter, name/folder mismatch, name not lowercase-hyphen,
 //   name over 64 chars or holding "anthropic"/"claude", missing description,
-//   description over 1024 chars or holding an XML tag, a relative link in AGENTS.md,
+//   description over 1024 chars, holding an XML tag or only an unfilled template slot, a relative link in AGENTS.md,
 //   README.md or a skill's markdown pointing at a file that does not exist,
 //   missing skills/, a SKILL.md at repo root or in
 //   skills/ or a category (it shadows skills below it), invalid category names,
@@ -19,8 +19,12 @@
 //   allowed: placeholders such as /home/<user>, the exact fake fixture names in FIXTURE_NAMES,
 //   and the gitignored evals/**/results/ folders, which are not read.
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
-//   120-700 char band, with no trigger, not third person, or still holding the
-//   template's TODO, reference not linked from SKILL.md, skill folder without SKILL.md.
+//   120-700 char band, with no trigger or not third person, a standalone unfilled body
+//   template slot, reference not linked from SKILL.md, skill folder without SKILL.md.
+//   Body warnings: step-done-when (numbered step without Done when), bounded-loop
+//   (loop instruction without a digit), sentence-length (over 30 words),
+//   harness-name (Claude Code, Codex or AskUserQuestion with references/harness-notes.md).
+//   These four ignore frontmatter, fenced code, inline code and table rows.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -40,6 +44,13 @@ It covers ASCII names of letters, digits, ".", "_" and "-" only.
 Placeholders like /home/<user> pass, and so do these exact fake fixture names: jdoe,
 jdoe-noreply, alice, alice.meyer, user, user-admin, runner.dev.
 
+Body warnings (ignore frontmatter, fenced code, inline code and table rows):
+  step-done-when   numbered ## N. or ### N. step without a Done when line
+  bounded-loop    imperative repeat or until with a loop verb, without a digit
+  template-slot   standalone unfilled body slot outside code (an unfilled description is an error)
+  sentence-length sentence over 30 words
+  harness-name    Claude Code, Codex or AskUserQuestion in a skill with references/harness-notes.md
+
 Exit 0  no errors (warnings may still be printed)
 Exit 1  at least one error`);
   process.exit(0);
@@ -53,6 +64,7 @@ const DESCRIPTION_MAX_CHARS = 1024; // spec limit
 const DESCRIPTION_MIN_GOOD = 120;   // tunable: below this there is no room for triggers
 const DESCRIPTION_MAX_GOOD = 700;   // tunable: above this the description summarises the body
 const SKILL_MD_MAX_LINES = 300;     // tunable soft ceiling
+const SENTENCE_MAX_WORDS = 30;      // tunable prose warning threshold
 const errors = [];
 const warnings = [];
 const skillNames = new Set();
@@ -64,6 +76,61 @@ const rel = (p) => path.relative(repoRoot, p).replaceAll(path.sep, "/");
 // "a\nb\n".split("\n") is ["a","b",""] — the trailing empty string is not a line.
 const countLines = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 const stripCode = (text) => text.replace(/^```[\s\S]*?^```/gm, "").replace(/`[^`\n]*`/g, "");
+
+// Keep Markdown structure for step boundaries; remove content excluded from body warnings.
+const bodyProse = (text) => {
+  let fence;
+  const lines = text.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "")
+    .split(/\r?\n/).map((line) => {
+      const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+      if (fence) {
+        if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = undefined;
+        return "";
+      }
+      if (marker) { fence = marker[1]; return ""; }
+      return line;
+    }).join("\n").replace(/(`+)[\s\S]*?\1(?!`)/g, "").split("\n");
+  const tableRows = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*\|/.test(lines[i])) tableRows.add(i);
+    if (!/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[i])) continue;
+    if (i > 0 && lines[i - 1].includes("|")) tableRows.add(i - 1);
+    for (let j = i; j < lines.length && lines[j].includes("|"); j++) tableRows.add(j);
+  }
+  return lines.map((line, i) => tableRows.has(i) ? "" : line).join("\n");
+};
+
+const validateBody = (md, text, skillPath) => {
+  const prose = bodyProse(text);
+  for (const line of prose.split("\n"))
+    if (/^\s*(?:Done when\s+)?<[^>]+>\s*$/.test(line))
+      warnings.push(`${rel(md)}: [template-slot] unfilled template slot: ${line.trim()}`);
+  const headings = [...prose.matchAll(/^ {0,3}(#{1,6})\s+(.+)$/gm)];
+  for (let i = 0; i < headings.length; i++) {
+    const heading = headings[i];
+    if (!/^#{2,3}$/.test(heading[1]) || !/^\d+\.\s/.test(heading[2])) continue;
+    const next = headings.slice(i + 1).find((h) => h[1].length <= heading[1].length);
+    const section = prose.slice(heading.index + heading[0].length, next?.index ?? prose.length);
+    if (!/^Done when\b/m.test(section))
+      warnings.push(`${rel(md)}: [step-done-when] ${heading[0].trim()} has no Done when line`);
+  }
+
+  // shortcut: sentence boundaries use punctuation and Markdown blocks, refine if real prose needs a language parser.
+  const paragraphs = prose.replace(/^ {0,3}#{1,6}\s+.*$/gm, "")
+    .replace(/^\s*(?:[-*+] |\d+\. )/gm, "\n").split(/\n\s*\n/);
+  for (const paragraph of paragraphs)
+    for (const sentence of paragraph.trim().split(/[.!?]+["'’”*_)\]]*(?:\s+|$)/).filter(Boolean)) {
+      const words = sentence.trim().split(/\s+/).filter(Boolean).length;
+      if ((/(?:^|:)\s*repeat\b/i.test(sentence) || (/\buntil\b/i.test(sentence) && /\b(?:repeat|retry|rerun|re-run|poll|wait|keep|loop|iterate)\b/i.test(sentence))) && !/\d/.test(sentence))
+        warnings.push(`${rel(md)}: [bounded-loop] until/repeat sentence has no digit: ${sentence.trim().replace(/\s+/g, " ")}`);
+      if (words > SENTENCE_MAX_WORDS)
+        warnings.push(`${rel(md)}: [sentence-length] sentence has ${words} words (max ${SENTENCE_MAX_WORDS}): ${sentence.trim().replace(/\s+/g, " ")}`);
+    }
+
+  if (fs.existsSync(path.join(skillPath, "references", "harness-notes.md")))
+    for (const hit of prose.matchAll(/\b(?:Claude Code|Codex|AskUserQuestion)\b/g))
+      warnings.push(`${rel(md)}: [harness-name] ${hit[0]} belongs in references/harness-notes.md`);
+};
 
 const readFrontmatter = (fmBlock) => {
   const name = fmBlock.match(/^name:\s*(\S+)\s*$/m)?.[1]?.replace(/^["']|["']$/g, "");
@@ -84,8 +151,8 @@ const readFrontmatter = (fmBlock) => {
 const validateDescription = (md, d, fmBlock) => {
   if (d.length > DESCRIPTION_MAX_CHARS)
     errors.push(`${rel(md)}: description is ${d.length} chars (max ${DESCRIPTION_MAX_CHARS})`);
-  if (/<[a-z][^>]*>/i.test(d)) errors.push(`${rel(md)}: description contains an XML tag`);
-  if (/\bTODO\b/.test(d)) warnings.push(`${rel(md)}: description still holds the template's TODO`);
+  if (/^<[^>]+>$/.test(d)) errors.push(`${rel(md)}: [template-slot] unfilled template slot in description`);
+  else if (/<[a-z][^>]*>/i.test(d)) errors.push(`${rel(md)}: description contains an XML tag`);
 
   // A hand-invoked skill is not discovered from its description.
   if (/^disable-model-invocation:\s*true\s*$/m.test(fmBlock)) return;
@@ -143,6 +210,8 @@ const validateSkill = (skillPath, folderName) => {
     if (!description) errors.push(`${rel(md)}: missing or empty description`);
     else validateDescription(md, description, fm[1]);
   }
+
+  validateBody(md, text, skillPath);
 
   const lines = countLines(text);
   if (lines > SKILL_MD_MAX_LINES)

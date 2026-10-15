@@ -177,13 +177,57 @@ test('keeps name constraints', (t) => {
 
 test('warnings still exit zero', (t) => {
   const { write, run } = fixture(t);
-  write('skills/agents/sample/SKILL.md', markdown('sample', 'I can help. TODO') + '\n'.repeat(301));
+  write('skills/agents/sample/SKILL.md', markdown('sample', 'I can help.') + '\n'.repeat(301));
   write('skills/agents/sample/references/unlinked.md', '# Reference');
   write('skills/agents/empty/.gitkeep');
   const r = run();
   assert.equal(r.status, 0, r.stderr);
-  for (const warning of [/too short/, /no trigger/, /not third person/, /template's TODO/, /soft ceiling/, /not linked/, /has no SKILL.md/])
+  for (const warning of [/too short/, /no trigger/, /not third person/, /soft ceiling/, /not linked/, /has no SKILL.md/])
     assert.match(r.stdout, warning);
+});
+
+const ignoredBody = (text) => `\n\`\`\`md\n${text}\n\`\`\`\n~~~md\n${text}\n~~~\n` +
+  text.split('\n').map((line) => `\`\`${line}\`\`\n| ${line} | ignored |\n`).join('');
+
+for (const [rule, positive, negative] of [
+  ['step-done-when', '## 1. First\nRead it.\n### Detail\nNo outcome.\n## 2. Next\nDone when saved.\n### 3. Third\nRead it.\n## End\nDone when saved.',
+    '## 1. First\n### Detail\nDone when saved.\n## 2. Next\nDone when saved.\n### 3. Third\nDone when saved.'],
+  ['bounded-loop', 'Repeat the check.\nWait UNTIL ready.\nRepeat `a | b` then stop.\nOn failure: repeat the check.',
+    'Repeat at most 3 times. Wait until 2 checks pass. Repeated checks are fine. Until now, 1 check passed. The summary does not repeat them. Leave it empty until the workflow starts.'],
+  ['sentence-length', Array(31).fill('word').join(' ') + '.', '**' + Array(30).fill('word').join(' ') + '.** A short sentence.'],
+  ['harness-name', 'Claude Code, Codex and AskUserQuestion.', 'Read the harness notes.'],
+]) {
+  test(`${rule} warns on prose and ignores excluded content`, (t) => {
+    const { write, run } = fixture(t);
+    if (rule === 'harness-name') {
+      write('skills/agents/sample/references/harness-notes.md', positive);
+    }
+    // Frontmatter is excluded even when it contains warning candidates.
+    const doc = markdown('sample', description + ' Repeat until ready. Codex. ' + Array(31).fill('word').join(' ') + '.');
+    write('skills/agents/sample/SKILL.md', doc + positive + '\n');
+    const hit = run();
+    assert.equal(hit.status, 0, hit.stdout + hit.stderr);
+    const count = { 'step-done-when': 2, 'bounded-loop': 4, 'sentence-length': 1, 'harness-name': 3 }[rule];
+    assert.equal(hit.stdout.split(`[${rule}]`).length - 1, count, hit.stdout);
+    write('skills/agents/sample/SKILL.md', doc + negative + ignoredBody(positive) + '\nExample | Notes\n--- | ---\n' + positive.split('\n').map((line) => `${line} | ignored`).join('\n'));
+    const clean = run();
+    assert.equal(clean.status, 0, clean.stdout + clean.stderr);
+    assert.ok(!clean.stdout.includes(`[${rule}]`), clean.stdout);
+    if (rule === 'harness-name') {
+      write('skills/agents/other/SKILL.md', markdown('other') + positive);
+      assert.ok(!run().stdout.includes('[harness-name]'), 'harness names need a harness-notes reference');
+    }
+  });
+}
+
+test('flags unfilled template slots outside code; an unfilled description fails instead of reading as XML', (t) => {
+  const { write, run } = fixture(t);
+  const slots = '<Instruction: fill this slot.>\nDone when <the artifact exists.>';
+  write('skills/agents/sample/SKILL.md', markdown('sample', '<Identity and Use when trigger.>') + slots + '\n' + ignoredBody(slots));
+  const r = run();
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.equal(r.stdout.split('[template-slot]').length - 1, 3, r.stdout);
+  assert.doesNotMatch(r.stdout, /XML tag/);
 });
 
 test('help exits zero without inspecting layout', (t) => {
@@ -194,24 +238,41 @@ test('help exits zero without inspecting layout', (t) => {
     assert.equal(r.status, 0);
     assert.match(r.stdout, /Usage: node scripts\/validate-skills.mjs/);
     assert.doesNotMatch(r.stdout, /ERROR/);
+    for (const rule of ['step-done-when', 'bounded-loop', 'sentence-length', 'harness-name'])
+      assert.ok(r.stdout.includes(rule), r.stdout);
   }
 });
 
-test('scaffolder creates category skill and evals with leaf placeholders', (t) => {
-  const { root, run } = fixture(t);
-  const r = run('new-skill.mjs', ['terminal-tools/sample-skill']);
-  assert.equal(r.status, 0, r.stderr);
-  assert.match(fs.readFileSync(path.join(root, 'skills/terminal-tools/sample-skill/SKILL.md'), 'utf8'), /name: sample-skill\n[\s\S]*# Sample Skill/);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'evals/terminal-tools/sample-skill/evals.json'), 'utf8')).skill_name, 'sample-skill');
-  assert.equal(run().status, 0);
-  assert.equal(run('new-skill.mjs', ['terminal-tools/sample-skill']).status, 1);
-  assert.equal(run('new-skill.mjs', ['agents/sample-skill']).status, 1);
-  assert.equal(fs.existsSync(path.join(root, 'skills/agents')), false);
-});
+function scaffoldFixture(t) {
+  const template = new URL('../skills/agents/writing-skills/templates/SKILL.md.tmpl', import.meta.url);
+  const f = fixture(t);
+  const target = path.join(f.root, 'skills/agents/writing-skills/templates/SKILL.md.tmpl');
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(template, target);
+  return f;
+}
+
+for (const withEvals of [false, true]) {
+  test(`scaffolder fills the writing-skills skeleton ${withEvals ? 'with --evals' : 'without evals'}`, (t) => {
+    const f = scaffoldFixture(t);
+    const { root, run } = f;
+    const r = run('new-skill.mjs', ['terminal-tools/sample-skill', ...(withEvals ? ['--evals'] : [])]);
+    assert.equal(r.status, 0, r.stderr);
+    const skeleton = fs.readFileSync(new URL('../skills/agents/writing-skills/templates/SKILL.md.tmpl', import.meta.url), 'utf8');
+    assert.equal(fs.readFileSync(path.join(root, 'skills/terminal-tools/sample-skill/SKILL.md'), 'utf8'),
+      skeleton.replaceAll('{{name}}', 'sample-skill').replaceAll('{{title}}', 'Sample Skill'));
+    if (withEvals)
+      assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'evals/terminal-tools/sample-skill/evals.json'), 'utf8')).skill_name, 'sample-skill');
+    else assert.equal(fs.existsSync(path.join(root, 'evals')), false);
+    assert.equal(run('new-skill.mjs', ['terminal-tools/sample-skill']).status, 1);
+    assert.equal(run('new-skill.mjs', ['agents/sample-skill']).status, 1);
+    assert.equal(fs.existsSync(path.join(root, 'skills/agents/sample-skill')), false);
+  });
+}
 
 test('scaffolder misuse exits two without writing files', (t) => {
   const { root, run } = fixture(t);
-  for (const args of [[], ['sample'], ['Agents/sample'], ['agents/Bad_Name'], ['agents/claude-tool'], ['agents/' + 'x'.repeat(65)], ['agents/sample/extra'], ['agents/sample/'], ['../sample'], ['/sample'], ['agents/sample', 'extra']]) {
+  for (const args of [[], ['sample'], ['Agents/sample'], ['agents/Bad_Name'], ['agents/claude-tool'], ['agents/' + 'x'.repeat(65)], ['agents/sample/extra'], ['agents/sample/'], ['../sample'], ['/sample'], ['agents/sample', 'extra'], ['agents/sample', '--evals', '--evals'], ['agents/sample', '--unknown']]) {
     const r = run('new-skill.mjs', args);
     assert.equal(r.status, 2, args.join(' '));
     assert.match(r.stderr, /Usage:.*<category>\/<name>/);
@@ -224,7 +285,7 @@ test('scaffolder misuse exits two without writing files', (t) => {
 test('scaffolder refuses an existing eval directory before creating the skill', (t) => {
   const { root, write, run } = fixture(t);
   write('evals/agents/sample/evals.json', 'preserve');
-  const r = run('new-skill.mjs', ['agents/sample']);
+  const r = run('new-skill.mjs', ['agents/sample', '--evals']);
   assert.equal(r.status, 1);
   assert.equal(fs.existsSync(path.join(root, 'skills/agents/sample')), false);
   assert.equal(fs.readFileSync(path.join(root, 'evals/agents/sample/evals.json'), 'utf8'), 'preserve');

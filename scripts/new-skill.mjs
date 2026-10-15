@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// Scaffolds a new skill: copies templates/skill/ to skills/<category>/<name>/ and
-// templates/evals/ to evals/<category>/<name>/, filling in {{name}} and {{title}}.
-// Template files end in .tmpl: when skills/ is empty the skills CLI searches the whole
-// repo, finds templates/skill/SKILL.md, and prints a warning each run before skipping it
-// ({{name}} parses as a YAML object, not a string).
+// Scaffolds skills/<category>/<name>/SKILL.md from the writing-skills template,
+// filling {{name}} and {{title}}. --evals also copies templates/evals/ for tier 2.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const USAGE = `Usage: node scripts/new-skill.mjs <category>/<name>
+const USAGE = `Usage: node scripts/new-skill.mjs <category>/<name> [--evals]
 
-Creates skills/<category>/<name>/SKILL.md and evals/<category>/<name>/evals.json from templates/.
+Creates skills/<category>/<name>/SKILL.md from
+skills/agents/writing-skills/templates/SKILL.md.tmpl.
+--evals also creates evals/<category>/<name>/evals.json from templates/evals/ (tier 2).
+By default, no evals directory is created.
 <category> is lowercase letters and single hyphens.
 <name> is lowercase letters, digits and hyphens, at most 64 characters,
 and must not contain "anthropic" or "claude".
@@ -25,8 +25,10 @@ if (args.includes("--help") || args.includes("-h")) {
   console.log(USAGE);
   process.exit(0);
 }
-const [category, name, extra] = (args[0] ?? "").split("/");
-if (args.length !== 1 || extra !== undefined || !/^[a-z]+(-[a-z]+)*$/.test(category) || !name || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name) || name.length > 64 || /anthropic|claude/.test(name)) {
+const withEvals = args.includes("--evals");
+const positional = args.filter((arg) => arg !== "--evals");
+const [category, name, extra] = (positional[0] ?? "").split("/");
+if (positional.length !== 1 || args.length !== (withEvals ? 2 : 1) || extra !== undefined || !/^[a-z]+(-[a-z]+)*$/.test(category) || !name || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name) || name.length > 64 || /anthropic|claude/.test(name)) {
   console.error(USAGE);
   process.exit(2);
 }
@@ -34,8 +36,8 @@ if (args.length !== 1 || extra !== undefined || !/^[a-z]+(-[a-z]+)*$/.test(categ
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const title = name.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
 const targets = [
-  [path.join(repoRoot, "templates", "skill"), path.join(repoRoot, "skills", category, name)],
-  [path.join(repoRoot, "templates", "evals"), path.join(repoRoot, "evals", category, name)],
+  [path.join(repoRoot, "skills", "agents", "writing-skills", "templates", "SKILL.md.tmpl"), path.join(repoRoot, "skills", category, name)],
+  ...(withEvals ? [[path.join(repoRoot, "templates", "evals"), path.join(repoRoot, "evals", category, name)]] : []),
 ];
 
 const skillsDir = path.join(repoRoot, "skills");
@@ -52,18 +54,24 @@ for (const [, dest] of targets)
     process.exit(1);
   }
 
+// Read the skeleton before creating any destination.
+const skeleton = fs.readFileSync(targets[0][0], "utf8");
+const fill = (text) => text.replaceAll("{{name}}", name).replaceAll("{{title}}", title);
 const copy = (src, dest) => {
   fs.mkdirSync(dest, { recursive: true });
   for (const e of fs.readdirSync(src, { withFileTypes: true })) {
     const from = path.join(src, e.name);
     const to = path.join(dest, e.name.replace(/\.tmpl$/, ""));
     if (e.isDirectory()) copy(from, to);
-    else fs.writeFileSync(to, fs.readFileSync(from, "utf8").replaceAll("{{name}}", name).replaceAll("{{title}}", title));
+    else fs.writeFileSync(to, fill(fs.readFileSync(from, "utf8")));
   }
 };
 
 for (const [src, dest] of targets) {
-  copy(src, dest);
+  if (src === targets[0][0]) {
+    fs.mkdirSync(dest, { recursive: true });
+    fs.writeFileSync(path.join(dest, "SKILL.md"), fill(skeleton));
+  } else copy(src, dest);
   console.log(`created ${path.relative(repoRoot, dest)}/`);
 }
-console.log(`\nNext: fill in the TODOs in skills/${category}/${name}/SKILL.md, then run node scripts/validate-skills.mjs`);
+console.log(`\nNext: fill in the placeholders in skills/${category}/${name}/SKILL.md, then run node scripts/validate-skills.mjs`);

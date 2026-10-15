@@ -1,0 +1,115 @@
+{
+  "method": "T2 behavioral eval, 2026-10-15. Each arm is one fresh `claude -p --model claude-haiku-5-5 --effort medium --output-format json --max-turns 60 --permission-mode acceptEdits` session with CLAUDE_ORCH_GATE=off, cwd = its own scratch dir <scratch>/eval/<scenario>-<old|new>/ holding the fixture files and a copy of the skill under test at <scratch>/eval/<scenario>-<arm>/skill-under-test/writing-skills/. The prompt names that copy explicitly ('Follow the skill at skill-under-test/writing-skills/SKILL.md and its references.') because the old skill is installed globally under the same name. Control (old) = the previously installed writing-skills; new = skills/agents/writing-skills on branch feat/writing-skills. Model identity is the modelUsage key of the result JSON. Limits that apply to every run: acceptEdits denied every Bash call (no validator, no shell, no nested claude runs inside the sessions; the evaluator ran the validator afterwards), and the sessions saw the real repo path from the inherited environment and tried to read it. One run per arm, no reruns.",
+  "scenarios": [
+    {
+      "id": "s1-endless-review",
+      "prompt": "Review this skill (verify-before-done/SKILL.md), fix what you find, and pressure-test it until it is solid. Follow the skill at skill-under-test/writing-skills/SKILL.md and its references.",
+      "files": ["fixtures/s1-endless-review/verify-before-done/SKILL.md"],
+      "expected": [
+        "The run stops on its own with at most 3 review rounds and at most 2 fix rounds.",
+        "It writes a round ledger (`Round n: blocker=k should-fix=m open=[ids]`).",
+        "It hands open findings to the human instead of continuing."
+      ],
+      "lived": true,
+      "results": {
+        "old": {
+          "verdict": "fail",
+          "evidence": "Stopped on its own after 1 rewrite, 6 pressure subagents, 2 edits, 2 more subagents (within caps), but no round ledger anywhere: final message and files contain no 'Round n' line. Handoff present: 'Choices for you to confirm: The 3-cycle fix limit.' The lived endless loop did not reproduce on Haiku with Bash blocked, so only the ledger criterion separates the arms.",
+          "model": "claude-haiku-5-5",
+          "seconds": 171,
+          "cost": 0.0735
+        },
+        "new": {
+          "verdict": "pass",
+          "evidence": "1 review, 1 fix round (one Write), 6 pressure subagents, then stop. Ledger in final message: '`Round 1: blocker=2 should-fix=4 open=[F1–F6 closed by static check; behavior unverified]`' and 'Budget used: 1 review and 1 fix round, so 2 reviews and 1 fix round remain.' Handoff: 'run the runs/p2-skill fixture yourself ... I can rerun the pairs after that.' Defects: ledger open list holds closed IDs, closure without behavioral evidence, ledger not in a file, no evals.json for the selected T2 (findings E1-01..E1-04).",
+          "model": "claude-haiku-5-5",
+          "seconds": 144,
+          "cost": 0.0755
+        }
+      }
+    },
+    {
+      "id": "s2-eval-overhead",
+      "prompt": "Users say 'clean up my commits before the PR' and the skill at skills/git/squashing-commits/ doesn't load. Fix the description. Follow the skill at skill-under-test/writing-skills/SKILL.md and its references.",
+      "files": ["fixtures/s2-eval-overhead/skills/git/squashing-commits/SKILL.md", "scripts/validate-skills.mjs (copied from the repo)"],
+      "expected": [
+        "No evals.json is created.",
+        "No baseline or control runs are started.",
+        "The selected tier is T0 or T1 and is recorded in the handoff."
+      ],
+      "lived": true,
+      "results": {
+        "old": {
+          "verdict": "fail",
+          "evidence": "No evals.json, no runs (find: none). No tier recorded; the run treats the skipped baseline and triggering tests as owed work: 'No triggering tests. The guide's step 5 calls for fresh-session runs ... I also didn't do the baseline in step 1. If you approve Bash, I can run the validator and a triggering check next.' Overhead was avoided only because Bash was denied.",
+          "model": "claude-haiku-5-5",
+          "seconds": 28,
+          "cost": 0.0125
+        },
+        "new": {
+          "verdict": "pass",
+          "evidence": "No evals.json, no runs (find: none). Tier recorded: 'A description-only edit that adds no instruction is T0, which needs validator output only.' New description adds 'Use when the user asks to clean up their commits before the PR'. Validator not run: 'I could not find a repo validator from this session' although scripts/validate-skills.mjs was present (finding E1-05).",
+          "model": "claude-haiku-5-5",
+          "seconds": 41,
+          "cost": 0.0158
+        }
+      }
+    },
+    {
+      "id": "s3-small-model-authoring",
+      "prompt": "Turn this failure (failure-note.md) into a new skill in skills/git/<name>/, choosing the name. Follow the skill at skill-under-test/writing-skills/SKILL.md and its references.",
+      "files": ["fixtures/s3-small-model-authoring/failure-note.md", "scripts/validate-skills.mjs (copied from the repo)"],
+      "expected": [
+        "skills/git/<name>/SKILL.md exists.",
+        "Every numbered step ends on a 'Done when' line.",
+        "The description has identity plus 'Use when' triggers and is 120-700 characters.",
+        "The copied validator exits 0.",
+        "No evals.json unless the run records a T2 predicate."
+      ],
+      "lived": true,
+      "results": {
+        "old": {
+          "verdict": "fail",
+          "evidence": "skills/git/committing-on-feature-branches/SKILL.md exists, 4 numbered steps / 4 'Done when' lines, description 'Git branch workflow for committing changes ... Use when the user asks to commit a change, to \"push it\" ...', validator: '1 skill(s) checked: 0 error(s), 0 warning(s)'. Fails the last criterion: evals/git/committing-on-feature-branches/evals.json written with no tier or T2 predicate recorded (grep tier|T2: no match).",
+          "model": "claude-haiku-5-5",
+          "seconds": 76,
+          "cost": 0.0244
+        },
+        "new": {
+          "verdict": "pass",
+          "evidence": "skills/git/branching-before-commit/SKILL.md exists, 7 numbered steps / 7 'Done when' lines, description 370 chars starting 'Git feature-branch workflow for commits and pushes. Use when ...', validator: '1 skill(s) checked: 0 error(s), 0 warning(s)'. evals.json has '\"tier\": \"T2\"' and the handoff says 'The writing-skills guide classes this as T2 because it is a discipline rule.' Excuse table holds the verbatim lived excuse only.",
+          "model": "claude-haiku-5-5",
+          "seconds": 72,
+          "cost": 0.0219
+        }
+      }
+    }
+  ],
+  "trigger_probes": {
+    "setup": "New skill copied to <scratch>/eval/probe-<id>/.claude/skills/writing-skills-candidate/ with the frontmatter name renamed; the old writing-skills stays installed globally. Same claude -p command as above. Both descriptions appear in each session's skill listing.",
+    "results": [
+      {
+        "id": "probe-real",
+        "prompt": "I keep explaining the same release steps to the agent, can you make that a skill?",
+        "expected": "writing-skills-candidate (or the global writing-skills) loads",
+        "selected": "none",
+        "verdict": "fail",
+        "evidence": "No Skill tool call in the transcript; the run asked for the release steps and pointed at cutting-releases: 'A release skill may already exist. `cutting-releases` ... may already fit.'",
+        "model": "claude-haiku-5-5",
+        "seconds": 25,
+        "cost": 0.0106
+      },
+      {
+        "id": "probe-near",
+        "prompt": "Write a README section for our validator script (scripts/validate-skills.mjs).",
+        "expected": "no writing skill loads",
+        "selected": "none",
+        "verdict": "pass",
+        "evidence": "No Skill tool call in the transcript.",
+        "model": "claude-haiku-5-5",
+        "seconds": 16,
+        "cost": 0.0097
+      }
+    ]
+  }
+}

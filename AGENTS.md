@@ -8,6 +8,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | Task | Command |
 |---|---|
 | Scaffold a skill | `node scripts/new-skill.mjs <category>/<name>` |
+| Scaffold a tier-2 skill with evals | `node scripts/new-skill.mjs <category>/<name> --evals` |
 | Validate all skills | `node scripts/validate-skills.mjs` |
 | Run script tests | `npm test` |
 | List what the CLI discovers | `npx skills add ./ --list` |
@@ -18,8 +19,9 @@ No build and no dependencies — the deliverables are the skill folders.
 | Path | Holds |
 |---|---|
 | `skills/<category>/<name>/` | One skill: `SKILL.md`, optional `references/`, `scripts/`, `tests/`, `templates/` |
-| `evals/<category>/<name>/` | Eval scenarios (`evals.json`) and inputs for the skill in the same category; not installed |
-| `templates/` | Scaffold source for `new-skill.mjs` |
+| `evals/<category>/<name>/` | Eval scenarios (`evals.json`) and inputs per tier-2 skill in the same category; not installed |
+| `skills/agents/writing-skills/templates/SKILL.md.tmpl` | Authoritative skill skeleton for `new-skill.mjs` |
+| `templates/evals/` | Tier-2 eval scaffold source for `new-skill.mjs --evals` |
 | `scripts/` | Repo tooling (Node, no dependencies) |
 | `.claude-plugin/` | Claude plugin manifest (`plugin.json`, one `skills` entry per category) and marketplace (`marketplace.json`) |
 | `.codex-plugin/`, `.agents/plugins/` | Codex plugin manifest (`plugin.json`, `skills` is `./skills/`; Codex scans it recursively) and Codex marketplace (`marketplace.json`) |
@@ -44,6 +46,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | `publishing` |
 | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | `research` |
 | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | `publishing` |
+| [writing-skills](skills/agents/writing-skills/SKILL.md) | `agents` |
 | [competing-implementations](skills/agents/competing-implementations/SKILL.md) | `agents` |
 | [reviewing-across-families](skills/agents/reviewing-across-families/SKILL.md) | `agents` |
 | [creating-worktrees](skills/git/creating-worktrees/SKILL.md) | `git` |
@@ -73,16 +76,13 @@ No build and no dependencies — the deliverables are the skill folders.
 - Link every file in `references/` from `SKILL.md`; the validator fails on a link to a missing file.
 - Write skill scripts in Node ≥18 ESM (`.mjs`) or Python 3, standard library only. Repo tooling under `scripts/` stays Node. Name a skill's runtime in the README requirements table.
 - Leave `version` out of `.claude-plugin/plugin.json` and `marketplace.json`. The commit SHA is the plugin version, so every merge to main ships an update. Do not bump a version in PRs. `claude plugin validate --strict` flags the missing version; run it without `--strict`.
-- Before a commit that touches `skills/`, run `node scripts/validate-skills.mjs`; it must exit 0.
 
 ## Writing a skill
 
-- Record the baseline first: run the task without the skill and write the failures to `evals/<category>/<name>/evals.json`. If the agent already succeeds, there is no skill to write.
-- `description`: what the skill is in a few words, then one "Use when …" trigger per use case, in the user's words. Third person, 120–700 characters, no process steps — an agent follows a summarised process and skips the body.
-- Body: title, one-line purpose, core principle, numbered steps. Each step ends on a line `Done when …` that names an observable file, output, or state.
-- `SKILL.md` stays under 300 lines. Put material only some runs need in `references/`.
-- Phrase rules positively. Give the consequence of skipping a rule instead of capitals.
-- Test with the `evals/<category>/<name>/` scenarios on a fresh agent, with and without the skill, on the same model. A scenario counts only if the run without the skill fails it.
+[writing-skills](skills/agents/writing-skills/SKILL.md) is the authoritative guide for authoring and testing skills.
+
+- Tier-2 evals live in `evals/<category>/<name>/evals.json`.
+- Before a commit that touches `skills/`, run `node scripts/validate-skills.mjs`. It must exit 0.
 
 ## Git
 
