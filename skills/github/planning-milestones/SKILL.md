@@ -86,7 +86,7 @@ The answer is exactly these parts, in order:
 An answer in this shape (table cut to three rows):
 
 ```
-lorenzh/demo @ 4f2a9c1: 9 ready, 2 blocked on owner
+owner/demo @ 4f2a9c1: 9 ready, 2 blocked on owner
 
 | Issue | Proposed milestone | Reason | Depends on |
 |---|---|---|---|

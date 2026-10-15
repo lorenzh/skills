@@ -136,6 +136,151 @@ test('rejects local paths in skills and evals, allows placeholders and exact fix
     assert.ok(r.stdout.includes(`${file}: local path "${hit}"`), file + '\n' + r.stdout);
 });
 
+// Fake secrets are split so this file holds no literal match for repo secret scanners.
+test('rejects likely secrets by file:line and rule, never printing the value', (t) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown());
+  const a36 = 'A1b2C3d4E5'.repeat(3) + 'F6g7H8';
+  const hits = {
+    'skills/agents/sample/gh.md': ['gh' + 'p_' + a36, 'github-token'],
+    'skills/agents/sample/gho.md': ['x gh' + 'o_' + a36, 'github-token'],
+    'skills/agents/sample/pat.md': ['github' + '_pat_' + '11ABCDEFG0abcdefghijkl_xyz', 'github-token'],
+    'evals/agents/sample/sk.txt': ['key sk' + '-ant-api03-' + 'Zq9Xw8Vu7Ts6Rr5Qp4Oo3', 'sk-key'],
+    'evals/agents/sample/aws.txt': ['id AK' + 'IA' + 'Q3EGRT7PWX2LMN4K', 'aws-access-key'],
+    'evals/agents/sample/slack.txt': ['xo' + 'xb-' + '1234567890-abc', 'slack-token'],
+    'evals/agents/sample/pem.txt': ['-----BEGIN RSA ' + 'PRIVATE KEY-----', 'private-key'],
+    'evals/agents/sample/env.txt': ['ok\nDB_PASS' + 'WORD="Tr0ub4dor&3horse9staple"', 'secret-assignment'],
+    'evals/agents/sample/c.json': ['{"api' + 'Key": "q8W2e4R6t8Y0u2I4o6P8"}', 'secret-assignment'],
+  };
+  for (const [file, [text]] of Object.entries(hits)) write(file, text);
+  const r = run();
+  assert.equal(r.status, 1);
+  for (const [file, [text, rule]] of Object.entries(hits)) {
+    const line = text.includes('\n') ? 2 : 1;
+    assert.ok(r.stdout.includes(`${file}:${line}: [${rule}] likely secret`), file + '\n' + r.stdout);
+    assert.ok(!r.stdout.includes(text.split('\n').pop().slice(-12)), 'value printed: ' + file);
+  }
+});
+
+test('allows secret placeholders and the checking-before-publishing scanner and fixtures', (t) => {
+  const { root, write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + [
+    'API_KEY=<your-api-key-goes-here>', 'token: ${{ secrets.GITHUB_TOKEN }}', 'export SECRET=$MY_LONG_SECRET_VARIABLE',
+    'password = "xxxxxxxxxxxxxxxxxxxx"', 'api_key: ****************', 'TOKEN=…', 'TOKEN=...........................',
+    'secret: short', 'Rotate the token: it may sit in git history.', 'gh' + 'p_tooShort', '',
+  ].join('\n'));
+  fs.cpSync(new URL('../skills/publishing/checking-before-publishing/', import.meta.url),
+    path.join(root, 'skills/publishing/checking-before-publishing'), { recursive: true });
+  const r = run();
+  assert.doesNotMatch(r.stdout, /likely secret/, r.stdout);
+  assert.equal(r.status, 0, r.stdout);
+});
+
+const scanSecret = (t, line) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown());
+  write('evals/agents/sample/x.txt', line + '\n');
+  return run();
+};
+
+test('redacts a secret in a sentence-length warning (R4-01)', (t) => {
+  const { write, run } = fixture(t);
+  const value = 'Zq9Xw8Vu7Ts6' + 'Rr5Qp4Oo3Nn2';
+  write('skills/agents/sample/SKILL.md', markdown() + Array(30).fill('word').join(' ') + ' to' + 'ken=' + value + '.\n');
+  const r = run();
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /\[sentence-length\].*\[redacted\]/, r.stdout);
+  assert.ok(!r.stdout.includes(value), r.stdout);
+});
+
+test('allows only the exact fixture secret, not a longer value holding it (R4-02)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word=yourActual' + 'Password123-Production2026');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
+test('checks every match on a line, not only the first (R4-03)', (t) => {
+  const r = scanSecret(t, 'PASS' + 'WORD=yourActual' + 'Password123 TO' + 'KEN=Zq9Xw8Vu7Ts6' + 'Rr5Qp4Oo3');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
+test('rejects an AWS temporary access key id (R4-04)', (t) => {
+  const r = scanSecret(t, 'id AS' + 'IA' + 'Q3EGRT7PWX2LMN4K');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[aws-access-key\] likely secret/);
+});
+
+test('allows expression references and regex syntax as assignment values (R4-05)', (t) => {
+  const r = scanSecret(t, ['token: process.env.GITHUB_TOKEN', '/token=[A-Za-z0-9_-]{32}/',
+    'api_key = os.environ["OPENAI_API_KEY_VALUE"]', 'secret: "${{ secrets.DEPLOY_SECRET }}"'].join('\n'));
+  assert.doesNotMatch(r.stdout, /likely secret/, r.stdout);
+  assert.equal(r.status, 0, r.stdout);
+});
+
+test('reads an unquoted value through a backslash and redacts all of it (R5-01)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word=R7p\\!X9vT2' + 'mQ4sN6kP8w');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + Array(30).fill('word').join(' ') + ' to' + 'ken=Zq9Xw8Vu7Ts6' +
+    'Rr5Qp4\\!Secret' + 'Suffix.\n');
+  const w = run();
+  assert.match(w.stdout, /\[sentence-length\].*\[redacted\]/, w.stdout);
+  assert.ok(!w.stdout.includes('Suffix'), w.stdout);
+});
+
+test('flags brackets and braces in a quoted value outside regex context (R5-02)', (t) => {
+  for (const line of ['pass' + 'word="River[Blue]' + '2026!Secret"', 'pass' + 'word="River{42}' + 'Blue2026!"']) {
+    const r = scanSecret(t, line);
+    assert.equal(r.status, 1, line + '\n' + r.stdout);
+    assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  }
+});
+
+test('flags a regex-like escape in a quoted value outside regex context (R6-01)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word="River\\d+' + 'Blue2026!Secret"');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
+test('allows quantified classes without a range inside RegExp, re and grep calls (R6-02)', (t) => {
+  for (const line of ['new RegExp("to' + 'ken=[ABCDEFGHJKLMNPQRSTUVWXYZ]{32}")', 'RegExp(\'to' + 'ken=[ABCDEFGHJKLMNPQRSTUVWXYZ]{32}\')',
+    're.compile(r"to' + 'ken=[A-Z]{32}")', 're.findall(r"api_' + 'key=\\w{24,}", s)', "grep -nE 'pass" + "word=[A-Za-z0-9]{20,}' .env"]) {
+    const r = scanSecret(t, line);
+    assert.doesNotMatch(r.stdout, /likely secret/, line + '\n' + r.stdout);
+    assert.equal(r.status, 0, line + '\n' + r.stdout);
+  }
+});
+
+test('reads an unquoted value through literal \\r and \\n escapes and redacts all of it (R6-03)', (t) => {
+  const r = scanSecret(t, 'PASS' + 'WORD=River\\nBlue' + '2026!Secret');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + Array(30).fill('word').join(' ') + ' to' + 'ken=Zq9Xw8Vu7Ts6' +
+    'Rr5Qp4\\nSecret' + 'Suffix.\n');
+  const w = run();
+  assert.match(w.stdout, /\[sentence-length\].*\[redacted\]/, w.stdout);
+  assert.ok(!w.stdout.includes('Suffix'), w.stdout);
+});
+
+test('ends an unquoted value at a literal escape only after an exact fixture secret (R6-03)', (t) => {
+  const ok = scanSecret(t, ['[31.5, "o", "$ export API_TO' + 'KEN=gh' + 'p_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8\\r\\n"]',
+    "printf 'TO" + 'KEN=secret-do' + "-not-copy\\nDB_URL=postgres://localhost/dev\\n'"].join('\n'));
+  assert.equal(ok.status, 0, ok.stdout);
+  const r = scanSecret(t, "printf 'TO" + 'KEN=secret-do' + '-not-copy\\nPASS' + "WORD=River2026Blue!Secret\\n'");
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
+test('matches a quoted value through its closing quote, spaces included (R4-06)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word="correct horse ' + 'battery staple"');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  assert.ok(!r.stdout.includes('battery'), r.stdout);
+});
+
 for (const doc of ['AGENTS.md', 'README.md']) {
   test(`checks relative markdown links in ${doc}`, (t) => {
     const { root, write, run } = fixture(t);
@@ -230,6 +375,74 @@ test('flags unfilled template slots outside code; an unfilled description fails 
   assert.doesNotMatch(r.stdout, /XML tag/);
 });
 
+const settingsTable = (rows) => '## Settings\n\n| Setting | Controls | Allowed values | Default |\n' +
+  '| --- | --- | --- | --- |\n' + rows.map(([name, value = 'auto']) => `| ${name} | Behavior | auto | ${value} |`).join('\n') + '\n';
+const resolutionStep = '## 1. Resolve settings\nPrint `settings: mode=auto (default)`.\nDone when printed.\n';
+
+for (const [rule, positive, negative, status] of [
+  ['settings-secret', settingsTable(['token', 'client-secret', 'password', 'api-key'].map((name) => [name, 'sensitive-cell-value'])) + resolutionStep,
+    settingsTable(['token-env', 'client-secret-env', 'password-env', 'api-key-env', 'prefix-key'].map((name) => [name])) + resolutionStep, 1],
+  ['settings-count', settingsTable(Array.from({ length: 6 }, (_, i) => [`mode-${i}`])) + resolutionStep,
+    settingsTable(Array.from({ length: 5 }, (_, i) => [`mode-${i}`])) + resolutionStep, 0],
+  ['settings-name', settingsTable([['Bad_Name']]) + resolutionStep,
+    settingsTable([['`run-mode`']]) + resolutionStep, 0],
+  ['settings-default', settingsTable([['mode', '   ']]) + resolutionStep,
+    settingsTable([['mode', 'auto']]) + resolutionStep, 0],
+  ['settings-order', resolutionStep + settingsTable([['mode']]),
+    settingsTable([['mode']]) + resolutionStep, 0],
+  ['settings-resolution', settingsTable([['mode']]) + '## 1. Resolve\nRead settings.\nDone when resolved.\n',
+    settingsTable([['mode']]) + resolutionStep, 0],
+]) {
+  test(`${rule} detects a violation`, (t) => {
+    const { write, run } = fixture(t);
+    write('skills/agents/sample/SKILL.md', markdown() + positive);
+    const r = run();
+    assert.equal(r.status, status, r.stdout + r.stderr);
+    assert.ok(r.stdout.includes(`[${rule}]`), r.stdout);
+    assert.ok(!r.stdout.includes('sensitive-cell-value'), r.stdout);
+  });
+
+  test(`${rule} accepts a valid setting`, (t) => {
+    const { write, run } = fixture(t);
+    write('skills/agents/sample/SKILL.md', markdown() + negative);
+    const r = run();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.doesNotMatch(r.stdout, /\[settings-/);
+  });
+}
+
+test('settings checks ignore tables outside Settings and fenced Settings examples', (t) => {
+  const { write, run } = fixture(t);
+  const invalid = settingsTable(Array.from({ length: 6 }, () => ['Secret_Key', '']));
+  write('skills/agents/sample/SKILL.md', markdown() + settingsTable([['mode']]) + resolutionStep +
+    '## Other\n' + invalid.replace('## Settings\n', '') + '\n```md\n' + invalid + '\n```\n');
+  const r = run();
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stdout, /\[settings-/);
+  write('skills/agents/sample/SKILL.md', markdown() + '```md\n' + invalid + '\n```\n');
+  assert.doesNotMatch(run().stdout, /\[settings-/);
+});
+
+test('settings parser accepts reordered columns, optional border pipes and escaped pipes', (t) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown() + '## Settings\n\n' +
+    'Default | Allowed values | Setting | Controls\n' +
+    '--- | --- | --- | ---\n' +
+    'auto | auto \\| manual | run-mode | Behavior\n\n' + resolutionStep);
+  const r = run();
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stdout, /\[settings-/);
+});
+
+test('settings resolution must occur in the body, not frontmatter', (t) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown('sample', description + ' settings: mode=auto') + settingsTable([['mode']]));
+  assert.match(run().stdout, /\[settings-resolution\]/);
+  write('skills/agents/sample/SKILL.md', markdown() + settingsTable([['mode']]) +
+    '```text\nsettings: mode=auto (default)\n```\n');
+  assert.doesNotMatch(run().stdout, /\[settings-resolution\]/);
+});
+
 test('help exits zero without inspecting layout', (t) => {
   const { write, run } = fixture(t);
   write('skills/SKILL.md', 'invalid');
@@ -238,7 +451,8 @@ test('help exits zero without inspecting layout', (t) => {
     assert.equal(r.status, 0);
     assert.match(r.stdout, /Usage: node scripts\/validate-skills.mjs/);
     assert.doesNotMatch(r.stdout, /ERROR/);
-    for (const rule of ['step-done-when', 'bounded-loop', 'sentence-length', 'harness-name'])
+    for (const rule of ['step-done-when', 'bounded-loop', 'sentence-length', 'harness-name',
+      'settings-secret', 'settings-count', 'settings-name', 'settings-default', 'settings-order', 'settings-resolution'])
       assert.ok(r.stdout.includes(rule), r.stdout);
   }
 });

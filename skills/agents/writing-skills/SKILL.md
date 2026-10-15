@@ -51,6 +51,7 @@ Done when each selected file has a purpose and condition, or the record says “
 ## 4. Draft the instructions
 
 Start every new skill from [templates/SKILL.md.tmpl](templates/SKILL.md.tmpl).
+If a value differs per user or project, make it a setting with a generic default; follow [references/settings.md](references/settings.md).
 Use title, one-line purpose, bold core principle, global rules, one example, and reference links.
 One numbered step per action, at most 7; a pure-reference skill uses headed sections instead of steps.
 Give each step one action and a final line beginning `Done when` that names a checkable file, output, or state.
@@ -60,14 +61,13 @@ Keep harness names and tool-specific instructions in the harness reference. Heur
 Put a rule inside the step it governs. Write an ordering rule as “Before the first <action>, do Y”.
 State authorization boundaries beside the governed action; approval for one action does not expand scope.
 Done when the draft maps every observed failure to an instruction and every step has its completion line.
-
 ## 5. Prune the draft
 
-Remove duplicate rules, default behavior, unsupported cases, and creation history in one pass.
-Keep one authoritative location per rule; use a pointer when another step needs it.
+Remove duplicate rules, default behavior, unsupported cases, and creation history in one pass; keep one location per rule, with pointers elsewhere.
+Keep secrets, internal hostnames, private repo names, employer or customer names, and machine paths out; write placeholders.
+If a privacy-check skill such as `checking-before-publishing` is available, run it on the bundle.
 Link every reference directly from the core with an observable read condition. Give each reference over 100 lines a contents list at the top.
-Done when the authoring record lists removed duplicates and every remaining rule names its supporting failure or requirement.
-
+Done when the record lists removed duplicates and each rule's evidence, and no bundle file holds a secret, private name or machine path.
 ## 6. Check the bundle
 
 Select T2 for a discipline rule, irreversible action, or observed description collision with a neighboring skill.
@@ -78,22 +78,21 @@ For T1 and T2, check the smallest model of the current generation the author can
 If the skill uses harness-specific behavior, use the harness reference. Apply the global budget to all findings and fixes from these checks.
 After any edit to the description, recheck it against step 2.
 Done when the record contains the tier, command output, behavioral evidence for T1 and T2, ledger, and unresolved findings.
-
 ## 7. Deliver the bundle
 
 Hand off the files, checks, evidence, and open findings with their IDs.
 At T1, put evidence in the commit message; at T2, use `evals.json` outside the installed skill folder. Keep existing eval files; do not create one for T0 or T1.
-Done when the human can identify every passed, failed, and unavailable check. At T2, evals.json exists or the handoff names it as missing.
+Done when the human can identify every passed, failed, and unavailable check, and at T2 evals.json exists or the handoff names it as missing.
 
 ## Example
 
 Input: “Write a report”; lived failure: the report omitted the required risk section.
 Instruction: “Write the report using the template's risk slot. Done when the report contains a risk section with evidence.”
 Check: a cold T1 run produces that section; record the output and verdict in the commit message.
-
 ## References
 
 - Read [scripts-and-templates.md](references/scripts-and-templates.md) when step 3 selects a script or template.
+- Read [settings.md](references/settings.md) when step 4 finds a value that differs per user or project.
 - Read [elicitation.md](references/elicitation.md) when step 1 has a required unanswered question.
 - Read [testing.md](references/testing.md) when step 6 selects T1 or T2.
 - Read [discipline.md](references/discipline.md) when step 6 selects T2 for a discipline rule.

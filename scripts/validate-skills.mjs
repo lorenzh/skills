@@ -17,7 +17,13 @@
 //   file under skills/ or evals/ (/home/<name>, /Users/<name>, <drive>:\Users\<name>, a
 //   /tmp/claude-<uid>/-… scratchpad; ASCII names of letters, digits, ".", "_", "-" only);
 //   allowed: placeholders such as /home/<user>, the exact fake fixture names in FIXTURE_NAMES,
-//   and the gitignored evals/**/results/ folders, which are not read.
+//   and the gitignored evals/**/results/ folders, which are not read; a likely secret in the same
+//   files (SECRET_RULES: GitHub, sk-/sk-ant-, AWS access key id, Slack token, PEM private key,
+//   api_key/secret/token/password assignment of 16+ chars), reported as file:line and rule, never
+//   the value; allowed: placeholders (<…>, ${…}, $VAR, xxx…, ***, …), expression references
+//   (process.env.X, os.environ[…]), regex syntax in regex context and the exact values in FIXTURE_SECRETS. Every
+//   diagnostic is printed with likely secrets replaced by [redacted].
+//   Settings error: settings-secret (credential name without an -env suffix; never prints values).
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger or not third person, a standalone unfilled body
 //   template slot, reference not linked from SKILL.md, skill folder without SKILL.md.
@@ -25,6 +31,9 @@
 //   (loop instruction without a digit), sentence-length (over 30 words),
 //   harness-name (Claude Code, Codex or AskUserQuestion with references/harness-notes.md).
 //   These four ignore frontmatter, fenced code, inline code and table rows.
+//   Settings warnings: settings-count (over 5 settings), settings-name (not kebab-case),
+//   settings-default (empty Default cell), settings-order (after the first numbered step),
+//   settings-resolution (no settings: line in the body). Only Settings table rows are parsed.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -43,6 +52,13 @@ that no file under skills/ or evals/ (except evals/**/results/) holds a home pat
 It covers ASCII names of letters, digits, ".", "_" and "-" only.
 Placeholders like /home/<user> pass, and so do these exact fake fixture names: jdoe,
 jdoe-noreply, alice, alice.meyer, user, user-admin, runner.dev.
+The same files must hold no likely secret: a GitHub token (ghp_, gho_, ghu_, ghs_, ghr_,
+github_pat_), an sk- or sk-ant- key, an AWS access key id, a Slack token, a PEM private key
+header, or an api_key/secret/token/password assignment of 16+ chars. Errors print file:line
+and the rule name, never the value. Placeholders (<…>, \${…}, $VAR, xxx…, ***, …), expression
+references (process.env.X, os.environ[…]), regex syntax inside a /…/ literal, RegExp(…),
+re.compile/search/match/findall(…) or grep -E/-P '…', and the exact fake values in
+FIXTURE_SECRETS pass. Every printed line has likely secrets replaced by [redacted].
 
 Body warnings (ignore frontmatter, fenced code, inline code and table rows):
   step-done-when   numbered ## N. or ### N. step without a Done when line
@@ -50,6 +66,15 @@ Body warnings (ignore frontmatter, fenced code, inline code and table rows):
   template-slot   standalone unfilled body slot outside code (an unfilled description is an error)
   sentence-length sentence over 30 words
   harness-name    Claude Code, Codex or AskUserQuestion in a skill with references/harness-notes.md
+
+Settings rules (only for skills with a ## Settings section):
+  settings-secret     error: name contains token, secret, password or key without ending in -env
+  settings-count      warning: more than 5 settings
+  settings-name       warning: setting name is not kebab-case
+  settings-default    warning: empty Default cell
+  settings-order      warning: Settings follows the first numbered step
+  settings-resolution warning: no body line contains settings:
+Only table rows in the Settings section are parsed. Secret errors never print values.
 
 Exit 0  no errors (warnings may still be printed)
 Exit 1  at least one error`);
@@ -77,8 +102,8 @@ const rel = (p) => path.relative(repoRoot, p).replaceAll(path.sep, "/");
 const countLines = (text) => text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 const stripCode = (text) => text.replace(/^```[\s\S]*?^```/gm, "").replace(/`[^`\n]*`/g, "");
 
-// Keep Markdown structure for step boundaries; remove content excluded from body warnings.
-const bodyProse = (text) => {
+// Keep Markdown structure, but ignore frontmatter and fenced examples.
+const bodyMarkdown = (text) => {
   let fence;
   const lines = text.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "")
     .split(/\r?\n/).map((line) => {
@@ -89,7 +114,13 @@ const bodyProse = (text) => {
       }
       if (marker) { fence = marker[1]; return ""; }
       return line;
-    }).join("\n").replace(/(`+)[\s\S]*?\1(?!`)/g, "").split("\n");
+    }).join("\n");
+  return lines;
+};
+
+// Keep Markdown structure for step boundaries; remove content excluded from body warnings.
+const bodyProse = (text) => {
+  const lines = bodyMarkdown(text).replace(/(`+)[\s\S]*?\1(?!`)/g, "").split("\n");
   const tableRows = new Set();
   for (let i = 0; i < lines.length; i++) {
     if (/^\s*\|/.test(lines[i])) tableRows.add(i);
@@ -98,6 +129,44 @@ const bodyProse = (text) => {
     for (let j = i; j < lines.length && lines[j].includes("|"); j++) tableRows.add(j);
   }
   return lines.map((line, i) => tableRows.has(i) ? "" : line).join("\n");
+};
+
+const validateSettings = (md, text) => {
+  const body = bodyMarkdown(text);
+  const heading = /^ {0,3}## Settings[ \t]*#*[ \t]*$/m.exec(body);
+  if (!heading) return;
+  const after = body.slice(heading.index + heading[0].length);
+  const section = after.split(/^ {0,3}#{1,2}\s+/m)[0];
+  const step = /^ {0,3}(?:#{2,3}\s+)?\d+\.\s/m.exec(body);
+  if (step && step.index < heading.index)
+    warnings.push(`${rel(md)}: [settings-order] Settings follows the first numbered step`);
+  if (!text.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "").includes("settings:"))
+    warnings.push(`${rel(md)}: [settings-resolution] body has no settings: resolution line`);
+
+  const cells = (line) => line.trim().replace(/^\|/, "").replace(/\|$/, "")
+    .split(/(?<!\\)\|/).map((cell) => cell.trim());
+  const lines = section.split("\n");
+  let count = 0;
+  for (let i = 1; i < lines.length; i++) {
+    if (!/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[i])) continue;
+    const header = cells(lines[i - 1]);
+    const nameColumn = header.indexOf("Setting");
+    const defaultColumn = header.indexOf("Default");
+    if (nameColumn < 0 || defaultColumn < 0) continue;
+    while (i + 1 < lines.length && lines[i + 1].includes("|")) {
+      const row = cells(lines[++i]);
+      const name = (row[nameColumn] ?? "").replace(/^`+|`+$/g, "");
+      count++;
+      if (/(^|-)(token|secret|password|passphrase|api-key|private-key|credentials?)(-|$)/i.test(name) && !name.endsWith("-env"))
+        errors.push(`${rel(md)}: [settings-secret] credential setting name must end in -env`);
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name))
+        warnings.push(`${rel(md)}: [settings-name] setting name must be kebab-case`);
+      if (!row[defaultColumn])
+        warnings.push(`${rel(md)}: [settings-default] setting has an empty Default cell`);
+    }
+  }
+  if (count > 5)
+    warnings.push(`${rel(md)}: [settings-count] ${count} settings (max 5)`);
 };
 
 const validateBody = (md, text, skillPath) => {
@@ -212,6 +281,7 @@ const validateSkill = (skillPath, folderName) => {
   }
 
   validateBody(md, text, skillPath);
+  validateSettings(md, text);
 
   const lines = countLines(text);
   if (lines > SKILL_MD_MAX_LINES)
@@ -279,11 +349,54 @@ const FIXTURE_NAMES = "jdoe|jdoe-noreply|alice|alice\\.meyer|user|user-admin|run
 const LOCAL_PATH = new RegExp(
   String.raw`(?:/(?:home|Users)/|\b[A-Za-z]:\\+[Uu][Ss][Ee][Rr][Ss]\\+)(?!(?:${FIXTURE_NAMES})(?![\w.-]))[\w.-]+|/tmp/claude-\d+/-`,
 );
+// Likely secrets; the report names the rule, never the value. FIXTURE_SECRETS are the exact fake
+// values that scanner and eval fixtures hold on purpose, split so this file holds no literal match.
+const FIXTURE_SECRETS = ["gh" + "p_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8", "sk" + "-live-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c",
+  "yourActual" + "Password123", "secret-do" + "-not-copy"];
+// Not a literal value: a placeholder or an expression reference (process.env.X, $VAR, ${{ … }}, os.environ[…]).
+const NOT_LITERAL = /^(?:<|\$|x{3}|\*{3}|…|\.{3}|process\.env\b|os\.(?:environ|getenv)\b)/;
+// Regex context on a line: a /…/ literal, or the string argument of new RegExp(…), RegExp(…),
+// re.compile/search/match/findall(…) or grep -E/-P. Only there a value holding a character class
+// or escape with a quantifier is regex syntax; anywhere else it is password punctuation.
+const REGEX_CONTEXT = new RegExp([
+  String.raw`(?<![\w)\]])/(?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\[\n])+/`,
+  String.raw`(?:\bnew\s+RegExp|\bRegExp|\bre\.(?:compile|search|match|findall))\s*\(\s*[rRbBuU]*(["'])(?:\\.|(?!\1).)*\1`,
+  String.raw`\bgrep(?:\s+-[A-Za-z]+)*\s+-[A-Za-z]*[EP][A-Za-z]*(?:\s+-[A-Za-z]+)*\s+(["'])(?:\\.|(?!\2).)*\2`,
+].join("|"), "g");
+const CLASS_QUANTIFIER = /(?:\[[^\]]+\]|\\[A-Za-z])(?:[*+?]|\{\d+(?:,\d*)?\})/;
+const isRegex = (value, m) => CLASS_QUANTIFIER.test(value) &&
+  [...m.input.matchAll(REGEX_CONTEXT)].some((c) => c.index < m.index && m.index < c.index + c[0].length);
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const SECRET_RULES = [
+  ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_\w{20,})/g],
+  ["sk-key", /\bsk-(?:ant-)?[\w-]{20,}/g],
+  ["aws-access-key", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
+  ["slack-token", /\bxox[abprs]-[\w-]{10,}/g],
+  ["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+  // A quoted value runs to its closing quote, spaces included. An unquoted value runs to whitespace
+  // or a terminator, literal \r and \n escapes included; such an escape ends it only right after an
+  // exact FIXTURE_SECRETS value (printf strings and terminal recordings), so the rest is scanned anew.
+  ["secret-assignment", new RegExp(String.raw`(?:api_?key|secret|token|password)["']?\s*[:=]\s*(?:"([^"\n]*)"|'([^'\n]*)'|["']?((?:${FIXTURE_SECRETS.map(escapeRe).join("|")})(?=\\[rn])|[^\s"'` + "`" + String.raw`,;)]+))`, "gi")],
+];
+const isSecret = (rule, m) => {
+  const value = rule === "secret-assignment" ? m[1] ?? m[2] ?? m[3] : m[0];
+  if (rule === "secret-assignment" && (value.length < 16 || NOT_LITERAL.test(value) || isRegex(value, m)))
+    return false;
+  return !FIXTURE_SECRETS.includes(value);
+};
+// Diagnostics that echo file text pass through this so a likely secret never reaches the output.
+const redact = (s) => SECRET_RULES.reduce((t, [, re]) => t.replace(re, "[redacted]"), s);
 for (const dir of [skillsDir, evalsDir].filter(fs.existsSync))
   for (const file of walkFiles(dir)) {
     if (/^evals\/(?:.*\/)?results\//.test(rel(file))) continue; // gitignored eval run output
-    const hit = fs.readFileSync(file, "utf8").match(LOCAL_PATH);
+    const text = fs.readFileSync(file, "utf8");
+    const hit = text.match(LOCAL_PATH);
     if (hit) errors.push(`${rel(file)}: local path "${hit[0]}"; use a placeholder like <scratch> or /home/<user>`);
+    text.split("\n").forEach((line, i) => {
+      for (const [rule, re] of SECRET_RULES)
+        if ([...line.matchAll(re)].some((m) => isSecret(rule, m)))
+          errors.push(`${rel(file)}:${i + 1}: [${rule}] likely secret; use a placeholder like <token>`);
+    });
   }
 
 // Claude plugin manifests: the plugin's skill scan is not recursive, so each category needs an entry.
@@ -361,7 +474,7 @@ if (codexMarket) {
     errors.push(`${rel(codexMarketFile)}: no plugin entry named "${codexPlugin.name}" (the name in .codex-plugin/plugin.json)`);
 }
 
-for (const w of warnings) console.log(`WARN  ${w}`);
-for (const e of errors) console.log(`ERROR ${e}`);
+for (const w of warnings) console.log(`WARN  ${redact(w)}`);
+for (const e of errors) console.log(`ERROR ${redact(e)}`);
 console.log(`\n${skillPaths.size} skill(s) checked: ${errors.length} error(s), ${warnings.length} warning(s)`);
 process.exit(errors.length ? 1 : 0);
