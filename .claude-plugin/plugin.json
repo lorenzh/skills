@@ -1,6 +1,6 @@
 {
   "name": "lorenzh",
-  "description": "Agent skills by lorenzh: research, publishing, agent dispatch and review, git, GitHub, terminal, shipping and video workflows.",
+  "description": "Agent skills by lorenzh: research, publishing, agent dispatch and review, git, GitHub, terminal, maintenance, shipping and video workflows.",
   "author": {
     "name": "Lorenz Hilpert"
   },
@@ -8,6 +8,7 @@
     "./skills/agents",
     "./skills/git",
     "./skills/github",
+    "./skills/maintenance",
     "./skills/publishing",
     "./skills/research",
     "./skills/shipping",
