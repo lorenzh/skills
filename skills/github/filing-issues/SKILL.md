@@ -92,6 +92,7 @@ gh label list --limit 200 --json name,description
 
 - Pick the milestone whose description rule fits the issue. When none fits, create the issue without one and say so in the reply. A guessed milestone puts the issue into a release it does not belong in.
 - Pick labels only from that list. A label the repo lacks goes into the reply as a suggestion, never into the repo.
+- Read the repo's instruction file (`AGENTS.md`, `CONTRIBUTING.md`) for label rules, such as one type label or one label per affected package. Apply each rule, or name the rule you could not apply.
 
 Create through the REST API. `gh issue create`, `view` and `edit` can fail with a GraphQL `projectCards` error on repos that still hold Projects (classic) data, and a retry fails the same way:
 
@@ -108,9 +109,11 @@ The milestone API can lag a few seconds. Re-read before reporting:
 gh api repos/{owner}/{repo}/issues/<n> --jq '{url: .html_url, title: .title, milestone: .milestone.title, labels: [.labels[].name]}'
 ```
 
-Done when the re-read shows the title, the milestone (or none, on purpose) and the labels you set.
+Done when the re-read shows the title, the milestone (or none, on purpose) and the labels you set, including the labels the repo's rules require.
 
 ## 6. Cross-link
+
+When one review yields several issues, run steps 1 to 5 for each, then list the other new issues in each body under "Related issues".
 
 For each related issue, add one comment with the new number and the relation, with the same REST route:
 
