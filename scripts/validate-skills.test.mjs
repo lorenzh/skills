@@ -176,6 +176,55 @@ test('allows secret placeholders and the checking-before-publishing scanner and 
   assert.equal(r.status, 0, r.stdout);
 });
 
+const scanSecret = (t, line) => {
+  const { write, run } = fixture(t);
+  write('skills/agents/sample/SKILL.md', markdown());
+  write('evals/agents/sample/x.txt', line + '\n');
+  return run();
+};
+
+test('redacts a secret in a sentence-length warning (R4-01)', (t) => {
+  const { write, run } = fixture(t);
+  const value = 'Zq9Xw8Vu7Ts6' + 'Rr5Qp4Oo3Nn2';
+  write('skills/agents/sample/SKILL.md', markdown() + Array(30).fill('word').join(' ') + ' to' + 'ken=' + value + '.\n');
+  const r = run();
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /\[sentence-length\].*\[redacted\]/, r.stdout);
+  assert.ok(!r.stdout.includes(value), r.stdout);
+});
+
+test('allows only the exact fixture secret, not a longer value holding it (R4-02)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word=yourActual' + 'Password123-Production2026');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
+test('checks every match on a line, not only the first (R4-03)', (t) => {
+  const r = scanSecret(t, 'PASS' + 'WORD=yourActual' + 'Password123 TO' + 'KEN=Zq9Xw8Vu7Ts6' + 'Rr5Qp4Oo3');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+});
+
+test('rejects an AWS temporary access key id (R4-04)', (t) => {
+  const r = scanSecret(t, 'id AS' + 'IA' + 'Q3EGRT7PWX2LMN4K');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[aws-access-key\] likely secret/);
+});
+
+test('allows expression references and regex syntax as assignment values (R4-05)', (t) => {
+  const r = scanSecret(t, ['token: process.env.GITHUB_TOKEN', '/token=[A-Za-z0-9_-]{32}/',
+    'api_key = os.environ["OPENAI_API_KEY_VALUE"]', 'secret: "${{ secrets.DEPLOY_SECRET }}"'].join('\n'));
+  assert.doesNotMatch(r.stdout, /likely secret/, r.stdout);
+  assert.equal(r.status, 0, r.stdout);
+});
+
+test('matches a quoted value through its closing quote, spaces included (R4-06)', (t) => {
+  const r = scanSecret(t, 'pass' + 'word="correct horse ' + 'battery staple"');
+  assert.equal(r.status, 1, r.stdout);
+  assert.match(r.stdout, /x\.txt:1: \[secret-assignment\] likely secret/);
+  assert.ok(!r.stdout.includes('battery'), r.stdout);
+});
+
 for (const doc of ['AGENTS.md', 'README.md']) {
   test(`checks relative markdown links in ${doc}`, (t) => {
     const { root, write, run } = fixture(t);

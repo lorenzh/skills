@@ -20,7 +20,9 @@
 //   and the gitignored evals/**/results/ folders, which are not read; a likely secret in the same
 //   files (SECRET_RULES: GitHub, sk-/sk-ant-, AWS access key id, Slack token, PEM private key,
 //   api_key/secret/token/password assignment of 16+ chars), reported as file:line and rule, never
-//   the value; allowed: placeholders (<…>, ${…}, $VAR, xxx…, ***, …) and the values in FIXTURE_SECRETS.
+//   the value; allowed: placeholders (<…>, ${…}, $VAR, xxx…, ***, …), expression references
+//   (process.env.X, os.environ[…]), regex syntax and the exact values in FIXTURE_SECRETS. Every
+//   diagnostic is printed with likely secrets replaced by [redacted].
 //   Settings error: settings-secret (credential name without an -env suffix; never prints values).
 // Warnings (exit 0): SKILL.md over its line ceiling, description outside the
 //   120-700 char band, with no trigger or not third person, a standalone unfilled body
@@ -53,8 +55,9 @@ jdoe-noreply, alice, alice.meyer, user, user-admin, runner.dev.
 The same files must hold no likely secret: a GitHub token (ghp_, gho_, ghu_, ghs_, ghr_,
 github_pat_), an sk- or sk-ant- key, an AWS access key id, a Slack token, a PEM private key
 header, or an api_key/secret/token/password assignment of 16+ chars. Errors print file:line
-and the rule name, never the value. Placeholders (<…>, \${…}, $VAR, xxx…, ***, …) and the
-exact fake values in FIXTURE_SECRETS pass.
+and the rule name, never the value. Placeholders (<…>, \${…}, $VAR, xxx…, ***, …), expression
+references (process.env.X, os.environ[…]), regex syntax and the exact fake values in
+FIXTURE_SECRETS pass. Every printed line has likely secrets replaced by [redacted].
 
 Body warnings (ignore frontmatter, fenced code, inline code and table rows):
   step-done-when   numbered ## N. or ### N. step without a Done when line
@@ -349,15 +352,25 @@ const LOCAL_PATH = new RegExp(
 // values that scanner and eval fixtures hold on purpose, split so this file holds no literal match.
 const FIXTURE_SECRETS = ["gh" + "p_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8", "sk" + "-live-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c",
   "yourActual" + "Password123", "secret-do" + "-not-copy"];
-const SECRET_PLACEHOLDER = String.raw`<|\$|x{3}|\*{3}|…|\.{3}`;
+// Not a literal value: a placeholder, an expression reference (process.env.X, $VAR, ${{ … }},
+// os.environ[…]) or regex syntax (a character class or {n} quantifier).
+const NOT_LITERAL = /^(?:<|\$|x{3}|\*{3}|…|\.{3}|process\.env\b|os\.(?:environ|getenv)\b)|\[[^\]]+\]|\{\d+(?:,\d*)?\}/;
 const SECRET_RULES = [
-  ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_\w{20,})/],
-  ["sk-key", /\bsk-(?:ant-)?[\w-]{20,}/],
-  ["aws-access-key", /\bAKIA[0-9A-Z]{16}\b/],
-  ["slack-token", /\bxox[abprs]-[\w-]{10,}/],
-  ["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
-  ["secret-assignment", new RegExp(String.raw`(?:api_?key|secret|token|password)["']?\s*[:=]\s*["']?(?!${SECRET_PLACEHOLDER})[^\s"'\`,;)]{16,}`, "i")],
+  ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_\w{20,})/g],
+  ["sk-key", /\bsk-(?:ant-)?[\w-]{20,}/g],
+  ["aws-access-key", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
+  ["slack-token", /\bxox[abprs]-[\w-]{10,}/g],
+  ["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+  // A quoted value runs to its closing quote, spaces included; group 1 is the value.
+  ["secret-assignment", /(?:api_?key|secret|token|password)["']?\s*[:=]\s*(?:"([^"\n]*)"|'([^'\n]*)'|["']?([^\s"'`,;)\\]+))/gi],
 ];
+const isSecret = (rule, m) => {
+  const value = rule === "secret-assignment" ? m[1] ?? m[2] ?? m[3] : m[0];
+  if (rule === "secret-assignment" && (value.length < 16 || NOT_LITERAL.test(value))) return false;
+  return !FIXTURE_SECRETS.includes(value);
+};
+// Diagnostics that echo file text pass through this so a likely secret never reaches the output.
+const redact = (s) => SECRET_RULES.reduce((t, [, re]) => t.replace(re, "[redacted]"), s);
 for (const dir of [skillsDir, evalsDir].filter(fs.existsSync))
   for (const file of walkFiles(dir)) {
     if (/^evals\/(?:.*\/)?results\//.test(rel(file))) continue; // gitignored eval run output
@@ -365,10 +378,9 @@ for (const dir of [skillsDir, evalsDir].filter(fs.existsSync))
     const hit = text.match(LOCAL_PATH);
     if (hit) errors.push(`${rel(file)}: local path "${hit[0]}"; use a placeholder like <scratch> or /home/<user>`);
     text.split("\n").forEach((line, i) => {
-      for (const [rule, re] of SECRET_RULES) {
-        const m = line.match(re)?.[0];
-        if (m && !FIXTURE_SECRETS.some((f) => m.includes(f))) errors.push(`${rel(file)}:${i + 1}: [${rule}] likely secret; use a placeholder like <token>`);
-      }
+      for (const [rule, re] of SECRET_RULES)
+        if ([...line.matchAll(re)].some((m) => isSecret(rule, m)))
+          errors.push(`${rel(file)}:${i + 1}: [${rule}] likely secret; use a placeholder like <token>`);
     });
   }
 
@@ -447,7 +459,7 @@ if (codexMarket) {
     errors.push(`${rel(codexMarketFile)}: no plugin entry named "${codexPlugin.name}" (the name in .codex-plugin/plugin.json)`);
 }
 
-for (const w of warnings) console.log(`WARN  ${w}`);
-for (const e of errors) console.log(`ERROR ${e}`);
+for (const w of warnings) console.log(`WARN  ${redact(w)}`);
+for (const e of errors) console.log(`ERROR ${redact(e)}`);
 console.log(`\n${skillPaths.size} skill(s) checked: ${errors.length} error(s), ${warnings.length} warning(s)`);
 process.exit(errors.length ? 1 : 0);
