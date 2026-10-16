@@ -39,9 +39,11 @@ with tempfile.TemporaryDirectory() as scratch:
             raise AssertionError("invalid duration accepted")
     fixture(5.1)
     calls = []
+    loads = []
     class Model:
         sample_rate = 24000
         def __init__(self, name):
+            loads.append(name)
             assert name == "KittenML/kitten-tts-2"
         def generate(self, text, **kwargs):
             assert Path(kwargs["reference"]).is_file()
@@ -59,6 +61,24 @@ with tempfile.TemporaryDirectory() as scratch:
         assert m.main([str(source), "--text", "Hello", "--out", str(root / "en.wav")]) == 0
         assert m.main([str(source), "Hi", "--out", str(root / "positional.wav")]) == 0
         assert calls == [("Hallo", False), ("Hello", True), ("Hi", True)]
+        second = root / "second.txt"
+        second.write_text("Second", encoding="utf-8")
+        before = len(loads)
+        assert m.main([str(source), "--text-file", str(text_file), "--text-file", str(second),
+                       "--out-dir", str(root / "batch")]) == 0
+        assert len(loads) == before + 1
+        assert calls[-2:] == [("Hallo", True), ("Second", True)]
+        assert (root / "batch/text.wav").is_file() and (root / "batch/second.wav").is_file()
+        for files in ([text_file, text_file], [text_file, second]):
+            before = len(loads)
+            try:
+                m.main([str(source), *[arg for file in files for arg in ("--text-file", str(file))],
+                        "--out-dir", str(root / "batch")])
+            except SystemExit as error:
+                assert error.code == 2
+            else:
+                raise AssertionError("batch output collision accepted")
+            assert len(loads) == before
         with wave.open(str(root / "de.wav")) as wav:
             assert wav.getframerate() == 24000
         for extra in ([], ["--text", " "], ["--text", "Hello", "--text-file", str(text_file)],

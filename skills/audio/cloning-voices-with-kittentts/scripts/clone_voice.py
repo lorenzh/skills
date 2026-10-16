@@ -26,20 +26,36 @@ def main(argv=None):
     text_group = parser.add_mutually_exclusive_group(required=True)
     text_group.add_argument("positional_text", nargs="?")
     text_group.add_argument("--text")
-    text_group.add_argument("--text-file", type=Path)
-    parser.add_argument("--out", required=True, type=Path)
+    text_group.add_argument("--text-file", type=Path, action="append")
+    outputs = parser.add_mutually_exclusive_group(required=True)
+    outputs.add_argument("--out", type=Path)
+    outputs.add_argument("--out-dir", type=Path)
     parser.add_argument("--language", default="en", help="Language code; non-English disables normalization, not a voice selector")
     args = parser.parse_args(argv)
     try:
-        text = args.text_file.read_text(encoding="utf-8") if args.text_file else (args.text if args.text is not None else args.positional_text)
-        if not text.strip():
-            parser.error("Text must not be empty.")
+        if args.out_dir:
+            if not args.text_file:
+                parser.error("--out-dir requires --text-file.")
+            jobs = [(file.read_text(encoding="utf-8"), args.out_dir / (file.stem + ".wav"))
+                    for file in args.text_file]
+        else:
+            if args.text_file and len(args.text_file) != 1:
+                parser.error("Repeated --text-file requires --out-dir.")
+            text = args.text_file[0].read_text(encoding="utf-8") if args.text_file else (args.text if args.text is not None else args.positional_text)
+            jobs = [(text, args.out)]
         if not args.reference.is_file():
             parser.error("Reference audio must be an existing file.")
-        if args.out.suffix.lower() != ".wav":
-            parser.error("Output must have a .wav extension.")
-        if args.out.exists():
-            parser.error("Output already exists; choose a new path.")
+        if len({output.resolve() for _, output in jobs}) != len(jobs):
+            parser.error("Text files must have distinct output stems.")
+        for text, output in jobs:
+            if not text.strip():
+                parser.error("Text must not be empty.")
+            if output.suffix.lower() != ".wav":
+                parser.error("Output must have a .wav extension.")
+            if output.exists():
+                parser.error("Output already exists; choose a new path.")
+        if args.out_dir:
+            args.out_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="kitten-reference-") as scratch:
             reference = Path(scratch) / "reference.wav"
             prepare_reference(args.reference, reference)
@@ -52,11 +68,12 @@ def main(argv=None):
                     "or run python3 -m venv --without-pip <dir>, then download https://bootstrap.pypa.io/get-pip.py "
                     "and run <dir>/bin/python get-pip.py inside that venv. Never install silently.") from error
             model = KittenTTS("KittenML/kitten-tts-2")
-            audio = model.generate(text, reference=str(reference), normalize=args.language.lower() in ("en", "english"))
-            # Exclusive creation prevents overwriting a file created during inference.
-            with args.out.open("xb") as output:
-                soundfile.write(output, audio, model.sample_rate, format="WAV")
-        print(f"Wrote {args.out} ({model.sample_rate} Hz)")
+            for text, destination in jobs:
+                audio = model.generate(text, reference=str(reference), normalize=args.language.lower() in ("en", "english"))
+                # Exclusive creation prevents overwriting a file created during inference.
+                with destination.open("xb") as output:
+                    soundfile.write(output, audio, model.sample_rate, format="WAV")
+                print(f"Wrote {destination} ({model.sample_rate} Hz)")
         return 0
     except subprocess.CalledProcessError as error:
         print(f"ffmpeg failed: {error.stderr.strip()}", file=sys.stderr)

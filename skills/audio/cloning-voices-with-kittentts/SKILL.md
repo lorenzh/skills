@@ -45,6 +45,8 @@ python3 <skill-dir>/scripts/clone_voice.py reference.wav --text-file text.txt --
 
 For short text, use the optional positional argument: `reference.wav "Hello" --out speech.wav`.
 Use exactly one of positional text, `--text "Hello"`, or `--text-file text.txt`.
+For a batch, repeat `--text-file` and replace `--out` with `--out-dir DIR`.
+The helper loads the model once and writes `DIR/<text-file stem>.wav` for each file; stems must be distinct.
 The helper validates duration, converts the reference to mono PCM WAV with ffmpeg, and keeps temporary audio only during generation.
 It refuses an existing output file. Exit codes are 0 for success, 1 for runtime failure, and 2 for incorrect arguments.
 If Python or ffmpeg is missing, report the blocked dependency and stop.
