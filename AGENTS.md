@@ -65,6 +65,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [filing-issues](skills/github/filing-issues/SKILL.md) | `github` |
 | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | `github` |
 | [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | `audio` |
+| [mixing-audio](skills/audio/mixing-audio/SKILL.md) | `audio` |
 
 ## Conventions
 
