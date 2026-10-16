@@ -31,7 +31,19 @@ def check(path):
     text = open(path, encoding="utf-8").read()
     base = os.path.dirname(os.path.abspath(path))
     body = re.sub(r"<!--.*?-->", "", text, flags=re.S)
-    out = [("slot", f"unfilled {m.group(0)}: fill it") for m in re.finditer(r"<[a-z][^<>\n]*>", body)]
+    # Ignore Markdown code only for slots; table and section checks still use the plan.
+    prose, fence = [], None
+    for line in body.splitlines(keepends=True):
+        marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if fence:
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
+                fence = None
+        elif marker:
+            fence = marker[1]
+        else:
+            prose.append(line)
+    prose = re.sub(r"(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)", "", "".join(prose), flags=re.S)
+    out = [("slot", f"unfilled {m.group(0)}: fill it") for m in re.finditer(r"<[a-z][^<>\n]*>", prose)]
     sec = sections(body)
     for name in ("brief", "scope", "stage", "beats"):
         if name not in sec:
