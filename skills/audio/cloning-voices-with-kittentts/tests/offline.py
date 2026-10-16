@@ -1,6 +1,7 @@
 """Offline regression checks: real ffmpeg, stubbed inference only."""
 import importlib.util
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import types
@@ -10,19 +11,23 @@ from unittest.mock import patch
 spec = importlib.util.spec_from_file_location("clone", Path(__file__).parents[1] / "scripts/clone_voice.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
-with tempfile.TemporaryDirectory(dir=".") as scratch:
+if shutil.which("ffmpeg") is None:
+    print("SKIP: ffmpeg is missing; offline audio checks require ffmpeg.")
+    sys.exit(0)
+
+with tempfile.TemporaryDirectory() as scratch:
     root = Path(scratch)
     source = root / "source.wav"
     def fixture(seconds):
         with wave.open(str(source), "wb") as wav:
             wav.setparams((2, 2, 8000, 0, "NONE", "not compressed"))
-            wav.writeframes(bytes(seconds * 8000 * 4))
-    for seconds in (5, 30):
+            wav.writeframes(bytes(round(seconds * 8000) * 4))
+    for seconds in (5.1, 29.9):
         fixture(seconds)
         m.prepare_reference(source, root / "mono.wav")
         with wave.open(str(root / "mono.wav")) as wav:
             assert wav.getnchannels() == 1 and wav.getframerate() == 24000
-    for seconds in (4, 31):
+    for seconds in (4.9, 30.1):
         fixture(seconds)
         try:
             m.prepare_reference(source, root / "mono.wav")
@@ -30,7 +35,7 @@ with tempfile.TemporaryDirectory(dir=".") as scratch:
             assert "5–30" in str(error)
         else:
             raise AssertionError("invalid duration accepted")
-    fixture(5)
+    fixture(5.1)
     calls = []
     class Model:
         sample_rate = 24000
@@ -50,10 +55,12 @@ with tempfile.TemporaryDirectory(dir=".") as scratch:
         text_file.write_text("Hallo", encoding="utf-8")
         assert m.main([str(source), "--text-file", str(text_file), "--out", str(root / "de.wav"), "--language", "de"]) == 0
         assert m.main([str(source), "--text", "Hello", "--out", str(root / "en.wav")]) == 0
-        assert calls == [("Hallo", False), ("Hello", True)]
+        assert m.main([str(source), "Hi", "--out", str(root / "positional.wav")]) == 0
+        assert calls == [("Hallo", False), ("Hello", True), ("Hi", True)]
         with wave.open(str(root / "de.wav")) as wav:
             assert wav.getframerate() == 24000
-        for extra in (["--text", " "], ["--text", "Hello", "--text-file", str(text_file)]):
+        for extra in ([], ["--text", " "], ["--text", "Hello", "--text-file", str(text_file)],
+                      ["Hi", "--text", "Hello"], ["Hi", "--text-file", str(text_file)]):
             try:
                 m.main([str(source), "--out", str(root / "bad.wav"), *extra])
             except SystemExit as error:
@@ -68,4 +75,4 @@ with tempfile.TemporaryDirectory(dir=".") as scratch:
             raise AssertionError("output overwritten")
     with patch.dict(sys.modules, {"kittenml": None}):
         assert m.main([str(source), "--text", "Hello", "--out", str(root / "missing.wav")]) == 1
-print("PASS: real ffmpeg; duration boundaries; text/file; en/de; overwrite guard; missing dependency")
+print("PASS: real ffmpeg; duration boundaries; positional/text/file and mutual exclusion; en/de; overwrite guard; missing dependency")

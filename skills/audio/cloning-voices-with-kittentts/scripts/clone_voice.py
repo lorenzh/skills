@@ -24,13 +24,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("reference", type=Path)
     text_group = parser.add_mutually_exclusive_group(required=True)
+    text_group.add_argument("positional_text", nargs="?")
     text_group.add_argument("--text")
     text_group.add_argument("--text-file", type=Path)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--language", default="en", help="Language code; non-English disables normalization, not a voice selector")
     args = parser.parse_args(argv)
     try:
-        text = args.text_file.read_text(encoding="utf-8") if args.text_file else args.text
+        text = args.text_file.read_text(encoding="utf-8") if args.text_file else (args.text if args.text is not None else args.positional_text)
         if not text.strip():
             parser.error("Text must not be empty.")
         if not args.reference.is_file():
