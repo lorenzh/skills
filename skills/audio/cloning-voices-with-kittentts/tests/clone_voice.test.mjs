@@ -21,3 +21,13 @@ for (const option of ['--text-file', '--reference-text-file']) {
     assert.doesNotMatch(result.stderr, /Errno|Traceback/);
   });
 }
+
+test('--out-dir rejects an existing regular file', () => {
+  const input = fileURLToPath(new URL('./offline.py', import.meta.url));
+  const result = spawnSync('python3', ['-B',
+    fileURLToPath(new URL('../scripts/clone_voice.py', import.meta.url)), input,
+    '--text-file', input, '--out-dir', input], { encoding: 'utf8' });
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /--out-dir must name a directory/);
+  assert.doesNotMatch(result.stderr, /Errno|Traceback/);
+});
