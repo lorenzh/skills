@@ -18,7 +18,7 @@ Ask whose voice the recording holds before running the helper.
 If it is the user's own voice, their cloning request supplies consent.
 Otherwise, require the user's statement that the speaker consented. Without that statement, stop: **No consent, no run.**
 Obtain the recording, text, output path, and language (English by default).
-Use a clean, single-speaker recording lasting 5–30 seconds. No reference transcript is required by the model card.
+Use a clean, single-speaker recording lasting 5–30 seconds. Without a reference transcript, kittenml uses Whisper to transcribe the recording.
 If trimming is needed, agree on a segment and use ffmpeg; keep the original recording.
 Done when consent and all inputs are established.
 
@@ -49,6 +49,8 @@ Run the bundled [helper](scripts/clone_voice.py), replacing the placeholders:
 python3 <skill-dir>/scripts/clone_voice.py reference.wav --text-file text.txt --out speech.wav --language en
 ```
 
+Pass `--reference-text "Recorded words"` or `--reference-text-file transcript.txt` to skip Whisper transcription.
+The transcript must match the reference recording.
 For short text, use the optional positional argument: `reference.wav "Hello" --out speech.wav`.
 Use exactly one of positional text, `--text "Hello"`, or `--text-file text.txt`.
 For a batch, repeat `--text-file` and replace `--out` with `--out-dir DIR`.

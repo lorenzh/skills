@@ -31,8 +31,15 @@ def main(argv=None):
     outputs.add_argument("--out", type=Path)
     outputs.add_argument("--out-dir", type=Path)
     parser.add_argument("--language", default="en", help="Language code; non-English disables normalization, not a voice selector")
+    transcript = parser.add_mutually_exclusive_group()
+    transcript.add_argument("--reference-text")
+    transcript.add_argument("--reference-text-file", type=Path)
     args = parser.parse_args(argv)
     try:
+        reference_text = (args.reference_text_file.read_text(encoding="utf-8")
+                          if args.reference_text_file else args.reference_text)
+        if reference_text is not None and not reference_text.strip():
+            parser.error("Reference text must not be empty.")
         if args.out_dir:
             if not args.text_file:
                 parser.error("--out-dir requires --text-file.")
@@ -69,7 +76,7 @@ def main(argv=None):
                     "and run <dir>/bin/python get-pip.py inside that venv. Never install silently.") from error
             model = KittenTTS("KittenML/kitten-tts-2")
             for text, destination in jobs:
-                audio = model.generate(text, reference=str(reference), normalize=args.language.lower() in ("en", "english"))
+                audio = model.generate(text, reference=str(reference), reference_text=reference_text, normalize=args.language.lower() in ("en", "english"))
                 # Exclusive creation prevents overwriting a file created during inference.
                 with destination.open("xb") as output:
                     soundfile.write(output, audio, model.sample_rate, format="WAV")

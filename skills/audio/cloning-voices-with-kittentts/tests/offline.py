@@ -40,6 +40,7 @@ with tempfile.TemporaryDirectory() as scratch:
     fixture(5.1)
     calls = []
     loads = []
+    transcripts = []
     class Model:
         sample_rate = 24000
         def __init__(self, name):
@@ -48,6 +49,7 @@ with tempfile.TemporaryDirectory() as scratch:
         def generate(self, text, **kwargs):
             assert Path(kwargs["reference"]).is_file()
             calls.append((text, kwargs["normalize"]))
+            transcripts.append(kwargs.get("reference_text"))
             return [0.0] * 240
     def write(output, audio, rate, format):
         assert format == "WAV"
@@ -69,6 +71,13 @@ with tempfile.TemporaryDirectory() as scratch:
         assert len(loads) == before + 1
         assert calls[-2:] == [("Hallo", True), ("Second", True)]
         assert (root / "batch/text.wav").is_file() and (root / "batch/second.wav").is_file()
+        transcript = root / "transcript.txt"
+        transcript.write_text("Recorded words", encoding="utf-8")
+        for option, value, name in (("--reference-text", "Spoken words", "direct"),
+                                    ("--reference-text-file", str(transcript), "file")):
+            assert m.main([str(source), "Hello", option, value,
+                           "--out", str(root / (name + ".wav"))]) == 0
+        assert transcripts[-2:] == ["Spoken words", "Recorded words"]
         for files in ([text_file, text_file], [text_file, second]):
             before = len(loads)
             try:
@@ -82,6 +91,8 @@ with tempfile.TemporaryDirectory() as scratch:
         with wave.open(str(root / "de.wav")) as wav:
             assert wav.getframerate() == 24000
         for extra in ([], ["--text", " "], ["--text", "Hello", "--text-file", str(text_file)],
+                      ["Hi", "--reference-text", " "],
+                      ["Hi", "--reference-text", "words", "--reference-text-file", str(transcript)],
                       ["Hi", "--text", "Hello"], ["Hi", "--text-file", str(text_file)]):
             try:
                 m.main([str(source), "--out", str(root / "bad.wav"), *extra])
@@ -101,4 +112,4 @@ with tempfile.TemporaryDirectory() as scratch:
             assert m.main([str(source), "--text", "Hello", "--out", str(root / "missing.wav")]) == 1
         for hint in ("No module named pip", "python3-venv", "--without-pip", "get-pip.py", "Ask"):
             assert hint in errors.getvalue(), errors.getvalue()
-print("PASS: real ffmpeg; duration boundaries; positional/text/file and mutual exclusion; en/de; overwrite guard; missing dependency")
+print("PASS: real ffmpeg; duration boundaries; positional/text/file and mutual exclusion; en/de; batch loads once; reference transcripts; overwrite guard; missing dependency")
