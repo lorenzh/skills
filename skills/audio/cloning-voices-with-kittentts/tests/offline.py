@@ -1,4 +1,6 @@
 """Offline regression checks: real ffmpeg, stubbed inference only."""
+import contextlib
+import io
 import importlib.util
 from pathlib import Path
 import shutil
@@ -74,5 +76,9 @@ with tempfile.TemporaryDirectory() as scratch:
         else:
             raise AssertionError("output overwritten")
     with patch.dict(sys.modules, {"kittenml": None}):
-        assert m.main([str(source), "--text", "Hello", "--out", str(root / "missing.wav")]) == 1
+        errors = io.StringIO()
+        with contextlib.redirect_stderr(errors):
+            assert m.main([str(source), "--text", "Hello", "--out", str(root / "missing.wav")]) == 1
+        for hint in ("No module named pip", "python3-venv", "--without-pip", "get-pip.py", "Ask"):
+            assert hint in errors.getvalue(), errors.getvalue()
 print("PASS: real ffmpeg; duration boundaries; positional/text/file and mutual exclusion; en/de; overwrite guard; missing dependency")

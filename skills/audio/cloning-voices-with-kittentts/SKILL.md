@@ -27,6 +27,9 @@ Done when consent and all inputs are established.
 Use Python 3.10+, PyTorch, ffmpeg, kittenml, and soundfile. CPU works; a GPU is optional.
 Run `python3 -c "import kittenml, soundfile"` and `ffmpeg -version` to check dependencies.
 If packages are missing, show `python3 -m pip install kittenml soundfile`; do not install silently.
+If pip reports `No module named pip` or venv fails, ask before installing `python3-venv`.
+Alternatively, use `python3 -m venv --without-pip <dir>`, download `https://bootstrap.pypa.io/get-pip.py`, then run `<dir>/bin/python get-pip.py`.
+Use `<dir>/bin/python -m pip install kittenml soundfile` in that venv; never install silently.
 Explain that the first run downloads approximately 954 MB of default packed weights.
 Mention the Stellon Labs Community License: non-commercial or limited commercial use, with a USD 1M revenue/funding cap.
 Mention its attribution requirement on distribution; check the linked license before commercial use or distribution.

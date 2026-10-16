@@ -47,7 +47,10 @@ def main(argv=None):
                 from kittenml import KittenTTS
                 import soundfile
             except ImportError as error:
-                raise RuntimeError("Missing runtime package. Install with: python3 -m pip install kittenml soundfile") from error
+                raise RuntimeError("Missing runtime package. Install with: python3 -m pip install kittenml soundfile. "
+                    "If you see No module named pip or venv fails: Ask the user before installing python3-venv, "
+                    "or run python3 -m venv --without-pip <dir>, then download https://bootstrap.pypa.io/get-pip.py "
+                    "and run <dir>/bin/python get-pip.py inside that venv. Never install silently.") from error
             model = KittenTTS("KittenML/kitten-tts-2")
             audio = model.generate(text, reference=str(reference), normalize=args.language.lower() in ("en", "english"))
             # Exclusive creation prevents overwriting a file created during inference.
