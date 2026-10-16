@@ -2,7 +2,7 @@
 
 Labels: [S] standard, study or canonical text; [P] practitioner consensus; [F] folk wisdom, single or vendor source. Defaults marked *tunable* are this skill's choice, not a source's.
 
-Contents: Length · Hook · Reading time · Frame · Formats · Accessibility · For editing-videos · For narrating-videos · Sources
+Contents: Length · Hook · Reading time · Frame · Formats · Accessibility · Editing · Narration · Sources
 
 ## Length
 
@@ -15,6 +15,8 @@ Contents: Length · Hook · Reading time · Frame · Formats · Accessibility ·
 | Feature tour | budget = beat holds + action time; past ~6 min split into parts by topic. coverage.py checks only that the holds alone stay within the budget's upper bound + 10 % | tunable |
 
 ## Hook
+
+- For vertical feeds, make the problem clear within about 2 s; show the question from frame 1 with an immediate visible change. [F, one viewer]
 
 - The product or the result is on screen within 10 s; a logo intro is not the product. [F]
 - A view counts after 3 s on Facebook. [S] Early loss: 4.9 % for 1-2 min videos, 17.3 % for 5-10 min (Wistia). [S]
@@ -51,19 +53,21 @@ Contents: Length · Hook · Reading time · Frame · Formats · Accessibility ·
 - 2.3.1 At most 3 flashes per second (A).
 - 2.2.2 Autoplaying motion over 5 s beside other content needs a pause control (A): applies to looping GIFs in a README.
 
-## For editing-videos
+## Editing
 
-Not used by directing-videos; kept for the sibling editing skill until it owns them.
+Use these norms when assembling the cut.
 - Murch's rule of six, in priority order: emotion 51, story 23, rhythm 10, eye-trace 7, 2D plane 5, 3D space 4; never trade a higher one for a lower one. [S]
 - Cut on action; J-cut and L-cut to carry narration across picture changes; jump cuts are fine to trim typing and waiting. [P]
 - Trim dead air; pauses only for reading time or to let a result land. [P]
 - agg / asciinema idle limit default 5 s, agg last frame 3 s. [S, tool docs]
 
-## For narrating-videos
+## Narration
 
-Not used by directing-videos; kept for the sibling narration skill until it owns them.
+Use these norms when planning voice-over.
 - Narration ~150 wpm, ~130 for dense technical content, ~170 ceiling; a 60 s video holds ~140-150 words. [P]
 - Write the audio column first, then fit the picture to it. [P]
+- With voice-over, set beat length to `max(voice + 0.35 s, last visible change + 0.35 s)`; measure both from beat start. This rule followed a cut with 1.8–3.56 s frozen-frame silences and one picture ending 7 s before speech.
+- Avoid waits between slides beyond that timing; one viewer found the earlier waits long. [F, one viewer]
 - Loudness: -14 LUFS streaming, -16 LUFS dialogue, true peak at most -1 dBTP (convention; YouTube publishes none). [P]
 - Narration plus identical on-screen text adds load: use short labels, not transcripts (Mayer redundancy). [S]
 - Cache TTS audio per script version.

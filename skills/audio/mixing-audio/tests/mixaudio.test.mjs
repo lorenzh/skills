@@ -30,6 +30,21 @@ test('mixaudio operations with generated tones', { skip: available ? false : 'ff
     const normalized = cli('normalize', path('a.wav'), '--target-lufs', '-16', '-o', path('normalized.wav'));
     assert.match(normalized, /wrote /);
     assert.ok(Math.abs(Number(normalized.match(/integrated=([-\d.]+)/)[1]) + 16) <= 1);
+    run('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i',
+      'aevalsrc=sin(2*PI*440*t)*if(lt(mod(t\\,3)\\,0.05)\\,0.99\\,0.03):s=48000:d=12', path('peaks.wav')]);
+    assert.ok(Number(cli('measure', path('peaks.wav')).match(/true_peak=([-\d.]+)/)[1]) > -3);
+    const limited = spawnSync('python3', [script, 'normalize', path('peaks.wav'), '-o', path('limited.wav')], { encoding: 'utf8' });
+    assert.equal(limited.status, 0, limited.stderr);
+    const limitedLufs = Number(limited.stdout.match(/integrated=([-\d.]+)/)[1]);
+    assert.ok(limitedLufs < -17, `peak-limited normalization: ${limitedLufs}`);
+    assert.match(limited.stderr, /warning:.*more than 1 LU; compress first/);
+    cli('compress', path('peaks.wav'), '-o', path('compressed.wav'));
+    assert.ok(Math.abs(duration('compressed.wav') - 12) < 0.01);
+    const recovered = cli('normalize', path('compressed.wav'), '-o', path('recovered.wav'));
+    const recoveredLufs = Number(recovered.match(/integrated=([-\d.]+)/)[1]);
+    assert.ok(Math.abs(recoveredLufs + 16) <= 1, `compressed normalization: ${recoveredLufs}`);
+    cli('stitch', ...Array(6).fill(path('a.wav')), '--gap', '0.3', '-o', path('six.wav'));
+    assert.ok(Math.abs(duration('six.wav') - 13.5) < 0.01);
     tone('stereo.wav', 440, 10, 48000, 2);
     const stereoNormalized = cli('normalize', path('stereo.wav'), '-o', path('stereo-normalized.wav'));
     const stereoLufs = Number(stereoNormalized.match(/integrated=([-\d.]+)/)[1]);

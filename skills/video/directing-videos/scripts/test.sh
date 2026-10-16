@@ -32,4 +32,17 @@ has "hyphen range upper bound" "budget 35 s" "$(mk 's/Budget: 15 to 20 s/Budget:
 t 0 "hyphen range is not negative" python3 $C "$(mk 's/Budget: 15 to 20 s/Budget: 15-20 s/' s)"
 has "empty stage field" "Stage 'Reset' is empty" "$(mk 's#- Reset: ./reset.sh#- Reset:#' q)"
 cp ../templates/plan.md "$tmp/tpl.md"; t 1 "raw template fails" python3 $C "$tmp/tpl.md"
+cp $F/good.md "$tmp/code.md"
+cat >> "$tmp/code.md" <<'EOF'
+Inline `<li>` and `` `<tag>` ``.
+```html
+<slot>
+````
+~~~html
+<another-slot>
+~~~
+EOF
+t 0 "angle brackets in inline and fenced code" python3 $C "$tmp/code.md"
+printf '\n<real-slot>\n' >> "$tmp/code.md"
+has "prose slot after code still fails" "slot: unfilled <real-slot>" "$tmp/code.md"
 exit $fail

@@ -9,11 +9,11 @@ Run a reported bug of a terminal app on a clean checkout of the default branch, 
 
 **Only text the app drew counts as evidence, and one failed run never closes or downgrades an issue.** A run that matches a transcript quote, or that lost keys, reports a bug that is not there or hides one that is.
 
-Builds on [triaging-issues](../triaging-issues/SKILL.md) for verdicts and on `driving-terminal-apps` for every start, key, wait, capture and stop; for an app with a frame its `references/screen-checks.md` applies in full, and for Claude Code mods also `references/claude-code.md`. This skill does not repeat them.
+Use available skills or tools for issue triage, terminal automation and worktree isolation. Otherwise do those tasks with `git`, `gh` and `tmux` as described below. Before any terminal run, read [references/terminal-checks.md](references/terminal-checks.md); its safety, screen-check and Claude Code requirements always apply. If a required capability remains unavailable, name the unowned part and ask how to proceed.
 
 ## 1. Pick candidates
 
-Read each open issue with `gh issue view <n> --json number,title,body,comments,labels`. Take issues typed `bug` or with steps, whose triage verdict is `still valid` or `unclear`; run the triaging-issues steps first when no verdict exists. Order by priority and take at most 10 per run (tunable default).
+Read each open issue with `gh issue view <n> --json number,title,body,comments,labels`. Take issues typed `bug` or with steps, whose triage verdict is `still valid` or `unclear`; triage against the default-branch code first when no verdict exists. Cite a `file:line`, SHA, PR or issue for every verdict; without evidence use `unclear`. Order by priority and take at most 10 per run (tunable default).
 
 Skip with a reason, recorded as `not run`:
 
@@ -28,7 +28,7 @@ Done when every issue has a candidate or a skip row with its reason.
 
 ## 2. Stage a clean checkout
 
-Check the default branch out as a detached worktree at its current SHA, outside the working tree, and install dependencies there (see `creating-worktrees` for placement and installs):
+Check the default branch out as a detached worktree at its current SHA, outside the working tree, and install dependencies there. Check that `.worktrees/` is ignored first; use the project's prescribed placement and setup when present:
 
 ```bash
 git fetch -q origin
@@ -43,16 +43,16 @@ Done when the worktree sits at the default branch SHA, dependencies are installe
 
 ## 3. Reproduce one issue
 
-Use the `driving-terminal-apps` process with its own tmux socket per issue, named after the issue (`repro-<n>`).
+Use a fresh tmux socket per issue, named `repro-<n>`. Follow the terminal-check reference for startup, keys, captures and cleanup.
 
-1. Turn the issue's steps into keys and drive them per `driving-terminal-apps` step 4, with at least 0.2 s between redrawing keys. A dropped key looks like "bug not present", so a `wait` that never matched makes the run `inconclusive`, not a pass.
+1. Turn the issue's steps into keys and drive one action followed by a wait for its visible effect, with at least 0.2 s between redrawing keys. A dropped key looks like "bug not present", so a `wait` that never matched makes the run `inconclusive`, not a pass.
 2. Capture the start screen and the screen at the failing step with `cap`. For a highlight, focus or colour bug capture with `cap -e` (keeps ANSI attributes) and check the attribute on the expected row, not just the drawn text.
-3. Judge an app with a frame by `screen-checks.md`. For plain CLI or REPL output, first run a unique marker in the app's own syntax (`type` it, then `key Enter`: `echo repro-<n>-start` in a shell, `print("repro-<n>-start")` in Python) and judge only the output after it; there no frame is expected, so "no frame found" is not a setup error.
-4. Stop and clean up per `driving-terminal-apps` step 6.
+3. Judge a framed app only inside its frame using the terminal-check reference. For plain CLI or REPL output, first run a unique marker in the app's own syntax (`type` it, then `key Enter`: `echo repro-<n>-start` in a shell, `print("repro-<n>-start")` in Python) and judge only the output after it; there no frame is expected, so "no frame found" is not a setup error.
+4. Stop only the session you created. Check that its app and child processes are gone; stop only leftovers belonging to this run.
 
 Use the user's real login only where the app under test requires it and the project's own live-check rules allow it. Never copy credentials and never print the environment.
 
-Done when the capture files exist and the Done-when of `driving-terminal-apps` step 6 holds.
+Done when capture files exist, the owned session has stopped successfully, and no app processes from this run remain.
 
 ## 4. Confirm before not reproduced
 
@@ -92,7 +92,7 @@ Done when each comment has the first line, numbered steps, one sentence for expe
 
 ## 7. Check, then post
 
-Read every capture line by line. Remove home paths with user names, tokens, hostnames, account names and customer data, then recapture on a clean stage rather than hand-edit. Run the `checking-before-publishing` skill on every comment; an unread capture is never posted.
+Read every capture line by line. Remove home paths with user names, tokens, hostnames, account names and customer data, then recapture on a clean stage rather than hand-edit. Run a privacy/secret check of every final comment and capture, with a skill or tool if available. Otherwise read every line by hand for the values above, emails, session IDs, internal URLs and IPs, and private repository names. Recheck after the last edit; an unread capture is never posted.
 
 Post with `gh issue comment <n> --body-file <file>` only when the user approved it, or when the calling workflow's rules allow comments. Otherwise return the comment files and ask.
 

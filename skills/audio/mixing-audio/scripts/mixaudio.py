@@ -35,9 +35,11 @@ def measure(path):
     if not probe["streams"]:
         raise RuntimeError(f"no audio stream: {path}")
     info = probe["streams"][0]
+    stats = loudness(path)
     print(f"{path}: duration={float(probe['format']['duration']):.3f} s; "
-          f"integrated={loudness(path)['input_i']} LUFS; "
-          f"rate={info['sample_rate']} Hz; channels={info['channels']}")
+          f"integrated={stats['input_i']} LUFS; "
+          f"rate={info['sample_rate']} Hz; channels={info['channels']}; true_peak={stats['input_tp']} dBTP")
+    return stats
 
 
 def number(value):
@@ -53,7 +55,7 @@ def number(value):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="command", required=True)
-    for name in ("measure", "clean", "normalize", "trim", "stitch", "duck", "overlay"):
+    for name in ("measure", "clean", "compress", "normalize", "trim", "stitch", "duck", "overlay"):
         sub = subs.add_parser(name)
         if name == "stitch":
             sub.add_argument("inputs", nargs="+")
@@ -111,6 +113,8 @@ def main():
     filters = []
     if args.command == "clean":
         filters = ["-af", "highpass=f=80,afftdn=nr=6:nf=-50"]
+    elif args.command == "compress":
+        filters = ["-af", "acompressor=threshold=-24dB:ratio=3:attack=5:release=80:makeup=1"]
     elif args.command == "normalize":
         preprocess = f"aresample={args.rate},aformat=sample_fmts=fltp:channel_layouts=mono,"
         stats = loudness(inputs[0], args.target_lufs, preprocess)
@@ -147,7 +151,10 @@ def main():
     ffmpeg([*command, *filters, "-vn", "-ac", "1", "-ar", str(args.rate),
             "-c:a", "pcm_s16le", str(output)])
     print(f"wrote {output}")
-    measure(output)
+    result = measure(output)
+    if args.command == "normalize" and abs(float(result["input_i"]) - args.target_lufs) > 1:
+        print("warning: measured loudness misses target by more than 1 LU; compress first, then normalize",
+              file=sys.stderr)
     return 0
 
 

@@ -60,12 +60,13 @@ State each loop's numeric cap before the loop. Target ≤100 lines and about 1,0
 Keep harness names and tool-specific instructions in the harness reference. Heuristic: positive recipes can make required output clearer; they do not guarantee compliance.
 Put a rule inside the step it governs. Write an ordering rule as “Before the first <action>, do Y”.
 State authorization boundaries beside the governed action; approval for one action does not expand scope.
+Never link to or require another skill by name; describe the capability and required gates, and ask how to proceed if it has no owner.
 Done when the draft maps every observed failure to an instruction and every step has its completion line.
 ## 5. Prune the draft
 
 Remove duplicate rules, default behavior, unsupported cases, and creation history in one pass; keep one location per rule, with pointers elsewhere.
 Keep secrets, internal hostnames, private repo names, employer or customer names, and machine paths out; write placeholders.
-If a privacy-check skill such as `checking-before-publishing` is available, run it on the bundle.
+If a privacy-check skill or tool is available, use it on the bundle; otherwise, say privacy checking has no owner and ask how to proceed.
 Link every reference directly from the core with an observable read condition. Give each reference over 100 lines a contents list at the top.
 Done when the record lists removed duplicates and each rule's evidence, and no bundle file holds a secret, private name or machine path.
 ## 6. Check the bundle

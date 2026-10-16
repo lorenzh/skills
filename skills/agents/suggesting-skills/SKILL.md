@@ -62,7 +62,7 @@ Done when the list is shown and the question is asked. Stop here until the user 
 
 ## 4. Create the chosen skills
 
-For each candidate the user picked, load a skill-authoring skill (such as `writing-skills`) if one is installed and follow it, with the session evidence from step 1 as its baseline material. For an `update`, edit the existing skill instead of making a new one.
+For each candidate the user picked, use a skill for authoring skills, if available, with the session evidence from step 1. Otherwise, say skill authoring has no owner and ask how to proceed. For an `update`, edit the existing skill instead of making a new one.
 
 Make the change in the skill's source repository, never in the installed copy: an update overwrites it (`npx skills update`, or `/plugin update` for a plugin). Check how the skill was installed first. A skills-CLI install has an entry in `~/.agents/.skill-lock.json` (global) or `skills-lock.json` (project); `source` and `skillPath` name the repository. A plugin install has no lock entry and sits under `~/.claude/plugins/cache/<marketplace>/<plugin>/`; `~/.claude/plugins/known_marketplaces.json` gives the marketplace's `source.repo`, and the skill's path in that repository follows the plugin's `skills` entries in its `plugin.json`. A new skill goes to the root of its group: the user's global skill root, the project's skill root, or `lorenzh/skills`. Open one branch and one pull request per skill, follow that repository's `AGENTS.md` (validator, evals, commit rules), and leave the merge to the user.
 

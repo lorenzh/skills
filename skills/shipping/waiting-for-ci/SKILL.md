@@ -36,7 +36,7 @@ done
 
 Never wait with `while pgrep -f "<pattern>"; do ...; done`. The loop's own shell has `<pattern>` on its command line, so `pgrep` always finds it and the loop never ends. The bracket form `[p]attern` still matches the target process but not the literal `[p]attern` text in the shell's command line. A PID is better still.
 
-The same trap kills: `pkill -f '<pattern>'` also matches the shell running it and ends that shell (exit 144) before the rest of the command runs. To stop a process you waited on or started, `kill <pid>`; for a server, take the PID from its port: `kill $(ss -ltnp | grep ':<port> ' | grep -o 'pid=[0-9]*' | cut -d= -f2)`.
+Never kill by pattern from a command that contains that pattern. In the measured case, `pkill -f '<pattern>'` matched its caller's shell and ended it with exit 144. To stop a process you waited on or started, `kill <pid>`; for a server, take the PID from its port: `kill $(ss -ltnp | grep ':<port> ' | grep -o 'pid=[0-9]*' | cut -d= -f2)`.
 
 Done when the wait command is chosen and it ends by itself when the result is in.
 
@@ -61,7 +61,7 @@ Done when the loop printed `ready`, or the timeout is reported with the last obs
 
 ## 3. Run long waits in the background
 
-A wait longer than about two minutes goes in the background (the harness's background mode, or `nohup ... > <log> 2>&1 &`), so the session stays responsive. Note the PID or job id and the log path.
+Start waits longer than about two minutes with the harness background option, so the session stays responsive and receives a completion notice. Do not use `nohup ... &`: the measured run produced no completion notice. Note the PID or job id and the log path. If the harness has no background option, report the missing capability and ask how to proceed.
 
 Done when the wait runs in the background and its PID or job id and log path are noted.
 
