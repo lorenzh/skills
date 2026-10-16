@@ -56,7 +56,7 @@ Done when the log entry exists with both model values.
 
 ## 3. Fix at the root
 
-Send every needs-fix finding to the implementer (reuse its session when it still exists), with the reviewer's failure scenario. The brief demands a new commit per finding: do not amend or rebase. The implementer fixes the shared cause, ships the test that failed on the old code, and reports SHAs and test results. The orchestrator does not edit code: its fix would reach main without family-B review. Should-fix findings wait until after the merge and notes change nothing: the orchestrator opens one issue per should-fix finding, linked to the PR.
+Send every needs-fix finding to the implementer (reuse its session when it still exists), with the reviewer's failure scenario. The brief demands a new commit per finding: do not amend or rebase. The implementer fixes the shared cause, ships the test that failed on the old code, and reports SHAs and test results. The orchestrator does not edit code: its fix would reach main without family-B review. Should-fix findings wait for a fix after the merge and notes change nothing: the orchestrator opens one issue per should-fix finding, linked to the PR.
 
 This step owns the shared gate for delegated fixes. Before reporting completion or starting re-review, run these checks in the implementer's worktree:
 
