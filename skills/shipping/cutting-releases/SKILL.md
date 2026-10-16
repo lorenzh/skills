@@ -44,9 +44,9 @@ done
 timeout 60m gh run watch "$id" --exit-status
 ```
 
-If a job fails, diagnose it with [waiting-for-ci step 5](../waiting-for-ci/SKILL.md#5-diagnose-a-failed-check) before you rerun or change anything.
+Before changing a failed PR or rerunning CI, read the raw job log: `gh api repos/{owner}/{repo}/actions/jobs/<job-id>/logs`. Compare the failure with the diff and the same workflow on the default branch. If the default branch fails the same test, report that and leave the PR unchanged. Run the failing test locally 5 times (tunable). For an unrelated failure or a transient timeout/network failure, rerun only failed jobs once with `gh run rerun <run-id> --failed`. Watch with a deadline; report a second failure with its log. If the unrelated test passes, offer a flaky-test issue instead of changing the PR.
 
-For waits that hang, time out or need another approach, see the `waiting-for-ci` skill.
+If a skill or tool for bounded waits is available, use it. Keep an observable end condition and deadline for every wait. Start long waits through the harness background option, record the job ID and log, and inspect actual state if silent. On timeout, stop dependent work and report the last state. If no available capability can own the wait, name the gap and ask how to proceed.
 
 Done when the release run has passed.
 
