@@ -1,6 +1,6 @@
 ---
 name: planning-milestones
-description: GitHub release planning for open issues. Use when the user asks which issues go into the next patch or minor release, to spread the backlog over the upcoming milestones, to balance milestones, to plan the next release, or to move issues so that they fit together best. Not for judging whether single issues are still valid or fit their milestone (use triaging-issues).
+description: GitHub release planning for open issues. Use when the user asks which issues go into the next patch or minor release, to spread the backlog over the upcoming milestones, to balance milestones, to plan the next release, or to move issues so that they fit together best. Not for judging whether single issues are still valid or fit their milestone (use issue triage).
 ---
 
 # Planning milestones
@@ -9,11 +9,21 @@ Decide which open issue ships in which release, show the plan as one table, and 
 
 **A milestone is a set of issues that can ship together: a dependency sits in the same or an earlier milestone, the work that touches the same files sits in one release, and no release holds more than the others can bear.** A plan that splits by title keywords breaks the dependency order and produces merge conflicts.
 
-This skill starts where `triaging-issues` ends. Take verdicts (still valid, partly fixed, already fixed, duplicate, obsolete, unclear) from that skill; this skill does not repeat them. When no triage is fresh, apply the same evidence rule: check each issue against `origin/$main` with a `file:line`, SHA or PR, and leave a guess as `unclear`.
+Start from fresh issue-triage verdicts: still valid, partly fixed, already fixed, duplicate, obsolete or unclear. If an issue-triage skill or tool is available, use it. When no triage is fresh, apply the same evidence rule: check each issue against `origin/$main` with a `file:line`, SHA or PR, and leave a guess as `unclear`.
 
 ## 1. Collect the inputs
 
-Collect the repo state with the commands of `triaging-issues` step 1: fetch, find the default branch `$main` and record its SHA, write the open issues and open milestones to a temp directory, and read single issues with `gh issue view --json`. Add `number` to the milestone fields, for the fallback in step 7:
+Fetch `origin`, find the default branch `$main`, and record its SHA. Write open issues and milestones to a temp directory. Read individual issues with `gh issue view <n> --json number,title,body,comments,labels,milestone`. Collect inputs without changing GitHub state:
+
+```bash
+git fetch -q origin
+main=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
+git rev-parse "origin/$main"
+t=$(mktemp -d)
+gh issue list --state open --limit 1000 --json number,title,labels,milestone,createdAt > "$t/issues.json"
+```
+
+Keep milestone numbers for the fallback in step 7:
 
 ```bash
 gh api --paginate 'repos/{owner}/{repo}/milestones?state=open' --jq '.[] | {number, title, description, due_on}' > "$t/milestones.json"
@@ -21,7 +31,7 @@ gh api --paginate 'repos/{owner}/{repo}/milestones?state=open' --jq '.[] | {numb
 
 Take three inputs:
 
-1. The open issues whose verdict is `still valid`, and for each `partly fixed` issue the remaining work the triage verified; plan that remaining work as the issue. Leave out `already fixed`, `duplicate`, `obsolete` and `unclear`; report them as a note and route them back to `triaging-issues`.
+1. The open issues whose verdict is `still valid`, and for each `partly fixed` issue the remaining work the triage verified; plan that remaining work as the issue. Leave out `already fixed`, `duplicate`, `obsolete` and `unclear`; report them as a note for further evidence-based triage. Use an available issue-triage skill or tool; otherwise check the default-branch code yourself and leave unsupported verdicts `unclear`.
 2. The open milestones with number, description and due date. Order them by due date, otherwise by version.
 3. The owner's stated theme and caps for the next release. If the request names no theme or caps, ask once in the same reply as the plan, or proceed with "none named"; do not invent a theme.
 
@@ -106,7 +116,7 @@ Done when the reply holds the table and the question and no GitHub state has cha
 
 ## 7. Apply what the owner approved
 
-Apply each move by milestone title, the same way `triaging-issues` does:
+Apply each move by milestone title:
 
 ```bash
 gh issue edit <n> --milestone "<title>"
@@ -124,6 +134,6 @@ Re-read up to 3 times, 5 s apart (tunable); report a move as applied only when t
 gh api repos/{owner}/{repo}/issues/<n> --jq '{number, milestone: .milestone.title, state}'
 ```
 
-Never close an issue here, and never edit a milestone description; a closing is a `triaging-issues` decision, and a description is the owner's. Record the plan only when the owner agreed: one short comment or a tracking issue that lists each milestone's issue numbers.
+Never close an issue here or edit a milestone description. Issue closure needs separate evidence-based triage and the owner's explicit approval; milestone descriptions belong to the owner. Record the plan only when the owner agreed: one short comment or a tracking issue that lists each milestone's issue numbers.
 
 Done when each approved move shows the new milestone in the re-read, and the reply lists what was applied, what was left and where the plan was recorded (or "not recorded").

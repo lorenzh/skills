@@ -77,7 +77,7 @@ Done when the private file holds the sections above, and the title is one line i
 
 ## 4. Keep private data out
 
-The repo may be public. Strip tokens, home-directory paths, host names, and customer or employer names and data from the body and title. Generalise a log excerpt instead of pasting it. If the `checking-before-publishing` skill is available, run it on the body file.
+The repo may be public. Strip tokens, home-directory paths, host names, and customer or employer names and data from the body and title. Generalise a log excerpt instead of pasting it. Run a privacy/secret check of the bundle with a skill or tool if available. Otherwise check the final body and title by hand: read every line for secrets, private paths, hosts and names. Include emails, session IDs, internal URLs and IPs, and private repository names. Replace private values with placeholders and recheck after the last edit.
 
 Done when the body file has no home path, token, private host or customer detail.
 
