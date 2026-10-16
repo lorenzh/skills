@@ -44,7 +44,6 @@ No build and no dependencies — the deliverables are the skill folders.
 
 | Skill | Category |
 |---|---|
-| [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | `audio` |
 | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | `publishing` |
 | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | `research` |
 | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | `publishing` |
@@ -65,6 +64,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [planning-milestones](skills/github/planning-milestones/SKILL.md) | `github` |
 | [filing-issues](skills/github/filing-issues/SKILL.md) | `github` |
 | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | `github` |
+| [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | `audio` |
 
 ## Conventions
 

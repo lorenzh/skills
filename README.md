@@ -8,7 +8,6 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 
 | Category | Skill | What it does |
 |---|---|---|
-| audio | [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | Produces a speech WAV from text and a consenting speaker’s short recording using KittenTTS 2. |
 | research | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | Has two researchers from different model families answer one brief, checks each disagreement against primary sources, and writes one report. |
 | publishing | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | Scans text, recordings and frames for private data (home paths, hosts, emails, tokens, internal names) before anything goes public. |
 | agents | [writing-skills](skills/agents/writing-skills/SKILL.md) | Authors skills with evidence, tiered checks and a bounded review budget. |
@@ -29,6 +28,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | github | [planning-milestones](skills/github/planning-milestones/SKILL.md) | Plans which open issue ships in which release: groups by shared files and dependencies, orders by severity, spreads count and size evenly, marks owner-blocked items, and applies milestones only after the owner approves one table. |
 | github | [filing-issues](skills/github/filing-issues/SKILL.md) | Files one GitHub issue with a duplicate check, claims verified against the default branch, acceptance criteria, a milestone chosen by its rule, labels from the repo and cross-links, created through the REST API. |
 | github | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | REST fallback when gh porcelain fails with `projectCards` on Projects (classic) data: `gh api` calls for issue and PR work, with a read-back after each write. |
+| audio | [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | Produces a speech WAV from text and a consenting speaker’s short recording using KittenTTS 2. |
 
 ## Install
 
@@ -109,7 +109,6 @@ See [settings.md](skills/agents/writing-skills/references/settings.md) for allow
 
 | Skill | Needs |
 |---|---|
-| cloning-voices-with-kittentts | Python 3.10+, PyTorch, kittenml, soundfile, ffmpeg; approximately 954 MB for model weights. CPU supported. |
 | researching-with-two-models | Two agent runtimes of different model families, for example a pinned Claude subagent and the `codex` CLI. |
 | checking-before-publishing | Node.js 18+ for the scan. For GIF or video frames: `ffmpeg`. |
 | writing-skills | Node.js 18+ for repo tooling. Agent runtime for tier-1 and tier-2 checks. |
@@ -130,6 +129,7 @@ See [settings.md](skills/agents/writing-skills/references/settings.md) for allow
 | planning-milestones | `gh`, `git`. Verdicts come from `triaging-issues`. |
 | filing-issues | `gh`, `git`. |
 | using-gh-rest | `gh`, authenticated. `git` for the `{owner}/{repo}` placeholders. |
+| cloning-voices-with-kittentts | Python 3.10+, PyTorch, kittenml, soundfile, ffmpeg; approximately 954 MB for model weights. CPU supported. Stellon Labs Community License: non-commercial or limited commercial use, USD 1M revenue/funding cap; attribution on distribution. |
 
 ## Layout
 

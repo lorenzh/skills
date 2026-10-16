@@ -14,8 +14,9 @@ Produce a 24 kHz speech WAV from text and a short voice recording.
 
 ## 1. Confirm the inputs
 
-Establish the speaker's consent before generation; a request to clone the user's own voice supplies that consent.
-If consent for another speaker is unclear, ask before generation.
+Ask whose voice the recording holds before running the helper.
+If it is the user's own voice, their cloning request supplies consent.
+Otherwise, require the user's statement that the speaker consented. Without that statement, stop: **No consent, no run.**
 Obtain the recording, text, output path, and language (English by default).
 Use a clean, single-speaker recording lasting 5–30 seconds. No reference transcript is required by the model card.
 If trimming is needed, agree on a segment and use ffmpeg; keep the original recording.
@@ -24,6 +25,7 @@ Done when consent and all inputs are established.
 ## 2. Check the runtime and license
 
 Use Python 3.10+, PyTorch, ffmpeg, kittenml, and soundfile. CPU works; a GPU is optional.
+Run `python3 -c "import kittenml, soundfile"` and `ffmpeg -version` to check dependencies.
 If packages are missing, show `python3 -m pip install kittenml soundfile`; do not install silently.
 Explain that the first run downloads approximately 954 MB of default packed weights.
 Mention the Stellon Labs Community License: non-commercial or limited commercial use, with a USD 1M revenue/funding cap.
@@ -38,10 +40,12 @@ Run the bundled [helper](scripts/clone_voice.py), replacing the placeholders:
 python3 <skill-dir>/scripts/clone_voice.py reference.wav --text-file text.txt --out speech.wav --language en
 ```
 
-Use `--text "Hello"` instead of `--text-file` for short text.
+For short text, use the optional positional argument: `reference.wav "Hello" --out speech.wav`.
+Use exactly one of positional text, `--text "Hello"`, or `--text-file text.txt`.
 The helper validates duration, converts the reference to mono PCM WAV with ffmpeg, and keeps temporary audio only during generation.
 It refuses an existing output file. Exit codes are 0 for success, 1 for runtime failure, and 2 for incorrect arguments.
 If Python or ffmpeg is missing, report the blocked dependency and stop.
+For other failures, fix only what the error names and retry at most 2 times; then report the error and stop.
 English is the default. `--language de` disables normalization, as required for non-English text.
 The language option controls normalization only; it does not select a language voice.
 The model card describes nine additional languages through language voices, including German.
@@ -52,6 +56,7 @@ Done when the command exits 0 and creates the requested WAV.
 
 Check the WAV sample rate and duration, then listen if playback is available.
 Report the output path, language, and whether listening was possible.
+Repeat the Stellon Labs Community License note: non-commercial or limited commercial use, USD 1M revenue/funding cap, and attribution on distribution.
 If generation was not run, state that explicitly; never describe an offline test as a model run.
 Done when the report distinguishes generated audio from checks that did not use the model.
 
