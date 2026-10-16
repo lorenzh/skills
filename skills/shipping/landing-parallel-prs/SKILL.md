@@ -63,7 +63,11 @@ gh run list --commit "$sha" --json workflowName,status,conclusion,createdAt
 
 Checks count only when their runs belong to `$sha` and started after the push. A green result from before the update ran on the old main.
 
-Follow [waiting-for-ci](../waiting-for-ci/SKILL.md) for background waits, deadlines, observed state and CI reruns. For local test timeouts under machine load, follow [reviewing-across-families step 3](../../agents/reviewing-across-families/SKILL.md#3-fix-at-the-root).
+If a skill or tool for bounded waits or CI diagnosis is available, use it. Keep an observable end condition and deadline; use the harness background option, record the job ID and log, and inspect actual state if silent. If no available capability can own the wait or diagnosis, name the gap and ask how to proceed.
+
+Before changing the PR, read raw job logs with `gh api repos/{owner}/{repo}/actions/jobs/<job-id>/logs`. Compare the failure with the diff and the default branch's same workflow. If the default branch fails the same test, report that and leave the PR unchanged. Run the failing test locally 5 times (tunable). For an unrelated failure or a transient timeout/network failure, rerun only failed jobs once with `gh run rerun <run-id> --failed`. Watch with a deadline; report a second failure with its log. If the unrelated test passes, offer a flaky-test issue instead of changing the PR.
+
+For local test timeouts under machine load, rerun once. Report a second timeout to the user as a timeout, never a pass.
 
 Done when every required check for `$sha` passed, or the report names the failing check and stops the batch.
 
@@ -77,7 +81,7 @@ gh pr merge <n> --merge --match-head-commit "$sha"
 
 `--match-head-commit` refuses the merge if the head moved after the approval and the checks. If it refuses, go back to step 2: the new head needs its own checks and its own OK.
 
-A merge queue or auto-merge can return before the PR is merged. If the user merges themselves, use the same wait. Follow `waiting-for-ci` and confirm `MERGED` before updating the next PR:
+A merge queue or auto-merge can return before the PR is merged. If the user merges themselves, use the same wait. Use the same bounded background procedure and confirm `MERGED` before updating the next PR:
 
 ```bash
 timeout 30m bash -c 'until [ "$(gh pr view <n> --json state -q .state)" = MERGED ]; do sleep 30; done'
