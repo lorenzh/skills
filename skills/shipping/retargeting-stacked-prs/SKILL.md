@@ -21,6 +21,8 @@ gh pr list --state open --json number,headRefName,baseRefName,title
 
 Order the stack from the bottom (base is `<main>`) to the top. GitHub retargets a PR on its own when its base branch is deleted at merge, so a PR may already point to `<main>`.
 
+Before creating a stacked branch, fetch and branch from the base PR's final head. Confirm its SHA with `gh pr view <base-pr> --json headRefOid -q .headRefOid`. In the measured case, the base gained 5 commits after branching; after its squash merge, merging main caused add/add conflicts in 6 files.
+
 Done when you have the ordered list with each PR's current base.
 
 ## 2. Use a native GitHub stack when available
@@ -62,6 +64,8 @@ git switch <branch> && git merge origin/<main>   # resolve conflicts, then commi
 git push
 ```
 
+For conflicts after a squash merge, take main's version for files the stacked PR does not own. In shared tables, keep both main's rows and the stacked PR's rows, each once. This resolved the 6 conflict files in the measured case; check the resulting diff before committing.
+
 Keep the branch history as it is: no rebase, no force-push. A force-push rewrites history others may have pulled and drops review context. The merge commit removes the duplicate changes from the diff, and the push starts CI, so skip the close and reopen in step 5 but still run its head-SHA check.
 
 Done when `gh pr view <n> --json baseRefName` shows `<main>`.
@@ -87,7 +91,7 @@ git merge origin/<main>
 cd - && git worktree remove <fresh-path>
 ```
 
-Follow [creating-worktrees](../../git/creating-worktrees/SKILL.md) to install dependencies so they resolve inside `<fresh-path>` and not in the main checkout.
+If a skill or tool for isolated worktrees is available, use it. Install dependencies fresh inside `<fresh-path>`; verify dependency and config paths resolve there, without borrowing the main checkout's install or symlinking it. If no available capability can provide that isolation, name the gap and ask how to proceed.
 
 Done when every head has passed the full CI command set in its own fresh worktree after merging current `<main>`, and `git worktree list` no longer shows those worktrees.
 
@@ -116,6 +120,6 @@ For a native stack, wait for the checks of every PR in the stack on its current 
 
 For the one-by-one flow, wait for the runs from step 5 (`timeout 30m gh pr checks <n> --watch --fail-fast`). Then show the user the PR, its head SHA and the check results, and ask whether to merge. After a yes, merge the PR the way the repo merges. Go back to step 3 for the next PR in the stack. Merging a higher PR first lands it into a branch that is about to be stale.
 
-For waits that hang, time out or need another approach, see the `waiting-for-ci` skill.
+If a skill or tool for bounded waits is available, use it. Keep an observable end condition and deadline; start long waits through the harness background option and record the job ID and log. If silent, inspect actual state; on timeout, report the last state and stop dependent work. If no available capability can own the wait, name the gap and ask how to proceed.
 
 Done when, for a native stack, every PR the top merge landed shows `MERGED` after the user approved each one, or, for the one-by-one flow, every PR is merged with the user's OK; otherwise the report names the PR that waits for that OK or is blocked, with its failing check.
