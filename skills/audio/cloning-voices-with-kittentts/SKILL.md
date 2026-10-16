@@ -30,10 +30,16 @@ If packages are missing, show `python3 -m pip install kittenml soundfile`; do no
 If pip reports `No module named pip` or venv fails, ask before installing `python3-venv`.
 Alternatively, use `python3 -m venv --without-pip <dir>`, download `https://bootstrap.pypa.io/get-pip.py`, then run `<dir>/bin/python get-pip.py`.
 Use `<dir>/bin/python -m pip install kittenml soundfile` in that venv; never install silently.
-Explain that the first run downloads approximately 954 MB of default packed weights.
 Mention the Stellon Labs Community License: non-commercial or limited commercial use, with a USD 1M revenue/funding cap.
 Mention its attribution requirement on distribution; check the linked license before commercial use or distribution.
 Done when dependencies are available and the user has received the download and license information.
+
+## Cost
+
+The first run downloads about 954 MB of weights. Check free RAM first; peak usage can reach about 14 GB.
+On six CPU cores, generation ran about 10x slower than real time (20 seconds of speech took 240 seconds).
+Run generation as a background job that reports completion; do not use polling loops.
+Trim long references to an agreed segment with `ffmpeg -ss <start> -t 20 -i in -ac 1 out.wav`; keep the original.
 
 ## 3. Generate the speech
 
