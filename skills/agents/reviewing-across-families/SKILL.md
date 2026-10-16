@@ -26,12 +26,20 @@ Write the brief to a file. It holds: the base and head (`git diff origin/<base>.
 ```
 MODEL: <the model id you are running as>
 FINDINGS:
-- [blocker|should-fix|nit] path:line: defect. Failure: <input or state> -> <wrong result>.
+- [needs-fix|should-fix|note] path:line: defect. Severity: P1|P2|P3. Proof: <failing test, or command and its failing output>. Failure: <input or state> -> <wrong result>.
 NOT CHECKED: <what you could not verify: images, video, live services, network>
-VERDICT: APPROVE | CHANGES REQUESTED
+VERDICT: fix first | ship
 ```
 
-Severities: **blocker** breaks behaviour, loses data or is a security hole; **should-fix** is a real defect or a missing test for changed behaviour; **nit** is style or taste. APPROVE is allowed only with no blocker and no should-fix. The reviewer may not edit files.
+Rules for the reviewer, put in the brief as written:
+
+- You may find nothing. There is no minimum number of findings; "no blocking findings" is a valid result.
+- **needs-fix**: severity P1 or P2, proven by a mechanical test (a failing test, or a command with its failing output). It blocks the PR.
+- **should-fix**: proven the same way, but not blocking (P3 or minor impact). The PR may merge; the orchestrator opens a separate issue linked to the PR, and the fix follows after the merge.
+- **note**: unproven suspicion, style, nits, residual risk. A note changes nothing and gets no issue.
+- Severity: P1 breaks data, security or the main flow for most users. P2 breaks documented behavior in a realistic case. A corner case that needs a contrived input is P3.
+- A finding without proof is a note.
+- The verdict is `fix first` only when a needs-fix finding exists, otherwise `ship`. The reviewer may not edit files.
 
 Done when the brief file exists and contains the contract.
 
@@ -48,7 +56,7 @@ Done when the log entry exists with both model values.
 
 ## 3. Fix at the root
 
-Send every blocker and should-fix to the implementer (reuse its session when it still exists), with the reviewer's failure scenario. The brief demands a new commit per finding: do not amend or rebase. The implementer fixes the shared cause, adds a test that fails without the fix, and reports SHAs and test results. The orchestrator does not edit code: its fix would reach main without family-B review. Nits are optional; list declined ones with a reason.
+Send every needs-fix finding to the implementer (reuse its session when it still exists), with the reviewer's failure scenario. The brief demands a new commit per finding: do not amend or rebase. The implementer fixes the shared cause, ships the test that failed on the old code, and reports SHAs and test results. The orchestrator does not edit code: its fix would reach main without family-B review. Should-fix findings wait until after the merge and notes change nothing: the orchestrator opens one issue per should-fix finding, linked to the PR.
 
 This step owns the shared gate for delegated fixes. Before reporting completion or starting re-review, run these checks in the implementer's worktree:
 
@@ -66,11 +74,11 @@ Done when ancestry exits 0, the count is above 0, porcelain is empty, and tests 
 
 ## 4. Re-review the delta
 
-Give the reviewer its earlier review file and the diff since the reviewed SHA. It marks each earlier finding `resolved` or `open` with evidence, then looks only for regressions the new commits caused. Reopening settled code adds rounds without adding safety.
+Give the reviewer its earlier review file and the diff since the reviewed SHA. It marks each earlier needs-fix finding `resolved` or `open` with evidence, then checks the new commits for new needs-fix defects. It does not hunt for new notes or should-fix findings: reopening settled code adds rounds without adding safety.
 
-Stop after 3 rounds (tunable). If a blocker or should-fix is still open, report it to the user with the log instead of starting round 4.
+Stop after 3 rounds (tunable). If a needs-fix finding is still open, report it to the user with the log instead of starting round 4.
 
-Done when the log ends in APPROVE, or in a round-limit entry handed to the user.
+Done when the log ends in `ship`, or in a round-limit entry handed to the user.
 
 ## 5. Ship from the orchestrating session
 
