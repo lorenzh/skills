@@ -35,6 +35,11 @@ def main(argv=None):
     transcript.add_argument("--reference-text")
     transcript.add_argument("--reference-text-file", type=Path)
     args = parser.parse_args(argv)
+    for option, files in (("--text-file", args.text_file or []),
+                          ("--reference-text-file", [args.reference_text_file] if args.reference_text_file else [])):
+        for file in files:
+            if not file.is_file():
+                parser.error(f"{option} must name an existing file: {file}")
     try:
         reference_text = (args.reference_text_file.read_text(encoding="utf-8")
                           if args.reference_text_file else args.reference_text)
