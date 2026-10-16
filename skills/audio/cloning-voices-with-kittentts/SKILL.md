@@ -65,6 +65,10 @@ English is the default. `--language de` disables normalization, as required for 
 The language option controls normalization only; it does not select a language voice.
 The model card describes nine additional languages through language voices, including German.
 For those languages, verify current language-voice compatibility with reference cloning before promising supported output.
+If an English word sounds wrong in German text, try phonetic spelling.
+In one test, “Branch” → “Brantsch” fixed “Bronch”.
+Splitting text by language with one reference per language and joining the parts with ffmpeg is possible.
+One listening test found no audible gain over a single run, so do not use this by default.
 Done when the command exits 0 and creates the requested WAV.
 
 ## 4. Check the result
