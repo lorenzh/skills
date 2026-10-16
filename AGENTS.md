@@ -37,12 +37,14 @@ No build and no dependencies — the deliverables are the skill folders.
 | `github` | GitHub issue and milestone work |
 | `terminal` | Terminal app control, captures and recordings |
 | `shipping` | Releases, CI waits and landing pull requests |
+| `audio` | Voice cloning and speech generation |
 | `video` | Video planning, scripting, pacing, coverage checks and editing |
 
 ## Skills
 
 | Skill | Category |
 |---|---|
+| [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | `audio` |
 | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | `publishing` |
 | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | `research` |
 | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | `publishing` |

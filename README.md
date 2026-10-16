@@ -8,6 +8,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 
 | Category | Skill | What it does |
 |---|---|---|
+| audio | [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | Produces a speech WAV from text and a consenting speaker’s short recording using KittenTTS 2. |
 | research | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | Has two researchers from different model families answer one brief, checks each disagreement against primary sources, and writes one report. |
 | publishing | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | Scans text, recordings and frames for private data (home paths, hosts, emails, tokens, internal names) before anything goes public. |
 | agents | [writing-skills](skills/agents/writing-skills/SKILL.md) | Authors skills with evidence, tiered checks and a bounded review budget. |
@@ -108,6 +109,7 @@ See [settings.md](skills/agents/writing-skills/references/settings.md) for allow
 
 | Skill | Needs |
 |---|---|
+| cloning-voices-with-kittentts | Python 3.10+, PyTorch, kittenml, soundfile, ffmpeg; approximately 954 MB for model weights. CPU supported. |
 | researching-with-two-models | Two agent runtimes of different model families, for example a pinned Claude subagent and the `codex` CLI. |
 | checking-before-publishing | Node.js 18+ for the scan. For GIF or video frames: `ffmpeg`. |
 | writing-skills | Node.js 18+ for repo tooling. Agent runtime for tier-1 and tier-2 checks. |
