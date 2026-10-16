@@ -54,6 +54,8 @@ The transcript must match the reference recording.
 For short text, use the optional positional argument: `reference.wav "Hello" --out speech.wav`.
 Use exactly one of positional text, `--text "Hello"`, or `--text-file text.txt`.
 For a batch, repeat `--text-file` and replace `--out` with `--out-dir DIR`.
+If a batch fails halfway, files already written stay on disk.
+The overwrite guard refuses a rerun while those files exist; the user deletes them or chooses a new `--out-dir`.
 The helper loads the model once and writes `DIR/<text-file stem>.wav` for each file; stems must be distinct.
 The helper validates duration, converts the reference to mono PCM WAV with ffmpeg, and keeps temporary audio only during generation.
 It refuses an existing output file. Exit codes are 0 for success, 1 for runtime failure, and 2 for incorrect arguments.
@@ -63,6 +65,10 @@ English is the default. `--language de` disables normalization, as required for 
 The language option controls normalization only; it does not select a language voice.
 The model card describes nine additional languages through language voices, including German.
 For those languages, verify current language-voice compatibility with reference cloning before promising supported output.
+If an English word sounds wrong in German text, try phonetic spelling.
+In one test, “Branch” → “Brantsch” fixed “Bronch”.
+Splitting text by language with one reference per language and joining the parts with ffmpeg is possible.
+One listening test found no audible gain over a single run, so do not use this by default.
 Done when the command exits 0 and creates the requested WAV.
 
 ## 4. Check the result
