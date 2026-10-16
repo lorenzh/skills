@@ -29,6 +29,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | github | [filing-issues](skills/github/filing-issues/SKILL.md) | Files one GitHub issue with a duplicate check, claims verified against the default branch, acceptance criteria, a milestone chosen by its rule, labels from the repo and cross-links, created through the REST API. |
 | github | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | REST fallback when gh porcelain fails with `projectCards` on Projects (classic) data: `gh api` calls for issue and PR work, with a read-back after each write. |
 | audio | [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | Produces a speech WAV from text and a consenting speaker’s short recording using KittenTTS 2. |
+| audio | [mixing-audio](skills/audio/mixing-audio/SKILL.md) | Cleans, normalizes, trims, stitches, ducks, and overlays speech audio with ffmpeg. |
 
 ## Install
 
@@ -130,6 +131,7 @@ See [settings.md](skills/agents/writing-skills/references/settings.md) for allow
 | filing-issues | `gh`, `git`. |
 | using-gh-rest | `gh`, authenticated. `git` for the `{owner}/{repo}` placeholders. |
 | cloning-voices-with-kittentts | Python 3.10+, PyTorch, kittenml, soundfile, ffmpeg; approximately 954 MB for model weights. CPU supported. Stellon Labs Community License: non-commercial or limited commercial use, USD 1M revenue/funding cap; attribution on distribution. |
+| mixing-audio | Python 3 (standard library), ffmpeg and ffprobe with loudnorm, afftdn, and sidechaincompress. |
 
 ## Layout
 
