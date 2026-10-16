@@ -54,6 +54,8 @@ The transcript must match the reference recording.
 For short text, use the optional positional argument: `reference.wav "Hello" --out speech.wav`.
 Use exactly one of positional text, `--text "Hello"`, or `--text-file text.txt`.
 For a batch, repeat `--text-file` and replace `--out` with `--out-dir DIR`.
+If a batch fails halfway, files already written stay on disk.
+The overwrite guard refuses a rerun until the user deletes those files or chooses a new `--out-dir`.
 The helper loads the model once and writes `DIR/<text-file stem>.wav` for each file; stems must be distinct.
 The helper validates duration, converts the reference to mono PCM WAV with ffmpeg, and keeps temporary audio only during generation.
 It refuses an existing output file. Exit codes are 0 for success, 1 for runtime failure, and 2 for incorrect arguments.

@@ -71,6 +71,26 @@ with tempfile.TemporaryDirectory() as scratch:
         assert len(loads) == before + 1
         assert calls[-2:] == [("Hallo", True), ("Second", True)]
         assert (root / "batch/text.wav").is_file() and (root / "batch/second.wav").is_file()
+        partial = root / "partial"
+        batch_args = [str(source), "--text-file", str(text_file), "--text-file", str(second),
+                      "--out-dir", str(partial)]
+        errors = io.StringIO()
+        with patch.object(Model, "generate", side_effect=[[0.0] * 240, RuntimeError("second item failed")]):
+            with contextlib.redirect_stderr(errors):
+                assert m.main(batch_args) == 1
+        assert "second item failed" in errors.getvalue()
+        assert (partial / "text.wav").is_file()
+        assert not (partial / "second.wav").exists()
+        before = len(loads)
+        with contextlib.redirect_stderr(errors):
+            try:
+                m.main(batch_args)
+            except SystemExit as error:
+                assert error.code == 2
+            else:
+                raise AssertionError("partial batch rerun accepted")
+        assert "Output already exists" in errors.getvalue()
+        assert len(loads) == before
         transcript = root / "transcript.txt"
         transcript.write_text("Recorded words", encoding="utf-8")
         for option, value, name in (("--reference-text", "Spoken words", "direct"),
