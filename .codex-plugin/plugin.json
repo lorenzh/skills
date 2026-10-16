@@ -1,7 +1,7 @@
 {
   "name": "lorenzh",
   "version": "0.1.0",
-  "description": "Agent skills by lorenzh: research, publishing, agent dispatch and review, git, GitHub, terminal, shipping and video workflows.",
+  "description": "Agent skills by lorenzh: research, publishing, agent dispatch and review, git, GitHub, terminal, shipping, audio and video workflows.",
   "author": {
     "name": "Lorenz Hilpert"
   },
@@ -11,7 +11,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "lorenzh skills",
-    "shortDescription": "Research, review, git, GitHub, shipping and video workflows",
+    "shortDescription": "Research, review, git, GitHub, shipping, audio and video workflows",
     "category": "Productivity"
   }
 }

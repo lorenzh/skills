@@ -37,6 +37,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | `github` | GitHub issue and milestone work |
 | `terminal` | Terminal app control, captures and recordings |
 | `shipping` | Releases, CI waits and landing pull requests |
+| `audio` | Voice cloning and speech generation |
 | `video` | Video planning, scripting, pacing, coverage checks and editing |
 
 ## Skills
@@ -63,6 +64,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [planning-milestones](skills/github/planning-milestones/SKILL.md) | `github` |
 | [filing-issues](skills/github/filing-issues/SKILL.md) | `github` |
 | [using-gh-rest](skills/github/using-gh-rest/SKILL.md) | `github` |
+| [cloning-voices-with-kittentts](skills/audio/cloning-voices-with-kittentts/SKILL.md) | `audio` |
 
 ## Conventions
 
