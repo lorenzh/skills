@@ -63,6 +63,8 @@ Done when the loop printed `ready`, or the timeout is reported with the last obs
 
 A wait longer than about two minutes goes in the background (the harness's background mode, or `nohup ... > <log> 2>&1 &`), so the session stays responsive. Note the PID or job id and the log path.
 
+Do not start a job with `nohup cmd > log 2>&1 &` inside a Bash call that is itself a background call. The harness reports completion when the launcher shell returns, not when the job ends, and the job keeps running after the "completed" notice. Either make the long command the background command itself, without a trailing `&`, or launch it detached and wait with a bounded loop on the result file, also checking that no matching process runs (bracket form, as in step 1: `pgrep -f '[c]md'`).
+
 Done when the wait runs in the background and its PID or job id and log path are noted.
 
 ## 4. Check state, do not assume it
