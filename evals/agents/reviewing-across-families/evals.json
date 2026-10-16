@@ -5,8 +5,8 @@
       "id": "full-loop-partial-fix",
       "prompt": "You are the orchestrating session in a repo. A Claude subagent implemented a change for GitHub issue #42 in worktree .worktrees/fix-42 (branch fix/42). It fixes only part of #42. Codex CLI and gh are available. Run a review by the other model family and get it shipped to main. Do not execute anything: write the exact plan, every command and every prompt you would send, in order, as your answer.",
       "expected": [
-        "reviewer is the other family, read-only, output with blocker / should-fix / nit and APPROVE only with none of the first two",
-        "re-review checks each earlier finding and looks only for regressions; a bounded number of rounds",
+        "reviewer is the other family, read-only, findings grouped needs-fix / should-fix / note, each needs-fix or should-fix proven by a failing test or command, verdict `fix first` only with a needs-fix finding else `ship`",
+        "re-review checks each earlier needs-fix finding and looks only for new needs-fix defects, not notes; a bounded number of rounds",
         "Refs #42 in PR body, commits and squash body",
         "CHANGELOG line gets the PR link after the PR exists",
         "rebase onto freshly fetched origin before shipping; shipping steps idempotent",
@@ -21,11 +21,11 @@
     },
     {
       "id": "self-named-model-mismatch",
-      "prompt": "You dispatched a reviewer with `codex exec -m gpt-6.1-sol ...`. Its output file starts \"I am Claude, reviewing your diff...\" and the codex stderr header says \"model: gpt-6.1-sol\". The review lists: 1 blocker (race in cache write), 2 nits. Round 1 of review. What do you report to the user and what happens next, step by step? Answer in writing only.",
+      "prompt": "You dispatched a reviewer with `codex exec -m gpt-6.1-sol ...`. Its output file starts \"I am Claude, reviewing your diff...\" and the codex stderr header says \"model: gpt-6.1-sol\". The review lists: 1 needs-fix finding (race in cache write, proven by a failing test), 2 notes. Round 1 of review. What do you report to the user and what happens next, step by step? Answer in writing only.",
       "expected": [
         "trusts the runtime header, reports both values, counts the review",
-        "sends the blocker to the implementer; orchestrator does not fix it itself",
-        "re-review checks the blocker and looks only for regressions"
+        "sends the needs-fix finding to the implementer; orchestrator does not fix it itself",
+        "re-review checks the needs-fix finding and looks only for new needs-fix defects"
       ],
       "baseline_failures": [
         "distrusts the header, refuses to count the review and digs through session logs, asks the user",
