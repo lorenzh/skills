@@ -30,6 +30,10 @@ test('mixaudio operations with generated tones', { skip: available ? false : 'ff
     const normalized = cli('normalize', path('a.wav'), '--target-lufs', '-16', '-o', path('normalized.wav'));
     assert.match(normalized, /wrote /);
     assert.ok(Math.abs(Number(normalized.match(/integrated=([-\d.]+)/)[1]) + 16) <= 1);
+    tone('stereo.wav', 440, 10, 48000, 2);
+    const stereoNormalized = cli('normalize', path('stereo.wav'), '-o', path('stereo-normalized.wav'));
+    const stereoLufs = Number(stereoNormalized.match(/integrated=([-\d.]+)/)[1]);
+    assert.ok(Math.abs(stereoLufs + 16) <= 1, `stereo normalization: ${stereoLufs} LUFS, expected -16 ±1`);
     tone('source.m4a', 440, 31, 48000, 2);
     cli('trim', path('source.m4a'), '--start', '1', '--duration', '29', '-o', path('trim.wav'));
     assert.ok(Math.abs(duration('trim.wav') - 29) < 0.01);

@@ -21,9 +21,9 @@ def ffmpeg(args):
     return run(["ffmpeg", "-hide_banner", "-nostdin", "-n", *args])
 
 
-def loudness(path, target=-16):
+def loudness(path, target=-16, preprocess=""):
     log = ffmpeg(["-i", str(path), "-af",
-                  f"loudnorm=I={target}:TP=-1.5:LRA=11:print_format=json",
+                  f"{preprocess}loudnorm=I={target}:TP=-1.5:LRA=11:print_format=json",
                   "-f", "null", "-"]).stderr
     return json.loads(re.findall(r"\{[^{}]*\}", log)[-1])
 
@@ -112,11 +112,12 @@ def main():
     if args.command == "clean":
         filters = ["-af", "highpass=f=80,afftdn=nr=6:nf=-50"]
     elif args.command == "normalize":
-        stats = loudness(inputs[0], args.target_lufs)
+        preprocess = f"aresample={args.rate},aformat=sample_fmts=fltp:channel_layouts=mono,"
+        stats = loudness(inputs[0], args.target_lufs, preprocess)
         if not all(math.isfinite(float(stats[key])) for key in
                    ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")):
             raise RuntimeError("cannot normalize silence or unmeasurable loudness")
-        filt = f"loudnorm=I={args.target_lufs}:TP=-1.5:LRA=11:linear=true"
+        filt = f"{preprocess}loudnorm=I={args.target_lufs}:TP=-1.5:LRA=11:linear=true"
         for field, key in (("measured_I", "input_i"), ("measured_TP", "input_tp"),
                            ("measured_LRA", "input_lra"), ("measured_thresh", "input_thresh"),
                            ("offset", "target_offset")):
