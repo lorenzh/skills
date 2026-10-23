@@ -80,7 +80,7 @@ No build and no dependencies — the deliverables are the skill folders.
 - Write placeholders for local paths in `skills/` and `evals/`: `<scratch>/…`, `/home/<user>/…`. The validator rejects `/home/<name>`, `/Users/<name>`, `C:\Users\<name>` and `/tmp/claude-<uid>/-…` paths outside `evals/**/results/` (ASCII names of letters, digits, `.`, `_`, `-` only); only placeholders and the exact fake names in `FIXTURE_NAMES` (`scripts/validate-skills.mjs`) pass. It also rejects likely secrets (tokens, keys, passwords); fixtures use placeholders or the fake values in `FIXTURE_SECRETS`.
 - Link every file in `references/` from `SKILL.md`; the validator fails on a link to a missing file.
 - Write skill scripts in Node ≥18 ESM (`.mjs`) or Python 3, standard library only. Repo tooling under `scripts/` stays Node. Name a skill's runtime in the README requirements table.
-- Leave `version` out of `.claude-plugin/plugin.json` and `marketplace.json`. The commit SHA is the plugin version, so every merge to main ships an update. Do not bump a version in PRs. `claude plugin validate --strict` flags the missing version; run it without `--strict`.
+- `.codex-plugin/plugin.json` and `.claude-plugin/plugin.json` carry the same `version`. The bump-version workflow raises the patch on every push to main. Do not bump by hand in PRs. Keep `marketplace.json` versionless.
 
 ## Writing a skill
 

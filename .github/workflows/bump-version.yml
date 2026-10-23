@@ -3,7 +3,7 @@ name: bump-version
 on:
   push:
     branches: [main]
-    paths-ignore: ['.codex-plugin/plugin.json']
+    paths-ignore: ['.codex-plugin/plugin.json', '.claude-plugin/plugin.json']
 
 permissions:
   contents: write
@@ -23,16 +23,16 @@ jobs:
 
       - name: Bump patch version
         run: |
-          node -e 'const fs=require("fs");const f=".codex-plugin/plugin.json";const t=fs.readFileSync(f,"utf8");const n=t.replace(/"version": "(\d+)\.(\d+)\.(\d+)"/,(m,a,b,c)=>`"version": "${a}.${b}.${+c+1}"`);if(n===t)throw new Error("version not bumped");fs.writeFileSync(f,n)'
+          node -e 'const fs=require("fs");const files=[".codex-plugin/plugin.json",".claude-plugin/plugin.json"];const m=fs.readFileSync(files[0],"utf8").match(/"version": "(\d+)\.(\d+)\.(\d+)"/);if(!m)throw new Error("no version in codex plugin");const v=`${m[1]}.${m[2]}.${+m[3]+1}`;for(const f of files){const t=fs.readFileSync(f,"utf8");const n=t.replace(/"version": "\d+\.\d+\.\d+"/,`"version": "${v}"`);if(!n.includes(`"version": "${v}"`))throw new Error("version not bumped in "+f);fs.writeFileSync(f,n)}'
 
       - name: Commit and push
         run: |
-          if git diff --quiet -- .codex-plugin/plugin.json; then
+          if git diff --quiet -- .codex-plugin/plugin.json .claude-plugin/plugin.json; then
             echo "No version change"; exit 0
           fi
           VERSION=$(node -p "require('./.codex-plugin/plugin.json').version")
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .codex-plugin/plugin.json
+          git add .codex-plugin/plugin.json .claude-plugin/plugin.json
           git commit -m "chore: bump version to $VERSION"
           git push

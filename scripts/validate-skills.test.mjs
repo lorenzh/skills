@@ -546,10 +546,11 @@ for (const name of ['claude-tools', 'anthropic-tools', 'cc-plugin-tools']) {
   });
 }
 
-test('rejects a version in plugin.json or a marketplace plugin entry', (t) => {
+test('accepts a version in plugin.json but rejects one in a marketplace plugin entry', (t) => {
   const r = pluginFixture(t, { version: '1.0.0' }, { plugins: [{ name: 'lorenzh', source: './', version: '1.0.0' }] }).run();
   assert.equal(r.status, 1);
-  assert.equal((r.stdout.match(/the commit SHA is the plugin version/g) ?? []).length, 2, r.stdout);
+  assert.equal((r.stdout.match(/the commit SHA is the plugin version/g) ?? []).length, 1, r.stdout);
+  assert.match(r.stdout, /marketplace\.json/);
 });
 
 for (const file of ['plugin.json', 'marketplace.json']) {
