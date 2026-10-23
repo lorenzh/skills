@@ -120,3 +120,8 @@ An agent can finish without the harness telling you. Once its expected time has 
    - **Failed:** the runtime shows it ended, and the result does not exist. Report its last message.
 
 Done when each silent agent is reported as done (with its result), working (with its pending or latest call), stuck (with the repeated call) or failed (with its last message).
+
+## Waiting on a Codex run?
+
+Load dispatching-codex. A `nohup` or `&` wrapper's completion notice does not mean Codex finished.
+Check the `-o` answer file, the log's `model:` line and the process instead.

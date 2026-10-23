@@ -13,6 +13,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | agents | [writing-skills](skills/agents/writing-skills/SKILL.md) | Authors skills with evidence, tiered checks and a bounded review budget. |
 | agents | [competing-implementations](skills/agents/competing-implementations/SKILL.md) | Runs two implementations of one brief, compares blind diffs, and ships the reviewed winner. |
 | agents | [reviewing-across-families](skills/agents/reviewing-across-families/SKILL.md) | Runs a review loop where a model of another family reviews an agent's change, the implementer fixes, and the orchestrating session ships the PR. |
+| agents | [dispatching-codex](skills/agents/dispatching-codex/SKILL.md) | Starts `codex exec` runs so the completion notice means Codex finished, checks each run's answer file, process and runtime model, and runs parallel jobs without `nohup` wrappers. |
 | git | [creating-worktrees](skills/git/creating-worktrees/SKILL.md) | Sets up git worktrees that are really isolated: in-repo placement, dependencies installed and resolving inside the worktree, local files copied only with consent, and safe cleanup. |
 | terminal | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | Drives, tests, screenshots and records terminal apps (CLIs, TUIs, REPLs) through tmux, like a person at the keyboard. |
 | video | [directing-videos](skills/video/directing-videos/SKILL.md) | Plans, scripts and paces a video (demo, screencast, tutorial, launch video), then checks the finished cut against the plan. |
@@ -115,6 +116,7 @@ See [settings.md](skills/agents/writing-skills/references/settings.md) for allow
 | writing-skills | Node.js 18+ for repo tooling. Agent runtime for tier-1 and tier-2 checks. |
 | competing-implementations | Model router (such as Spatz), two implementer workers, one reviewer, `git`, Node.js 18+ for blind packets, and a PR CLI for publishing. |
 | reviewing-across-families | Two agent runtimes of different model families (for example a Claude harness and Codex CLI). For shipping: Node.js 18+, `git` and `gh`. |
+| dispatching-codex | Codex CLI, authenticated. |
 | creating-worktrees | Node.js 18+ and `git`. Uses the package managers the repo already uses. |
 | driving-terminal-apps | Node.js 18+ and `tmux`. For recordings: `asciinema` and `agg`. For PNG and MP4: `ffmpeg` (without it, the skill makes GIFs). |
 | directing-videos | Python 3 for the coverage check. It hands recording to a recorder skill, such as `driving-terminal-apps` or a browser automation skill. |

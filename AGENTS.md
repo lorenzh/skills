@@ -50,6 +50,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | [writing-skills](skills/agents/writing-skills/SKILL.md) | `agents` |
 | [competing-implementations](skills/agents/competing-implementations/SKILL.md) | `agents` |
 | [reviewing-across-families](skills/agents/reviewing-across-families/SKILL.md) | `agents` |
+| [dispatching-codex](skills/agents/dispatching-codex/SKILL.md) | `agents` |
 | [creating-worktrees](skills/git/creating-worktrees/SKILL.md) | `git` |
 | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | `terminal` |
 | [directing-videos](skills/video/directing-videos/SKILL.md) | `video` |
