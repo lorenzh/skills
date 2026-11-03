@@ -74,7 +74,8 @@ Select T2 for a discipline rule, irreversible action, or observed description co
 Otherwise select T1 for a description change adding or changing a trigger: run the 2 trigger probes.
 Select T0 for pure reference or changes adding no instruction and preserving triggers; select T1 for remaining workflows.
 Look for a validator in the repo's instruction file and scripts/ (a file name containing `validate`). If one exists, run it. Use deterministic tests for scripts; use the testing reference for T1 and T2.
-For T1 and T2, check the smallest model of the current generation the author can reach; record its identity and reachability limits.
+Before the first T1 or T2 check, ask the human once which models the skill is usually run with. If no human can answer, choose by task: judgment-heavy (review, design, research, planning) uses the model class users run; mechanical uses the smallest current-generation model.
+Test with the named models. The smallest current-generation model is an optional stress test; its failures do not block alone. Record each model's identity, why chosen, and reachability limits.
 If the skill uses harness-specific behavior, use the harness reference. Apply the global budget to all findings and fixes from these checks.
 After any edit to the description, recheck it against step 2.
 Done when the record contains the tier, command output, behavioral evidence for T1 and T2, ledger, and unresolved findings.
