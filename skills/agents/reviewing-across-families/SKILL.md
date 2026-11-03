@@ -50,7 +50,7 @@ Done when the log entry exists with both model values.
 
 Send every blocker and should-fix to the implementer (reuse its session when it still exists), with the reviewer's failure scenario. The brief demands a new commit per finding: do not amend or rebase. The implementer fixes the shared cause, adds a test that fails without the fix, and reports SHAs and test results. The orchestrator does not edit code: its fix would reach main without family-B review. Nits are optional; list declined ones with a reason.
 
-This step owns the shared gate for delegated fixes. Before reporting completion or starting re-review, run these checks in the implementer's worktree:
+Apply this commit gate to delegated fixes. Before reporting completion or starting re-review, run these checks in the implementer's worktree:
 
 ```
 git -C <worktree> merge-base --is-ancestor <reviewed SHA> HEAD
@@ -82,6 +82,10 @@ node <skill dir>/scripts/ship.mjs --dir <worktree> --issue <n> --link fixes|refs
 ```
 
 Run it from anywhere, with `<skill dir>` the folder holding this file; `--help` prints the options. It fetches and rebases onto fresh `origin/<base>` (a fetch failure stops it: ship from a machine with network), pushes, reuses an open PR or creates one, rewrites the PR body, adds the changelog line with the real PR link, watches CI, squash-merges with `Fixes|Refs #N` as the squash body, and checks the issue state. It refuses a `refs` run whose title, body or commit messages close the issue. A run that had to rebase stops before the merge: rerun the tests, run step 4 once more if the rebase changed the diff, then rerun the command. On failure it names the step: fix that, then rerun the same command. Without Node, do the same steps by hand in that order and check each before the next.
+
+For manual shipping, push with `git push origin HEAD:<pr-branch>`; confirm `git ls-remote --heads origin <pr-branch>` matches `git rev-parse HEAD`.
+F9 measured one wrong-branch push: `git push origin HEAD` used the local worktree branch name.
+The bundled script targets the local branch; use it only when that name matches the intended PR branch.
 
 Put in the PR body the reviewer's runtime model, the round count, and the review's NOT CHECKED line, so the reader knows what no reviewer verified.
 

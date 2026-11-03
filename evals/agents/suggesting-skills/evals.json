@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Welche Skills könnte man aus dieser Session extrahieren? (session transcript: session.md)",
-      "expected": "Reads existing skill descriptions first; ranked list of at most five with name, new/update, trigger, encodes, evidence; marks the release candidate as update of an existing release skill if one exists; ends with a question; creates no skill file.",
+      "expected": "Reads existing skill descriptions first; at most five candidates grouped under User skills, Project skills and Skills for lorenzh/skills (empty groups omitted), each with name, new/update, trigger, encodes, evidence; no non-skill suggestions (AGENTS.md rules, docs, notes); marks the release candidate as update of an existing release skill if one exists; ends with a question; creates no skill file.",
       "source": "user request: suggest skills from the current session"
     },
     {

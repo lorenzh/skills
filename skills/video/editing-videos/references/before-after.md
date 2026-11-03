@@ -2,7 +2,8 @@
 
 Use with the process in `../SKILL.md` when a video shows what changed between two versions of a terminal app, such as an old tag and a new branch.
 
-1. **Record both versions with one scenario.** Check out each version in its own worktree (`git worktree add .worktrees/before <old tag>`, the same for the new branch) and run one scenario script against each (driving-terminal-apps), each with its own tmux name and cast, same size and pauses. At each change's end state the script runs `node "$T" find <name> '<anchor>'` and saves the `col row` it prints for that version; the anchor is text both versions draw next to the change (a row label, the start of the status line), because added text has no position in the before version.
+1. **Record both versions with one scenario.** Check out each version in its own worktree (`git worktree add .worktrees/before <old tag>`, the same for the new branch) and run one scenario script against each using an available terminal recording tool (for example tmux), each with its own tmux name and cast, same size and pauses. At each change's end state, locate a shared text anchor using an available screen inspection tool and save its `col row` for that version; the anchor is text both versions draw next to the change (a row label, the start of the status line), because added text has no position in the before version.
+   If recording or screen inspection has no available skill or tool, report the missing capability and ask how to proceed.
    Done when both casts are rendered to MP4 and every change has a `col row` per version.
 
 2. **Cut each change as a pair of beats.** The before beat, then the after beat, from the same moment of the scenario: `B3-before` (src `before.mp4`) and `B3-after` (src `after.mp4`), same `crop`, captions that name the half ("Before: …", "After: …"). Captions sit in the top band and pairs join with the short `fade`.

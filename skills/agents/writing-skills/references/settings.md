@@ -64,10 +64,12 @@ Keep skill names unique across everything the user installs.
 Start its body with this text, replacing the placeholders:
 
 ```text
-Read and follow the skill `<base>` with these settings: …, then …
+Use an available skill or tool for <base capability> with these settings: …, then …
+Preserve these required gates: <steps and completion evidence>.
+If that capability has no owner, say which part is unowned and ask how to proceed.
 ```
 
-If the base skill is missing or ambiguous, stop and report the problem; never guess.
+If the capability owner is missing or ambiguous, stop and report the problem; never guess.
 
 ## User example
 

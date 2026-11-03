@@ -13,7 +13,7 @@
 - Size: 100x30
 - Data: demo notes
 - Reset: ./reset.sh
-- Recorder: driving-terminal-apps
+- Recorder: tmux recording tool
 ## Beats
 | id | covers | frame | action | end state on screen | hold | text on screen | cut |
 |---|---|---|---|---|---|---|---|

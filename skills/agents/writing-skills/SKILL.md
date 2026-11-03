@@ -60,12 +60,13 @@ State each loop's numeric cap before the loop. Target ≤100 lines and about 1,0
 Keep harness names and tool-specific instructions in the harness reference. Heuristic: positive recipes can make required output clearer; they do not guarantee compliance.
 Put a rule inside the step it governs. Write an ordering rule as “Before the first <action>, do Y”.
 State authorization boundaries beside the governed action; approval for one action does not expand scope.
+Never link to or require another skill by name; describe the capability and required gates, and ask how to proceed if it has no owner.
 Done when the draft maps every observed failure to an instruction and every step has its completion line.
 ## 5. Prune the draft
 
 Remove duplicate rules, default behavior, unsupported cases, and creation history in one pass; keep one location per rule, with pointers elsewhere.
 Keep secrets, internal hostnames, private repo names, employer or customer names, and machine paths out; write placeholders.
-If a privacy-check skill such as `checking-before-publishing` is available, run it on the bundle.
+If a privacy-check skill or tool is available, use it on the bundle; otherwise, say privacy checking has no owner and ask how to proceed.
 Link every reference directly from the core with an observable read condition. Give each reference over 100 lines a contents list at the top.
 Done when the record lists removed duplicates and each rule's evidence, and no bundle file holds a secret, private name or machine path.
 ## 6. Check the bundle
@@ -74,7 +75,8 @@ Select T2 for a discipline rule, irreversible action, or observed description co
 Otherwise select T1 for a description change adding or changing a trigger: run the 2 trigger probes.
 Select T0 for pure reference or changes adding no instruction and preserving triggers; select T1 for remaining workflows.
 Look for a validator in the repo's instruction file and scripts/ (a file name containing `validate`). If one exists, run it. Use deterministic tests for scripts; use the testing reference for T1 and T2.
-For T1 and T2, check the smallest model of the current generation the author can reach; record its identity and reachability limits.
+Before the first T1 or T2 check, ask the human once which models the skill is usually run with. If no human can answer, choose by task: judgment-heavy (review, design, research, planning) uses the model class users run; mechanical uses the smallest current-generation model.
+Test with the named models. The smallest current-generation model is an optional stress test; its failures do not block alone. Record each model's identity, why chosen, and reachability limits.
 If the skill uses harness-specific behavior, use the harness reference. Apply the global budget to all findings and fixes from these checks.
 After any edit to the description, recheck it against step 2.
 Done when the record contains the tier, command output, behavioral evidence for T1 and T2, ledger, and unresolved findings.

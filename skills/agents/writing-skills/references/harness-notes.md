@@ -28,7 +28,7 @@ Pass a self-contained brief with prompt, files, expected artifact, and the skill
 Keep the author's earlier explanation out of the brief.
 Record the actual answering model from runtime evidence.
 Do not infer model identity from the requested model alone.
-Choose the smallest model of the current generation the author can reach without pinning a model ID in the portable skill.
+Choose models as the guide's check step says. Record each model's identity, why it was chosen, and reachability limits. Do not pin a model ID in the portable skill.
 If dispatch fails, report the concrete error; do not claim that the requested model ran.
 Fresh sessions count as checks within the current global review round.
 

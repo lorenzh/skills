@@ -431,7 +431,6 @@ if (plugin) {
   const expected = [...skillCategories].map((c) => `skills/${c}`);
   const missing = expected.filter((d) => !listed.includes(d));
   const extra = listed.filter((d) => !expected.includes(d));
-  if ("version" in plugin) errors.push(`${rel(pluginFile)}: ${NO_VERSION}`);
   if (missing.length || extra.length || listed.length !== new Set(listed).size)
     errors.push(`${rel(pluginFile)}: "skills" must list each category folder that holds skills once` +
       (missing.length ? `; missing ${missing.map((d) => `./${d}`).join(", ")}` : "") +

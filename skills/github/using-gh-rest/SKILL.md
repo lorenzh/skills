@@ -66,13 +66,13 @@ timeout 5m bash -c 'until [ "$(gh api repos/{owner}/{repo}/pulls/<n> --jq .head.
 gh api --paginate repos/{owner}/{repo}/commits/$pushed/check-runs --jq '.check_runs[]|[.name,.status,.conclusion]|@tsv'
 ```
 
-`5m` and `sleep 5` are tunable defaults. Hand the wait for the runs to finish to `waiting-for-ci`. The run list is empty until the workflow starts; an empty list is not a pass.
+`5m` and `sleep 5` are tunable defaults. Use a CI-wait skill or tool if available. Otherwise poll checks for `$pushed` every 10 seconds for at most 30 minutes (tunable defaults). Keep long waits in a background job with its ID and log path. Check actual job state before reporting. On failure or timeout, stop dependent work and report the last status. If failure output is empty, read raw job logs. Compare failed tests with the diff and recent default-branch runs. Run the failed test locally 5 times (tunable). For an unrelated failure or transient timeout, rerun only failed jobs once with a deadline. Report a second failure with its log. Never report a timeout as success. The run list is empty until the workflow starts; an empty list is not a pass.
 
 Done when every check line you report belongs to `$pushed` and every required check shows conclusion `success`.
 
 ## 6. Merge with the SHA guard
 
-Run the merge as `landing-parallel-prs` describes it: the user's OK names the PR and its head SHA, and the merge names that SHA. When `gh pr merge` fails with `projectCards`, send the REST form. `$pushed` is the SHA checked in step 5 and named in the OK request:
+If a merge-coordination skill or tool is available, use it. Immediately before each merge, request the user's explicit OK naming the PR, checked head SHA and check results. Batch approval does not cover a changed head. The merge must name that SHA. When `gh pr merge` fails with `projectCards`, send the REST form. `$pushed` is the SHA checked in step 5 and named in the OK request:
 
 ```bash
 gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge -f merge_method=squash -f sha="$pushed"

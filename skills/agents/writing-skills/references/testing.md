@@ -39,13 +39,14 @@ Each pair compares control behavior with with-skill behavior.
 If a case has lived control evidence, reuse it; do not run an additional control.
 Count it as same-model evidence only when the model identity matches.
 If that identity is missing or different, report the pair as unverified; retain the lived failure in the spec.
-For T1 and T2, use the smallest model of the current generation the author can reach for at least one cold with-skill case.
-Record the actual model identity; if no model execution is reachable, record that check as unavailable.
+For T1 and T2, ask the human once which models the skill is usually run with, before the first check. If no human can answer, choose by task: for judgment-heavy tasks use the model class users run it with; for mechanical or narrow tasks use the smallest model of the current generation.
+Run at least one cold with-skill case on each model the human names. The smallest current-generation model is an optional stress test: record its failures, but they do not block on their own.
+Record each model's actual identity, why it was chosen, and reachability limits; if no model execution is reachable, record that check as unavailable.
 For discipline cases, use the discipline reference's pressure checks within this batch.
 Judge the action and artifact against expected behavior, not the agent's description of the skill.
 Quote the decisive transcript line, output file content, or command output.
 Record pass/fail, elapsed time, and token cost when available.
-Done when every selected case has a verdict and evidence, including the smallest-model result or explicit unavailability.
+Done when every selected case has a verdict and evidence, including each chosen model and the stress model's result if run, or explicit unavailability.
 
 ## 3. Probe discovery
 
