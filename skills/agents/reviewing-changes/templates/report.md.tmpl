@@ -1,0 +1,177 @@
+<!--
+TEMPLATE: Markdown review report. The HTML twin is report.html.tmpl (same sections, same placeholder names).
+
+Template choice: see SKILL.md, step 5.
+
+WRITING RULES
+- No praise, no hedging words (could, maybe, might, consider), no intro. Flat claims.
+- Always write the FULL sha, never a short one.
+- Findings are numbered continuously across all sections. Omit empty sections.
+- Effect: one sentence, at most three, each at most 15 words. Effect + Fix at most 45 words.
+- Code excerpt: at most 10 lines, real line numbers, taken with
+  `git show <sha>:<file> | sed -n 'a,bp'`. The breaking line ends with `<-- here`.
+
+LABELS
+- CI jobs: [OK] [FAIL] [SKIPPED]
+- Criteria: [OK] mechanical (command + result) · [OK-IMAGE] screenshot as proof, check command beside
+  it, base + head images for UI changes · [CODE-ONLY] static analysis only, app did not run, with
+  reason · [MISSING] not met, see finding · [NOT-CHECKABLE] reason
+- Re-review: [RESOLVED] [OPEN]
+- Verdict: fix first | approve with suggestions | approve
+- Next step by verdict: fix first -> "Fix the blocking findings, then request a re-review of the
+  delta <head_sha>..HEAD"; approve with suggestions -> "Merge allowed. <n> can-fix findings may
+  become follow-up issues."; approve -> "Merge allowed."
+- Run section: one row per role (main reviewer, each angle or verifier agent, report writer).
+  Effort is "unknown" when the runtime does not report it, never guessed.
+-->
+
+<!-- section: header -->
+# Review: {{title}}
+
+Reviewed commit: {{head_sha}} ({{branch}}, {{date}})
+Base (merge-base): {{base_sha}}
+CI run belongs to: {{ci_sha}} {{ci_match}}
+
+<!-- section: one-minute -->
+## One Minute
+
+**{{verdict}}.** {{summary}}
+
+- Findings: {{n_needs}} needs fix · {{n_should}} should fix · {{n_can}} can fix
+- CI: {{ci_source}}, {{ci_run}}, {{ci_result}}
+- Rules read: {{rules_read}}
+- Security: {{security}}
+- Criteria: {{criteria_proven}}
+- Reviewed by: {{models_short}}
+- Not checked: {{not_checked_summary}}
+
+<!-- section: ci -->
+## CI result
+
+Source: {{ci_source}} · {{ci_run}} · commit {{ci_sha}} · {{ci_result}}
+
+| Job | Result | Duration |
+|---|---|---|
+<!-- repeat: job -->
+| {{job}} | {{job_result}} | {{job_duration}} |
+<!-- end repeat -->
+
+<!-- Only when red or partial: one verbatim excerpt, at most 15 lines, failing step name in the first line. -->
+```text
+{{log_excerpt}}
+```
+
+Reports: {{ci_reports}}
+
+<!-- section: criteria -->
+## Acceptance criteria
+
+| # | Criterion (verbatim) | Status | Evidence |
+|---|---|---|---|
+<!-- repeat: criterion -->
+| {{crit_n}} | {{criterion}} | {{status}} | {{evidence}} |
+<!-- end repeat -->
+
+<!-- section: needs-fix -->
+## Needs fix (blocks)
+
+<!-- repeat: finding -->
+### {{n}}. {{finding_title}} · `{{location}}`
+
+```{{lang}}
+{{code_excerpt}}
+```
+
+- Effect: {{effect}}
+- Proof: `{{proof_cmd}}` -> {{proof_output}}. Control: {{control}}
+- Fix: {{fix}}
+<!-- end repeat -->
+
+<!-- section: should-fix -->
+## Should fix (blocks)
+
+<!-- repeat: finding -->
+### {{n}}. {{finding_title}} · `{{location}}`
+
+```{{lang}}
+{{code_excerpt}}
+```
+
+- Effect: {{effect}}
+- Proof: `{{proof_cmd}}` -> {{proof_output}}. Control: {{control}}
+- Fix: {{fix}}
+<!-- end repeat -->
+
+<!-- section: can-fix -->
+## Can fix (does not block)
+
+<!-- repeat: finding -->
+### {{n}}. {{finding_title}} · `{{location}}`
+
+```{{lang}}
+{{code_excerpt}}
+```
+
+- Effect: {{effect}}
+- Proof: `{{proof_cmd}}` -> {{proof_output}}
+- Fix: {{fix}}
+<!-- end repeat -->
+
+<!-- section: legacy -->
+## Legacy in the surroundings (never blocks)
+
+<!-- repeat: finding -->
+### {{n}}. {{finding_title}} · `{{location}}`
+
+```{{lang}}
+{{code_excerpt}}
+```
+
+- Effect: {{effect}}
+- Proof: `{{proof_cmd}}` -> {{proof_output}}
+- Fix: {{fix}}
+<!-- end repeat -->
+
+<!-- section: checked -->
+## Checked
+
+- `{{checked_cmd}}` -> {{checked_result}}
+- {{discarded}} suspicions without proof discarded
+
+<!-- section: not-checked -->
+## Not checked
+
+- {{not_checked_item}}: {{not_checked_reason}}
+
+<!-- section: rereview -->
+<!--
+Round 2+ only. In round 1 keep this block commented out. Repeat the table row per finding of the previous round.
+
+## Re-review ({{old_sha}}..{{new_sha}})
+
+| Finding | Status | Proof |
+|---|---|---|
+| {{rr_finding}} | {{rr_status}} | {{rr_proof}} |
+
+New from the fixes: {{rr_new}}
+-->
+
+<!-- section: run -->
+## Models and effort
+
+| Role | Model (runtime-verified) | Effort | Family |
+|---|---|---|---|
+<!-- repeat: reviewer -->
+| {{role}} | {{model}} | {{effort}} | {{family}} |
+<!-- end repeat -->
+
+Cross-family rule: {{cross_family}}
+Round {{round}} · Base {{base_sha}}
+
+<!-- section: verdict -->
+## VERDICT: {{verdict_upper}}
+
+Blocking: {{blocking}}
+Next: {{next_step}}
+
+{{verdict}}

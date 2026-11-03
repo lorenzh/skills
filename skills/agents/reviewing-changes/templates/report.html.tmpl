@@ -1,0 +1,215 @@
+<title>Review {{title}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+TEMPLATE: HTML review report, written as the page content of an Artifact (no doctype, html, head
+or body tags). The Markdown twin is report.md.tmpl (same sections, same placeholder names).
+
+Template choice: see SKILL.md, step 5.
+
+WRITING RULES
+- No praise, no hedging words (could, maybe, might, consider), no intro. Flat claims.
+- Always write the FULL sha, never a short one.
+- Findings are numbered continuously across all sections. Omit empty sections.
+- Effect: one sentence, at most three, each at most 15 words. Effect + Fix at most 45 words.
+- Code excerpt: at most 10 lines, real line numbers, taken with
+  `git show <sha>:<file> | sed -n 'a,bp'`. The breaking line ends with `<-- here`.
+- HTML-escape every value that comes from code, logs or commands.
+- Status labels are text in square brackets, no emoji. Add the class ok, bad or warn to the span
+  of a status (ok = [OK] [OK-IMAGE] [RESOLVED] [SAME], bad = [FAIL] [MISSING] [OPEN] [DIFFERENT],
+  warn = [CODE-ONLY] [NOT-CHECKABLE] [SKIPPED]).
+- Screenshots go in the evidence cell as an img with a relative path and alt text (base and head
+  side by side for UI changes). Inline them as data: URIs when the page is published.
+
+LABELS
+- CI jobs: [OK] [FAIL] [SKIPPED]
+- Criteria: [OK] mechanical (command + result) · [OK-IMAGE] screenshot as proof, check command beside
+  it, base + head images for UI changes · [CODE-ONLY] static analysis only, app did not run, with
+  reason · [MISSING] not met, see finding · [NOT-CHECKABLE] reason
+- Re-review: [RESOLVED] [OPEN]
+- Verdict: fix first | approve with suggestions | approve
+- Next step by verdict: fix first -> "Fix the blocking findings, then request a re-review of the
+  delta <head_sha>..HEAD"; approve with suggestions -> "Merge allowed. <n> can-fix findings may
+  become follow-up issues."; approve -> "Merge allowed."
+- Run section: one row per role (main reviewer, each angle or verifier agent, report writer).
+  Effort is "unknown" when the runtime does not report it, never guessed.
+- Verdict block: keep exactly one class on the section: verdict-fix | verdict-suggest | verdict-ok.
+-->
+<style>
+:root{--bg:#ffffff;--fg:#1d1f23;--muted:#5b616b;--line:#d8dbe0;--code-bg:#f4f5f7;--ok:#1a6b34;--bad:#a1261b;--warn:#8a5a00;--vfix-bg:#fbeae8;--vfix-bd:#a1261b;--vfix-fg:#5c130d;--vsug-bg:#fff4dc;--vsug-bd:#8a5a00;--vsug-fg:#4a3000;--vok-bg:#e6f4ea;--vok-bd:#1a6b34;--vok-fg:#0f3d1e;color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16181c;--fg:#e4e6ea;--muted:#a0a6b0;--line:#33373e;--code-bg:#1f2227;--ok:#6fcf8e;--bad:#f2867a;--warn:#e6b85c;--vfix-bg:#3a1b18;--vfix-bd:#f2867a;--vfix-fg:#ffd9d4;--vsug-bg:#3a2d12;--vsug-bd:#e6b85c;--vsug-fg:#fbe7b8;--vok-bg:#14301d;--vok-bd:#6fcf8e;--vok-fg:#cdf2d8;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#16181c;--fg:#e4e6ea;--muted:#a0a6b0;--line:#33373e;--code-bg:#1f2227;--ok:#6fcf8e;--bad:#f2867a;--warn:#e6b85c;--vfix-bg:#3a1b18;--vfix-bd:#f2867a;--vfix-fg:#ffd9d4;--vsug-bg:#3a2d12;--vsug-bd:#e6b85c;--vsug-fg:#fbe7b8;--vok-bg:#14301d;--vok-bd:#6fcf8e;--vok-fg:#cdf2d8;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:760px;margin:0 auto}
+h1{font-size:1.4rem;line-height:1.3;margin:0 0 .6rem}
+h2{font-size:1.1rem;margin:2rem 0 .6rem;padding-bottom:.25rem;border-bottom:1px solid var(--line)}
+h3{font-size:1rem;margin:1.4rem 0 .5rem;overflow-wrap:anywhere}
+p,ul{margin:.4rem 0}
+ul{padding-left:1.2rem}
+li{margin:.25rem 0;overflow-wrap:anywhere}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:.86em}
+code{background:var(--code-bg);padding:0 .25em;border-radius:3px;overflow-wrap:anywhere}
+.scroll{overflow-x:auto;max-width:100%;margin:.5rem 0}
+pre{margin:0;padding:.6rem .75rem;background:var(--code-bg);border:1px solid var(--line);border-radius:4px;line-height:1.45;width:max-content;min-width:100%}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;font-size:.92em}
+th,td{border:1px solid var(--line);padding:.35rem .5rem;text-align:left;vertical-align:top}
+th{background:var(--code-bg)}
+img{max-width:100%;height:auto}
+.meta{color:var(--muted);margin:.1rem 0;font-size:.92em;overflow-wrap:anywhere}
+.verdict{font-weight:700;font-size:1.05rem}
+.s{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:600;white-space:nowrap}
+.s.ok{color:var(--ok)}.s.bad{color:var(--bad)}.s.warn{color:var(--warn)}
+.last{margin:.6rem 0 0;font-weight:700;font-size:1.4rem}
+.verdict-box{width:100%;margin-top:2.5rem;padding:1rem 1.1rem;border:4px solid;border-radius:6px;overflow-wrap:anywhere}
+.verdict-box h2{font-size:1.6rem;line-height:1.25;margin:0 0 .6rem;padding:0;border:0;color:inherit}
+.verdict-box p{margin:.3rem 0;font-size:1rem}
+.verdict-box .last{font-size:1.4rem}
+.verdict-fix{background:var(--vfix-bg);border-color:var(--vfix-bd);color:var(--vfix-fg)}
+.verdict-suggest{background:var(--vsug-bg);border-color:var(--vsug-bd);color:var(--vsug-fg)}
+.verdict-ok{background:var(--vok-bg);border-color:var(--vok-bd);color:var(--vok-fg)}
+</style>
+<main>
+<!-- section: header -->
+<h1>Review: {{title}}</h1>
+<p class="meta">Reviewed commit: <code>{{head_sha}}</code> ({{branch}}, {{date}})</p>
+<p class="meta">Base (merge-base): <code>{{base_sha}}</code></p>
+<p class="meta">CI run belongs to: <code>{{ci_sha}}</code> <span class="s">{{ci_match}}</span></p>
+
+<!-- section: one-minute -->
+<h2>One Minute</h2>
+<p class="verdict">{{verdict}}</p>
+<p>{{summary}}</p>
+<ul>
+<li>Findings: {{n_needs}} needs fix · {{n_should}} should fix · {{n_can}} can fix</li>
+<li>CI: {{ci_source}}, {{ci_run}}, {{ci_result}}</li>
+<li>Rules read: {{rules_read}}</li>
+<li>Security: {{security}}</li>
+<li>Criteria: {{criteria_proven}}</li>
+<li>Reviewed by: {{models_short}}</li>
+<li>Not checked: {{not_checked_summary}}</li>
+</ul>
+
+<!-- section: ci -->
+<h2>CI result</h2>
+<p>Source: {{ci_source}} · {{ci_run}} · commit <code>{{ci_sha}}</code> · {{ci_result}}</p>
+<div class="scroll"><table>
+<thead><tr><th>Job</th><th>Result</th><th>Duration</th></tr></thead>
+<tbody>
+<!-- repeat: job -->
+<tr><td>{{job}}</td><td><span class="s">{{job_result}}</span></td><td>{{job_duration}}</td></tr>
+<!-- end repeat -->
+</tbody>
+</table></div>
+<!-- Only when red or partial: one verbatim excerpt, at most 15 lines, failing step name in the first line. -->
+<div class="scroll"><pre><code>{{log_excerpt}}</code></pre></div>
+<p>Reports: {{ci_reports}}</p>
+
+<!-- section: criteria -->
+<h2>Acceptance criteria</h2>
+<div class="scroll"><table>
+<thead><tr><th>#</th><th>Criterion (verbatim)</th><th>Status</th><th>Evidence</th></tr></thead>
+<tbody>
+<!-- repeat: criterion -->
+<tr><td>{{crit_n}}</td><td>{{criterion}}</td><td><span class="s">{{status}}</span></td><td>{{evidence}}</td></tr>
+<!-- end repeat -->
+</tbody>
+</table></div>
+
+<!-- section: needs-fix -->
+<h2>Needs fix (blocks)</h2>
+<!-- repeat: finding -->
+<h3>{{n}}. {{finding_title}} · <code>{{location}}</code></h3>
+<div class="scroll"><pre><code class="language-{{lang}}">{{code_excerpt}}</code></pre></div>
+<ul>
+<li>Effect: {{effect}}</li>
+<li>Proof: <code>{{proof_cmd}}</code> -&gt; {{proof_output}}. Control: {{control}}</li>
+<li>Fix: {{fix}}</li>
+</ul>
+<!-- end repeat -->
+
+<!-- section: should-fix -->
+<h2>Should fix (blocks)</h2>
+<!-- repeat: finding -->
+<h3>{{n}}. {{finding_title}} · <code>{{location}}</code></h3>
+<div class="scroll"><pre><code class="language-{{lang}}">{{code_excerpt}}</code></pre></div>
+<ul>
+<li>Effect: {{effect}}</li>
+<li>Proof: <code>{{proof_cmd}}</code> -&gt; {{proof_output}}. Control: {{control}}</li>
+<li>Fix: {{fix}}</li>
+</ul>
+<!-- end repeat -->
+
+<!-- section: can-fix -->
+<h2>Can fix (does not block)</h2>
+<!-- repeat: finding -->
+<h3>{{n}}. {{finding_title}} · <code>{{location}}</code></h3>
+<div class="scroll"><pre><code class="language-{{lang}}">{{code_excerpt}}</code></pre></div>
+<ul>
+<li>Effect: {{effect}}</li>
+<li>Proof: <code>{{proof_cmd}}</code> -&gt; {{proof_output}}</li>
+<li>Fix: {{fix}}</li>
+</ul>
+<!-- end repeat -->
+
+<!-- section: legacy -->
+<h2>Legacy in the surroundings (never blocks)</h2>
+<!-- repeat: finding -->
+<h3>{{n}}. {{finding_title}} · <code>{{location}}</code></h3>
+<div class="scroll"><pre><code class="language-{{lang}}">{{code_excerpt}}</code></pre></div>
+<ul>
+<li>Effect: {{effect}}</li>
+<li>Proof: <code>{{proof_cmd}}</code> -&gt; {{proof_output}}</li>
+<li>Fix: {{fix}}</li>
+</ul>
+<!-- end repeat -->
+
+<!-- section: checked -->
+<h2>Checked</h2>
+<ul>
+<li><code>{{checked_cmd}}</code> -&gt; {{checked_result}}</li>
+<li>{{discarded}} suspicions without proof discarded</li>
+</ul>
+
+<!-- section: not-checked -->
+<h2>Not checked</h2>
+<ul>
+<li>{{not_checked_item}}: {{not_checked_reason}}</li>
+</ul>
+
+<!-- section: rereview -->
+<!--
+Round 2+ only. In round 1 keep this block commented out. Repeat the table row per finding of the previous round.
+
+<h2>Re-review ({{old_sha}}..{{new_sha}})</h2>
+<div class="scroll"><table>
+<thead><tr><th>Finding</th><th>Status</th><th>Proof</th></tr></thead>
+<tbody>
+<tr><td>{{rr_finding}}</td><td><span class="s">{{rr_status}}</span></td><td>{{rr_proof}}</td></tr>
+</tbody>
+</table></div>
+<p>New from the fixes: {{rr_new}}</p>
+-->
+
+<!-- section: run -->
+<h2>Models and effort</h2>
+<div class="scroll"><table>
+<thead><tr><th>Role</th><th>Model (runtime-verified)</th><th>Effort</th><th>Family</th></tr></thead>
+<tbody>
+<!-- repeat: reviewer -->
+<tr><td>{{role}}</td><td>{{model}}</td><td>{{effort}}</td><td>{{family}}</td></tr>
+<!-- end repeat -->
+</tbody>
+</table></div>
+<p>Cross-family rule: {{cross_family}}</p>
+<p class="meta">Round {{round}} · Base <code>{{base_sha}}</code></p>
+
+<!-- section: verdict -->
+<section class="verdict-box verdict-fix">
+<h2>VERDICT: {{verdict_upper}}</h2>
+<p>Blocking: {{blocking}}</p>
+<p>Next: {{next_step}}</p>
+<p class="last">{{verdict}}</p>
+</section>
+</main>
