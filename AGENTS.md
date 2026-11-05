@@ -46,6 +46,7 @@ No build and no dependencies — the deliverables are the skill folders.
 |---|---|
 | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | `publishing` |
 | [researching-with-two-models](skills/research/researching-with-two-models/SKILL.md) | `research` |
+| [reviewing-specs](skills/research/reviewing-specs/SKILL.md) | `research` |
 | [checking-before-publishing](skills/publishing/checking-before-publishing/SKILL.md) | `publishing` |
 | [writing-skills](skills/agents/writing-skills/SKILL.md) | `agents` |
 | [competing-implementations](skills/agents/competing-implementations/SKILL.md) | `agents` |

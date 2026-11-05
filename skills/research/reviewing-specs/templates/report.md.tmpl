@@ -1,0 +1,68 @@
+<!--
+TEMPLATE: synthesis report. Fill every slot from the work folder files. Leave no <…> slot.
+Write in the report language chosen in step 1. Change neither the spec nor the current design.
+-->
+# Review: <spec title>
+
+Spec: <spec path> · Relation: <replaces|extends|rebuilds parts of> the current system · Date: <YYYY-MM-DD>
+
+## Overall verdict
+
+<3–5 sentences: is the spec ready to implement, and what blocks it>
+
+## Top 5 problems
+
+1. <problem> — <§location> — <concrete change to the spec>
+
+## Findings
+
+| ID | Severity | Location | Problem | Proposal | Found by |
+|---|---|---|---|---|---|
+| <one ID per duplicate group> | <severity after the cross-check> | <§section or "missing in spec"> | <1 sentence> | <concrete change> | <every role ID in the group> |
+
+## Contradictions between perspectives
+
+- <role A says X, role B says Y; short trade-off and which side the report takes>
+
+## Similar systems
+
+| System | How it solves the problem | Source |
+|---|---|---|
+| <name> | <approach> | <URL> |
+
+Lessons:
+1. <lesson, with URL>
+2. <lesson, with URL>
+3. <lesson, with URL>
+
+## Current and target design
+
+| Area | Current | Target | Delta |
+|---|---|---|---|
+| <area> | <file or place> | <§section> | <new|changed|removed> |
+
+- Regressions: <what the target loses, or "none found">
+- Old problems solved: <list>
+- New risks: <list>
+- Migration path: <backward compatibility, parallel operation, rollback; or "missing in spec">
+- Is the change justified: <rebuild against a targeted change, one paragraph>
+
+## Open questions
+
+- <group, priority>: <question>
+
+## Rejected findings and corrections
+
+- <finding ID>: rejected — <one-line reason>
+- Spec claim <§section>: <what is wrong, and the correct fact with evidence>
+- Citation <finding ID>: <what is wrong>
+
+## Appendix: added questions
+
+<one subsection per question the user added mid-run, with its answer; or "none">
+
+## Models
+
+| Role | Runtime model |
+|---|---|
+| <role ID or "cross-check"> | <model from the runtime log or agent definition> |
