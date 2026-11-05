@@ -13,7 +13,10 @@ Start `codex exec` runs so the harness reports their real end, and check each ru
 
 Make a private output dir per dispatch, e.g. `out=$(mktemp -d)`. Put the brief in `$out/brief.md`; its line 1 asks for `Model: <your model id>`.
 Pick the sandbox: `-s read-only` for research, review and verification; `-s workspace-write` only when the run must edit files.
-Done when `$out/brief.md` exists and the sandbox is chosen.
+Both sandboxes have no network: no package registry, no GitHub API. `/tmp` can be read-only, so tests that create temp dirs fail with `EROFS`.
+If the task must install from a registry, push, open a PR or call GitHub, give it to an agent with network instead.
+Otherwise install dependencies before the run, and let the lead commit and push. For a review, tell the reviewer that CI runs the full suite, so it runs targeted tests only.
+Done when `$out/brief.md` exists, the sandbox is chosen, and the task needs no network.
 
 ## 2. Start Codex as the watched command
 
@@ -24,6 +27,7 @@ codex exec -m <model> -c model_reasoning_effort=<effort> -s <read-only|workspace
   --skip-git-repo-check -C <repo> -o "$out/answer.md" - < "$out/brief.md" > "$out/log.txt" 2>&1
 ```
 
+`-C` sets the writable root; point it at a parent dir when one run must edit several repos.
 Never add `nohup` or a trailing `&` to a run that should notify. For several parallel runs, pick one:
 - one background Bash per run;
 - one background Bash that starts each run with `&` and ends with `wait`;
@@ -44,7 +48,7 @@ Done when each run is reported as finished (with its answer path) or failed (wit
 
 ## 4. Record the runtime model
 
-Record the `model:` header from the log, not the `Model:` line the answer claims. If they differ, or the requested model is missing, report it; never substitute another model silently.
+Record the `model:` header from the log, not the `Model:` line the answer claims; answers often name a different model than the header. If they differ, or the requested model is missing, report it; never substitute another model silently.
 Done when the report names each run's runtime model and effort.
 
 ## Example
