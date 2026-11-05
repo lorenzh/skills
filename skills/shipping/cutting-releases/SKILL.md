@@ -21,11 +21,13 @@ Done when you have a written list of the release steps for this repo, with the c
 
 Run the project's version script (or edit the versions it names), on a branch from the release branch. Check that every manifest shows the new version: `git grep -n '"version"'` or the project's equivalent.
 
+Under 0.x, check how packages depend on each other. With exact pins, a patch may carry a breaking change, because dependents move only when their pin moves. With caret ranges, a patch must not break: `^0.x.y` with x ≥ 1 accepts every later `0.x` patch. `^0.0.z` accepts only `0.0.z`.
+
 Done when every versioned file shows the new version on the branch.
 
 ## 2. Open and merge the release PR
 
-Open the PR into the release branch the document names (`release/x.y`, `main`, ...). Wait for checks with `timeout 30m gh pr checks <n> --watch --fail-fast`. Ask the user to approve the merge, then merge.
+If the release PR is a Changesets "Version packages" PR, read [references/changesets.md](references/changesets.md) and follow it; such a PR usually shows no checks. Otherwise, open the PR into the release branch the document names (`release/x.y`, `main`, ...). Wait for checks with `timeout 30m gh pr checks <n> --watch --fail-fast`. Ask the user to approve the merge, then merge.
 
 Done when the release PR is merged with the user's OK.
 
@@ -65,7 +67,7 @@ done
 echo ready
 ```
 
-Use the registry's own query for other ecosystems (`pip index versions`, `cargo search`). 10 minutes is a tunable default. On a timeout, stop the release here and report the last value seen; the back-merge and install steps assume the version exists.
+If a query fails (for example 401 because a subshell got an empty token), do not conclude that the release failed. Confirm with a second method, such as the host's package API or the registry web page, before reporting. Use the registry's own query for other ecosystems (`pip index versions`, `cargo search`). 10 minutes is a tunable default. On a timeout, stop the release here and report the last value seen; the back-merge and install steps assume the version exists.
 
 Done when the loop printed `ready`. A timeout ends the run with the report.
 
