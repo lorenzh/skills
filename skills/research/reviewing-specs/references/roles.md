@@ -1,6 +1,6 @@
 # Roles
 
-Read this when step 3 writes the role briefs. Paste the role's line into its brief. Every role works strictly within its focus.
+Read this when step 3 writes the role briefs. Paste the rules for every role and the role's line into its brief. Every role works strictly within its focus.
 
 Rules for every role:
 - No generic advice. Every finding names a spec section or a gap ("missing in spec").

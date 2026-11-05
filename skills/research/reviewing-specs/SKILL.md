@@ -39,8 +39,9 @@ Done when `brief.md` holds the section map and both summaries within their caps.
 ## 3. Run the role analyses in parallel
 
 Read [references/roles.md](references/roles.md) for each role's focus. Start one agent per role in the same turn.
-Each brief holds `brief.md`, the spec, the role's focus, [templates/role-report.md.tmpl](templates/role-report.md.tmpl) verbatim, and the `role-report-lines` cap.
-Tell each agent: write the report to `<work>/<role-id>.md`, then reply only `done <file> <finding count>`. If an agent cannot write files, save its reply to that file at once.
+Each brief holds `brief.md`, the spec, the role's focus, the shared rules for every role, [templates/role-report.md.tmpl](templates/role-report.md.tmpl) verbatim, and the `role-report-lines` cap.
+Tell an agent that can write files: write the report to `<work>/<role-id>.md`, then reply only `done <file> <finding count>`.
+Tell an agent that cannot write files: reply with the complete report. Save that reply to `<work>/<role-id>.md` at once.
 Give the comparison role (COMP) an agent with web access; a sandboxed CLI agent often has no network. If a model router picks one without network, override it and say why in one line.
 If several model families are available, spread the roles across them.
 Record each agent's model from the runtime: the CLI's log or header line, or the pinned agent definition. Never take it from the answer text.
