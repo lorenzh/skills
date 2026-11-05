@@ -16,16 +16,39 @@
     {
       "id": "changesets-version-pr",
       "prompt": "Our monorepo (packages `@acme/core` and `@acme/cli`, version 0.4.2, cli depends on core with an exact pin) uses Changesets. `changesets/action` has opened PR #88 \"Version packages\" for 0.4.3. It shows no checks. Feature PR #91 with its own changeset merged into main 2 minutes ago. Afterwards we want to confirm the release. Give the exact plan with commands for getting from here to a verified release, including what you check in PR #88 and when you would merge it. Also: the patch contains a renamed export in core — is that OK under our setup? Keep it under 400 words.",
-      "expected_output": "does not wait for checks on the Version PR; waits until the PR is regenerated with #91's changeset; checks the diff holds only changeset removals, CHANGELOGs, version fields and lockfile version lines; asks before merging; after merge checks the tag and the latest dist-tag; double-checks a failed registry query; explains exact pin versus caret range under 0.x",
-      "assertions": [
-        "says no checks will appear because of GITHUB_TOKEN and does not wait for CI",
+      "files": [],
+      "expected": [
+        "checks the Version PR's checks first; if no run was triggered (usual with GITHUB_TOKEN) does not wait for CI; if runs exist or wait for approval, handles them like normal CI",
         "waits for #91's changeset to appear in the Version PR before merging",
         "limits the allowed diff to changeset removals, CHANGELOGs, version fields and lockfile version lines; anything else goes to normal review",
         "after merge confirms the tag and that latest (not next) shows the version",
         "a failed registry query (e.g. 401) is confirmed another way before concluding failure",
         "explains that the break is tolerable with exact pins but breaks caret ranges"
       ],
-      "with_skill_result": "2026-11-05 claude-opus-5-5 (medium) with the skill: pass on all assertions. Field evidence behind the change: four Version PRs with zero checks; one Version PR lacked the changeset of a just-merged feature; one dist-tag query returned 401 although the release had succeeded."
+      "lived": "Generalized session evidence (release sessions in a private monorepo, details withheld): four Version PRs opened by changesets/action showed zero checks; one Version PR lacked the changeset of a feature PR merged moments before; one `npm view` dist-tag query returned 401 (empty token in a subshell) although the release had succeeded. These lived failures serve as the control; no separate control run.",
+      "results": {
+        "with_skill": [
+          {
+            "date": "2026-11-05",
+            "model": "claude-opus-5-5",
+            "effort": "medium",
+            "skill_version": "first draft (checks stated as never appearing)",
+            "pass": 6,
+            "total": 6,
+            "note": "graded against the first-draft assertions"
+          },
+          {
+            "date": "2026-11-05",
+            "model": "claude-opus-5-5",
+            "effort": "medium",
+            "skill_version": "fix round (checks looked at first; caret rule qualified)",
+            "pass": 6,
+            "total": 6,
+            "note": "ran gh pr checks first and would handle runs waiting for approval; waited for #91's changeset; mechanical diff rule; tag and latest dist-tag; 401 double-check; exact pin vs caret"
+          }
+        ]
+      },
+      "coverage_gap": "T2 asks for 3 pairs; this scenario has 2 with-skill runs (one per skill version), no third. Controls come from the lived evidence."
     }
   ]
 }

@@ -21,13 +21,13 @@ Done when you have a written list of the release steps for this repo, with the c
 
 Run the project's version script (or edit the versions it names), on a branch from the release branch. Check that every manifest shows the new version: `git grep -n '"version"'` or the project's equivalent.
 
-Under 0.x, check how packages depend on each other. With exact pins, a patch may carry a breaking change, because dependents move only when their pin moves. With caret ranges, a patch must not break: `^0.x.y` accepts every later 0.x patch.
+Under 0.x, check how packages depend on each other. With exact pins, a patch may carry a breaking change, because dependents move only when their pin moves. With caret ranges, a patch must not break: `^0.x.y` with x ≥ 1 accepts every later `0.x` patch. `^0.0.z` accepts only `0.0.z`.
 
 Done when every versioned file shows the new version on the branch.
 
 ## 2. Open and merge the release PR
 
-If the release PR is a Changesets "Version packages" PR, read [references/changesets.md](references/changesets.md) and follow it instead of waiting for checks; it shows none. Otherwise, open the PR into the release branch the document names (`release/x.y`, `main`, ...). Wait for checks with `timeout 30m gh pr checks <n> --watch --fail-fast`. Ask the user to approve the merge, then merge.
+If the release PR is a Changesets "Version packages" PR, read [references/changesets.md](references/changesets.md) and follow it; such a PR usually shows no checks. Otherwise, open the PR into the release branch the document names (`release/x.y`, `main`, ...). Wait for checks with `timeout 30m gh pr checks <n> --watch --fail-fast`. Ask the user to approve the merge, then merge.
 
 Done when the release PR is merged with the user's OK.
 

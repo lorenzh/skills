@@ -2,11 +2,13 @@
 
 Read this when the release PR is the "Version packages" PR that `changesets/action` opens and updates.
 
-## Do not wait for checks
+## Check for runs first, then the diff
 
-The action opens the PR with the default `GITHUB_TOKEN`. Events made with that token start no workflows, so the PR shows no checks, and none will appear. Do not wait for CI on it.
+The action usually opens the PR with the default `GITHUB_TOKEN`. Events made with that token do not start new workflow runs, so the PR usually shows no checks. Some setups still create runs that wait for approval.
 
-Check the diff instead: `gh pr diff <n> --name-only`, then `gh pr diff <n>`. The diff may contain only:
+Look at the PR's checks first: `gh pr checks <n>`. If runs exist or wait for approval, handle them like normal CI: approve or start them, then wait with a deadline. If no run was triggered, do not wait for CI; use the diff rule below.
+
+Check the diff: `gh pr diff <n> --name-only`, then `gh pr diff <n>`. The diff may contain only:
 
 - removed `.changeset/*.md` files,
 - `CHANGELOG.md` entries,
