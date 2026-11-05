@@ -61,11 +61,12 @@ Done when the `settings:` line is printed and the report's `Isolation` line says
 Run from `<root>` with the intended branch for `<branch>` and the requested base for `[base]`; omit `[base]` when no base was requested.
 Never probe it with `--help` or without arguments: a wrapper script may take the first argument as a branch name and create a worktree called `help`. Read its source or documentation instead.
 Replace each placeholder, together with any quotes around it in the template, with one single-quoted argument (write `'` as `'\''`); do not evaluate shell substitutions in the values.
-After the command, if `<wt>` lies inside `<root>`, run the ignore check below on its parent directory and handle a missing entry as below.
-Locate `<wt>` with `git worktree list`.
+After the command, take `<wt>` from its output, its documented location, or the path it was asked to create.
 A command that follows a terminal-multiplexer workspace can create the worktree in that workspace's repository instead of `<root>`'s.
-Before any agent works in `<wt>`, compare `git -C <wt> remote get-url origin` and `git -C <wt> rev-parse --path-format=absolute --git-common-dir` with the same commands in `<root>`.
-If they differ, run `git worktree remove <wt>` from the repository it belongs to, then create the worktree natively below.
+Before any agent works in `<wt>`, check that `git -C <root> worktree list` contains `<wt>`; if not, `<wt>` belongs to another repository.
+Also compare `git -C <wt> remote get-url origin` and `git -C <wt> rev-parse --path-format=absolute --git-common-dir` with the same commands in `<root>`.
+If the list lacks `<wt>` or either value differs, run `git worktree remove <wt>` from the repository it belongs to, then create the worktree natively below.
+If `<wt>` lies inside `<root>`, run the ignore check below on its parent directory and handle a missing entry as below.
 Then continue with step 3.
 Apply the sandbox denial rule below if the command fails with a permission or sandbox error.
 
