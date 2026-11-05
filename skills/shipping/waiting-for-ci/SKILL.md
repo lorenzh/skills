@@ -15,6 +15,7 @@ Wait for an external result with a command that ends on its own, and check real 
 |---|---|
 | One workflow run | `timeout 60m gh run watch <run-id> --exit-status` (exit code is the run's result; 124 is the deadline) |
 | All checks on a PR | `timeout 30m gh pr checks <n> --watch --fail-fast` |
+| Merge a PR once CI is green | A bounded loop (step 2) over the rollup check below |
 | The run a push started | Find the run for that commit (below), then watch it as above |
 | A process you started | Its PID: `timeout 30m bash -c 'while kill -0 <pid> 2>/dev/null; do sleep 10; done'` |
 | A process found by name | `pgrep -f '[p]attern'` (bracket the first letter) to get the PID, then wait on the PID |
@@ -37,6 +38,17 @@ done
 Never wait with `while pgrep -f "<pattern>"; do ...; done`. The loop's own shell has `<pattern>` on its command line, so `pgrep` always finds it and the loop never ends. The bracket form `[p]attern` still matches the target process but not the literal `[p]attern` text in the shell's command line. A PID is better still.
 
 Never kill by pattern from a command that contains that pattern. In the measured case, `pkill -f '<pattern>'` matched its caller's shell and ended it with exit 144. To stop a process you waited on or started, `kill <pid>`; for a server, take the PID from its port: `kill $(ss -ltnp | grep ':<port> ' | grep -o 'pid=[0-9]*' | cut -d= -f2)`.
+
+Before a script merges on green, read checks with `gh pr view <n> --repo <owner>/<repo> --json headRefOid,statusCheckRollup`. Older `gh` has no `gh pr checks --json`; a script that pipes that error into its check reads "no output" as green, or never merges. Green means all of these:
+
+```bash
+gh pr view <n> --repo <owner>/<repo> --json headRefOid,statusCheckRollup | jq -e --arg sha "<expected-sha>" '
+  .headRefOid == $sha and (.statusCheckRollup | length > 0) and
+  all(.statusCheckRollup[]; (.status // "COMPLETED") == "COMPLETED" and
+    ((.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL")))'
+```
+
+Status contexts carry `state` instead of `status` and `conclusion`; the `//` covers both.
 
 Done when the wait command is chosen and it ends by itself when the result is in.
 
@@ -63,6 +75,8 @@ Done when the loop printed `ready`, or the timeout is reported with the last obs
 
 Start waits longer than about two minutes with the harness background option, so the session stays responsive and receives a completion notice. Do not use `nohup ... &`: the measured run produced no completion notice. Note the PID or job id and the log path. If the harness has no background option, report the missing capability and ask how to proceed.
 
+Start the wait from a directory that outlives it, not from a worktree that may be removed meanwhile, and pass `--repo <owner>/<repo>` to every `gh` call. Once its working directory is gone, `gh` fails with "Unable to read current working directory".
+
 Done when the wait runs in the background and its PID or job id and log path are noted.
 
 ## 4. Check state, do not assume it
@@ -74,6 +88,8 @@ When a background wait, a run or another agent goes quiet, look before you repor
 - Agent: its last output and whether its process or job still exists.
 
 A silent agent may have finished, crashed or be stuck in a loop. Report what the check showed, not what you expect.
+
+Never read empty output as success; verify the state the command should have changed. Older `gh` has no `gh pr update-branch`. Use `gh api -X PUT repos/<owner>/<repo>/pulls/<n>/update-branch`, then confirm that `gh pr view <n> --json headRefOid` shows a new head SHA.
 
 Done when the report states each wait's observed status.
 
@@ -92,8 +108,9 @@ When a job failed and its log is empty or the cause is unclear, find the cause b
 
    If the default branch fails the same test, report it as broken there, not caused by the PR, and leave the PR unchanged.
 4. Run that single test locally 5 times (a tunable default).
-5. For a failure unrelated to the diff, or a timeout or network error on a step that passed before, rerun only the failed jobs once with `gh run rerun <run-id> --failed` and watch with a deadline. A second failure is real; report its log.
-6. If the unrelated test passes on the rerun, offer to open an issue for the flaky test instead of changing the PR.
+5. If unrelated tests time out, check whether the CI runner shares its machine with heavy local jobs (a self-hosted runner next to parallel agents or builds). Compare per-file test durations of a green run and the slow run; a slowdown spread over all files points at the machine, not the change.
+6. For a failure unrelated to the diff, or a timeout or network error on a step that passed before, rerun only the failed jobs once with `gh run rerun <run-id> --failed` and watch with a deadline. A second failure is real; report its log.
+7. If the unrelated test passes on the rerun, offer to open an issue for the flaky test instead of changing the PR.
 
 Done when the report states each wait's observed status and, for a failed job, includes its raw log evidence and whether the failure matches the PR diff.
 
