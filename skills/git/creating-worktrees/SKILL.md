@@ -62,7 +62,11 @@ Run from `<root>` with the intended branch for `<branch>` and the requested base
 Never probe it with `--help` or without arguments: a wrapper script may take the first argument as a branch name and create a worktree called `help`. Read its source or documentation instead.
 Replace each placeholder, together with any quotes around it in the template, with one single-quoted argument (write `'` as `'\''`); do not evaluate shell substitutions in the values.
 After the command, if `<wt>` lies inside `<root>`, run the ignore check below on its parent directory and handle a missing entry as below.
-Locate `<wt>` with `git worktree list`, then continue with step 3.
+Locate `<wt>` with `git worktree list`.
+A command that follows a terminal-multiplexer workspace can create the worktree in that workspace's repository instead of `<root>`'s.
+Before any agent works in `<wt>`, compare `git -C <wt> remote get-url origin` and `git -C <wt> rev-parse --path-format=absolute --git-common-dir` with the same commands in `<root>`.
+If they differ, run `git worktree remove <wt>` from the repository it belongs to, then create the worktree natively below.
+Then continue with step 3.
 Apply the sandbox denial rule below if the command fails with a permission or sandbox error.
 
 **Default: native tool first.** If the harness offers a worktree tool or flag, use it.
@@ -95,7 +99,7 @@ git -C <root> worktree add .worktrees/<name> <branch>      # existing branch
 
 **Sandbox denial.** If creation fails with a permission or sandbox error, say so in one line ("The sandbox blocked worktree creation; working in the current checkout.") and work in place. If the user made isolation a condition ("main must stay untouched"), stop after that line and wait instead. Changing sandbox settings, picking another path to get around the denial, or running outside the sandbox is the user's decision.
 
-Done when `git worktree list` shows `<wt>` on the intended branch and its in-repo parent directory is ignored, or the report records the sandbox denial.
+Done when `git worktree list` shows `<wt>` on the intended branch, its origin and common git dir match `<root>`'s, and its in-repo parent directory is ignored, or the report records the sandbox denial.
 
 ## 3. Keep tools out of the worktree directory
 
