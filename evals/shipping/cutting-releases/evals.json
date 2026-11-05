@@ -23,7 +23,7 @@
         "limits the allowed diff to changeset removals, CHANGELOGs, version fields and lockfile version lines; anything else goes to normal review",
         "after merge confirms the tag and that latest (not next) shows the version",
         "a failed registry query (e.g. 401) is confirmed another way before concluding failure",
-        "explains that the break is tolerable with exact pins but breaks caret ranges"
+        "says the renamed export is a breaking change that must not ship as a patch, exact pin or not: under 0.x it takes a minor bump (0.5.0) via a `minor` changeset; a `major` changeset would bump to 1.0.0"
       ],
       "lived": "Generalized session evidence (release sessions in a private monorepo, details withheld): four Version PRs opened by changesets/action showed zero checks; one Version PR lacked the changeset of a feature PR merged moments before; one `npm view` dist-tag query returned 401 (empty token in a subshell) although the release had succeeded. These lived failures serve as the control; no separate control run.",
       "results": {
@@ -48,7 +48,7 @@
           }
         ]
       },
-      "coverage_gap": "T2 asks for 3 pairs; this scenario has 2 with-skill runs (one per skill version), no third. Controls come from the lived evidence."
+      "coverage_gap": "T2 asks for 3 pairs; this scenario has 2 with-skill runs (one per skill version), no third. Controls come from the lived evidence. Both runs were graded against the old exact-pin assertion; the 0.x semver assertion has no run yet."
     }
   ]
 }

@@ -21,7 +21,7 @@ Done when you have a written list of the release steps for this repo, with the c
 
 Run the project's version script (or edit the versions it names), on a branch from the release branch. Check that every manifest shows the new version: `git grep -n '"version"'` or the project's equivalent.
 
-Under 0.x, check how packages depend on each other. With exact pins, a patch may carry a breaking change, because dependents move only when their pin moves. With caret ranges, a patch must not break: `^0.x.y` with x ≥ 1 accepts every later `0.x` patch. `^0.0.z` accepts only `0.0.z`.
+Under 0.x, a breaking change takes a minor bump (0.10.x → 0.11.0); a patch never breaks. Caret ranges then work: `^0.x.y` with x ≥ 1 accepts every later `0.x` patch and no minor. `^0.0.z` accepts only `0.0.z`.
 
 Done when every versioned file shows the new version on the branch.
 

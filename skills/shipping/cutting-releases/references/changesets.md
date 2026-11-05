@@ -15,6 +15,8 @@ Check the diff: `gh pr diff <n> --name-only`, then `gh pr diff <n>`. The diff ma
 - `version` fields in package manifests (and internal dependency ranges the action raised),
 - the lockfile's version lines for the workspace packages.
 
+Check the bump level too. Under 0.x, a breaking change takes a `minor` changeset; a `major` changeset bumps to 1.0.0. If the PR releases a breaking change as a patch, or reaches 1.0.0 without a plan for it, stop and fix the changeset.
+
 If anything else is in the diff, stop and send the PR through normal review. The checks of the feature PRs on the base branch covered the code; this diff covers only the version change.
 
 Done when the diff holds only those changes, or the PR went to normal review.
