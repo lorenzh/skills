@@ -16,6 +16,7 @@ A skill is a folder with a `SKILL.md` file. It teaches an agent one workflow, st
 | agents | [reviewing-changes](skills/agents/reviewing-changes/SKILL.md) | Reviews a diff, branch or PR and writes one short report: every finding proven, the CI result of the reviewed commit, acceptance criteria checked, and a verdict. |
 | agents | [dispatching-codex](skills/agents/dispatching-codex/SKILL.md) | Starts `codex exec` runs so the completion notice means Codex finished, checks each run's answer file, process and runtime model, and runs parallel jobs without `nohup` wrappers. |
 | git | [creating-worktrees](skills/git/creating-worktrees/SKILL.md) | Sets up git worktrees that are really isolated: in-repo placement, dependencies installed and resolving inside the worktree, local files copied only with consent, and safe cleanup. |
+| git | [extracting-repos-from-monorepo](skills/git/extracting-repos-from-monorepo/SKILL.md) | Moves packages out of a monorepo into their own repository with history through a rerunnable `git filter-repo` script, prepares registry access, and switches the monorepo to the published versions. |
 | terminal | [driving-terminal-apps](skills/terminal/driving-terminal-apps/SKILL.md) | Drives, tests, screenshots and records terminal apps (CLIs, TUIs, REPLs) through tmux, like a person at the keyboard. |
 | video | [directing-videos](skills/video/directing-videos/SKILL.md) | Plans, scripts and paces a video (demo, screencast, tutorial, launch video), then checks the finished cut against the plan. |
 | publishing | [listing-a-project](skills/publishing/listing-a-project/SKILL.md) | Finds active awesome lists and directories for a project, follows each one's submission rules, and submits only with the owner's consent per target. |
@@ -120,6 +121,7 @@ See [settings.md](skills/agents/writing-skills/references/settings.md) for allow
 | reviewing-changes | `git`. For CI results: `gh` (GitHub) or `az` (Azure Pipelines). Node.js 18+ for the template drift test. Use a strong model as reviewer: small models do not load the skill reliably. |
 | dispatching-codex | Codex CLI, authenticated. |
 | creating-worktrees | Node.js 18+ and `git`. Uses the package managers the repo already uses. |
+| extracting-repos-from-monorepo | `git`, `git filter-repo`, the workspace's package manager. |
 | driving-terminal-apps | Node.js 18+ and `tmux`. For recordings: `asciinema` and `agg`. For PNG and MP4: `ffmpeg` (without it, the skill makes GIFs). |
 | directing-videos | Python 3 for the coverage check. It hands recording to a recorder skill, such as `driving-terminal-apps` or a browser automation skill. |
 | listing-a-project | `gh` CLI, authenticated. |
