@@ -48,7 +48,7 @@ gh pr view <n> --repo <owner>/<repo> --json headRefOid,statusCheckRollup | jq -e
     ((.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL")))'
 ```
 
-Status contexts carry `state` instead of `status` and `conclusion`; the `//` covers both.
+The rollup holds check runs (`status`, `conclusion`) and commit status contexts (`state` only); the `//` covers both, so a successful status context (`state: SUCCESS`) counts as green.
 
 Done when the wait command is chosen and it ends by itself when the result is in.
 
@@ -75,7 +75,7 @@ Done when the loop printed `ready`, or the timeout is reported with the last obs
 
 Start waits longer than about two minutes with the harness background option, so the session stays responsive and receives a completion notice. Do not use `nohup ... &`: the measured run produced no completion notice. Note the PID or job id and the log path. If the harness has no background option, report the missing capability and ask how to proceed.
 
-Start the wait from a directory that outlives it, not from a worktree that may be removed meanwhile, and pass `--repo <owner>/<repo>` to every `gh` call. Once its working directory is gone, `gh` fails with "Unable to read current working directory".
+Start the wait from a directory that outlives it, not from a worktree that may be removed meanwhile. Pass `--repo <owner>/<repo>` to every `gh` call except `gh api`, which has no `--repo` flag; its `repos/<owner>/<repo>/…` path names the repository. Once its working directory is gone, `gh` fails with "Unable to read current working directory".
 
 Done when the wait runs in the background and its PID or job id and log path are noted.
 
@@ -116,25 +116,7 @@ Done when the report states each wait's observed status and, for a failed job, i
 
 ## 6. A background agent with no completion notice
 
-An agent can finish without the harness telling you. Once its expected time has passed (a tunable default: twice the time similar tasks took, at least 10 minutes), stop waiting for the notice and look:
-
-1. Read its last messages from its transcript. Claude Code keeps one per subagent at `~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl`:
-
-   ```bash
-   jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="text") | .text' <transcript> | tail -40
-   ```
-
-   Other harnesses keep similar logs (Codex: `~/.codex/sessions/`); the CLI's `-o <file>` output is the final message.
-2. Check the result the agent was meant to produce: the PR state (`gh pr view <n> --json state,headRefOid`), the output file, the pushed commit.
-3. Check the agent's runtime status and progress before you name a state. The transcript alone can mislead: a transcript that stopped growing can end in a tool call that is still running (a long test, a `gh run watch`), and a growing one can be a loop that repeats the same calls.
-   - Runtime status: the harness's agent or task list (Claude Code: the background task list or `ListAgents`), or the process (`kill -0 <pid>`).
-   - Last entry: `tail -1 <transcript> | jq -c '{type, tools: [.message.content[]? | select(.type=="tool_use") | .name]}'` shows whether it ends in a tool call that has no result yet.
-   - Progress: compare the last 10 tool calls; the same call with the same input again and again is a loop.
-4. Name the state from all three checks:
-   - **Done:** the transcript ends in a final answer, the runtime shows the agent as finished, and the result exists. Use that result.
-   - **Working:** the runtime shows it running, and it is waiting on a tool call or making new calls.
-   - **Stuck:** it repeats the same calls, or waits on one tool call far past that tool's own deadline. Report it with the repeated call and stop it.
-   - **Failed:** the runtime shows it ended, and the result does not exist. Report its last message.
+An agent can finish without the harness telling you. Once its expected time has passed (a tunable default: twice the time similar tasks took, at least 10 minutes), stop waiting for the notice. Read [references/silent-agents.md](references/silent-agents.md) and check its transcript, its result and its runtime status before you name a state.
 
 Done when each silent agent is reported as done (with its result), working (with its pending or latest call), stuck (with the repeated call) or failed (with its last message).
 

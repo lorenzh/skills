@@ -1,49 +1,49 @@
 ```bash
 #!/usr/bin/env bash
-set -euo pipefail
-repo=example/app pr=42 sha=abc123
+set -uo pipefail
 
-# 1. Move to / and use --repo on every gh call, because this worktree is deleted while the script runs.
-cd /
+# Leave the worktree, because it is deleted while this runs and gh fails without a working directory
+cd / || exit 1
 
-# 2. Stop if the PR head is no longer abc123.
-head=$(gh pr view "$pr" --repo "$repo" --json headRefOid -q .headRefOid)
-[ "$head" = "$sha" ] || { echo "head is $head, want $sha"; exit 1; }
+# Set the fixed inputs
+repo=example/app pr=42 old=3f9c2a7e1b5d48c6a0e2f71b9d3c5a8e4f6b2d10
 
-# 3. Update the branch from main through the API (gh 2.20 has no update-branch command; the API rejects the call if the head moved).
-gh api -X PUT "repos/$repo/pulls/$pr/update-branch" -f expected_head_sha="$sha" >/dev/null
+# Stop if the PR head is no longer the expected commit
+head=$(gh pr view "$pr" --repo "$repo" --json headRefOid -q .headRefOid) || exit 1
+[ "$head" = "$old" ] || { echo "head is '$head', want $old"; exit 1; }
 
-# 4. Wait up to 5 minutes for the new head commit that the update creates.
+# Update the branch from main through the API (gh 2.20 has no gh pr update-branch), only if the head is still $old
+gh api -X PUT "repos/$repo/pulls/$pr/update-branch" -f expected_head_sha="$old" || exit 1
+
+# Wait up to 5 min for the new head SHA, because the API answers 202 and updates the branch later
 new=
 for i in $(seq 1 30); do
-  new=$(gh pr view "$pr" --repo "$repo" --json headRefOid -q .headRefOid || true)
-  [ -n "$new" ] && [ "$new" != "$sha" ] && break
-  sleep 10
+  new=$(gh pr view "$pr" --repo "$repo" --json headRefOid -q .headRefOid 2>/dev/null)
+  [ -n "$new" ] && [ "$new" != "$old" ] && break
+  new=; sleep 10
 done
-{ [ -n "$new" ] && [ "$new" != "$sha" ]; } || { echo "timeout: head still '$new' after update"; exit 1; }
+[ -n "$new" ] || { echo "branch not updated, head still $old"; exit 1; }
 
-# 5. Wait up to 60 minutes for green CI on the new head. Stop early on a failed check or a new push.
-ok=; json=
+# Poll checks on the new head for up to 60 min; stop on a failure or a moved head; need green twice in a row so a partly registered check set does not count
+state=; prev=
 for i in $(seq 1 120); do
-  json=$(gh pr view "$pr" --repo "$repo" --json headRefOid,statusCheckRollup || true)
-  if jq -e --arg sha "$new" '.headRefOid == $sha and (.statusCheckRollup | length > 0) and
-       all(.statusCheckRollup[]; (.status // "COMPLETED") == "COMPLETED" and
-         ((.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL")))' <<<"$json" >/dev/null; then ok=1; break; fi
-  jq -e --arg sha "$new" '.headRefOid != $sha or any(.statusCheckRollup[]?;
-       (.conclusion // .state) | IN("FAILURE","ERROR","CANCELLED","TIMED_OUT","ACTION_REQUIRED"))' <<<"$json" >/dev/null \
-    && { echo "CI failed or head moved: $json"; exit 1; }
+  prev=$state
+  state=$(gh pr view "$pr" --repo "$repo" --json headRefOid,statusCheckRollup 2>/dev/null | jq -r --arg sha "$new" '
+    def done: (.status // (if .state == "PENDING" or .state == "EXPECTED" then "PENDING" else "COMPLETED" end)) == "COMPLETED";
+    def ok: (.conclusion // .state) | IN("SUCCESS","SKIPPED","NEUTRAL");
+    if .headRefOid != $sha then "moved"
+    elif (.statusCheckRollup | length) == 0 then "pending"
+    elif any(.statusCheckRollup[]; done and (ok | not)) then "failed"
+    elif all(.statusCheckRollup[]; done) then "green"
+    else "pending" end')
+  case $state in
+    failed|moved) break ;;
+    green) [ "$prev" = green ] && break ;;
+  esac
   sleep 30
 done
-[ -n "$ok" ] || { echo "timeout: CI not green on $new; last: $json"; exit 1; }
+[ "$state" = green ] && [ "$prev" = green ] || { echo "not merging: CI state '$state' for $new"; exit 1; }
 
-# 6. Squash-merge, but only if the head is still the commit that passed CI.
-gh pr merge "$pr" --repo "$repo" --squash --match-head-commit "$new"
-
-# 7. Check that the PR is really merged before reporting success.
-[ "$(gh pr view "$pr" --repo "$repo" --json state -q .state)" = MERGED ] || { echo "merge did not land"; exit 1; }
-echo "merged $repo#$pr at $new"
+# Merge the PR as a squash commit
+gh pr merge "$pr" --repo "$repo" --squash
 ```
-
-There is a conflict in the task. Updating the branch from main creates a new head commit, so abc123 cannot be the commit that gets merged. The script uses abc123 only to check the starting state. It then waits for green CI on the new head and merges that exact commit.
-
-I did not run or test the script, as you asked. Two things are unchecked. First, I believe gh 2.20 has `--match-head-commit`, but I did not confirm it. If it doesn't, drop that flag and the head guard in step 6 goes with it. Second, the script needs `jq` 1.5 or newer on the machine for `IN`.
