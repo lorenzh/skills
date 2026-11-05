@@ -13,9 +13,10 @@ Start `codex exec` runs so the harness reports their real end, and check each ru
 
 Make a private output dir per dispatch, e.g. `out=$(mktemp -d)`. Put the brief in `$out/brief.md`; its line 1 asks for `Model: <your model id>`.
 Pick the sandbox: `-s read-only` for research, review and verification; `-s workspace-write` only when the run must edit files.
-Both sandboxes have no network: no package registry, no GitHub API. `/tmp` can be read-only, so tests that create temp dirs fail with `EROFS`.
+Both sandboxes have no network: no package registry, no GitHub API. Depending on the sandbox, `/tmp` can be read-only; tests then fail with `EROFS` or `EPERM`, and child processes may also be blocked.
 If the task must install from a registry, push, open a PR or call GitHub, give it to an agent with network instead.
-Otherwise install dependencies before the run, and let the lead commit and push. For a review, tell the reviewer that CI runs the full suite, so it runs targeted tests only.
+Otherwise install dependencies before the run, and let the lead commit and push. For a review, allow targeted tests only after you verified that CI runs the full suite on the reviewed commit.
+Otherwise the reviewer or the lead runs the full suite where the sandbox allows it, and says so when it cannot.
 Done when `$out/brief.md` exists, the sandbox is chosen, and the task needs no network.
 
 ## 2. Start Codex as the watched command
@@ -27,7 +28,7 @@ codex exec -m <model> -c model_reasoning_effort=<effort> -s <read-only|workspace
   --skip-git-repo-check -C <repo> -o "$out/answer.md" - < "$out/brief.md" > "$out/log.txt" 2>&1
 ```
 
-`-C` sets the writable root; point it at a parent dir when one run must edit several repos.
+`-C` sets the writable root; point it at a parent dir when one run must edit several repos, or add more writable dirs with `--add-dir <dir>`.
 Never add `nohup` or a trailing `&` to a run that should notify. For several parallel runs, pick one:
 - one background Bash per run;
 - one background Bash that starts each run with `&` and ends with `wait`;
