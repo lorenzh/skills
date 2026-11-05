@@ -14,6 +14,7 @@ Give a task its own checkout that builds and tests on its own, then remove it wi
 | Setting | Controls | Allowed values | Default |
 |---|---|---|---|
 | `create-command` | Worktree creation | Command template containing `<branch>` and optional `[base]` | Native creation procedure in step 2 |
+| `cleanup-command` | Worktree removal in Cleanup step 3 | Command template containing `<wt>` and optional `<branch>` | `git worktree remove <wt>`, then `git worktree prune` |
 
 Path names below: `<root>` is the main checkout, `<wt>` the worktree, `<skill>` this skill's folder.
 
@@ -58,6 +59,7 @@ Done when the `settings:` line is printed and the report's `Isolation` line says
 
 **Configured command first.** If `create-command` is configured, use it instead of the native creation procedure below.
 Run from `<root>` with the intended branch for `<branch>` and the requested base for `[base]`; omit `[base]` when no base was requested.
+Never probe it with `--help` or without arguments: a wrapper script may take the first argument as a branch name and create a worktree called `help`. Read its source or documentation instead.
 Replace each placeholder, together with any quotes around it in the template, with one single-quoted argument (write `'` as `'\''`); do not evaluate shell substitutions in the values.
 After the command, if `<wt>` lies inside `<root>`, run the ignore check below on its parent directory and handle a missing entry as below.
 Locate `<wt>` with `git worktree list`, then continue with step 3.
@@ -193,9 +195,11 @@ When the user is done with a worktree:
 
 1. Run `git -C <wt> status --short` and `git log <branch> --not --remotes --oneline`, and report uncommitted files and unpushed commits before deleting anything.
 2. Remove symlinks first with `rm <wt>/<link>` (no `-r`, no trailing slash).
-3. `git worktree remove <wt>`. It refuses a worktree with untracked or changed files; `--force` deletes them, so use it only after the user, shown the list from step 1, says to discard them. Otherwise keep the worktree. A locked worktree needs `git worktree unlock <wt>` first.
+3. If `cleanup-command` is configured, run it from `<root>` with placeholders quoted as in step 2. A create command that also opens a terminal-multiplexer workspace leaves that workspace open unless cleanup closes it. Otherwise run `git worktree remove <wt>`. It refuses a worktree with untracked or changed files; `--force` deletes them, so use it only after the user, shown the list from step 1, says to discard them. Otherwise keep the worktree. A locked worktree needs `git worktree unlock <wt>` first.
 4. `git worktree prune` drops entries whose directory is already gone, for example after an `rm -rf <wt>`.
 5. Delete the branch with `git branch -d` only if `git branch --merged` lists it.
+
+When one session made several worktrees, clean up each one as soon as its pull request is merged; do not wait for the last.
 
 `git clean -xdff` (double `f`) in `<root>` deletes in-repo worktrees with their uncommitted work; `git clean -xdf` skips them.
 
