@@ -1,0 +1,1 @@
+Verdict: not ready to implement. MF1 at Behavior: permanently failing job retries forever instead of stopping after third failure. Decision 2 needs user confirmation. Runtime model evidence unavailable.

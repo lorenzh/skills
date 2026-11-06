@@ -1,0 +1,29 @@
+<!-- Slot template. The lead fills this file. The integrator and verifier read the filled file. -->
+# Integration brief: <round: next unused round number>
+
+Spec: <path: the only editable spec>
+Backup: <path: matching pre-edit copy checked before dispatch>
+Application report: <work>/application-<round>.md
+Pass: <current pass count> of <resolved round-limit>
+Settings: <resolved setting lines with sources>
+Sources: <paths: review, cross-check, proposals and user answers used below>
+
+## Numbered decisions
+
+1. <ID: stable round decision ID; finding or problem IDs; take, weaken, reject or chosen option; reason>
+   Source: <file and section: detailed text to use; say "as the cross-check says" for binding wording>
+   User choice: <confirmed answer and source, or proposed choice awaiting confirmation and question>
+   Spec: <target sections and existing decision number, or new numbered decision>
+   Acceptance criteria: <new behavior's observable result, or no new behavior>
+
+## Integration rules
+
+Before editing, check that the named backup matches the spec. If absent or different, stop and report the gap.
+Edit only the named spec from these decisions. Keep everything not named.
+If the numbered decision list or unverified-points list is missing, add it in one place and name that location in the application report.
+Preserve decision numbers. Mark new decisions "needs confirmation".
+Mark changed decisions "changed, needs a new confirmation".
+Add acceptance criteria for new behavior. Map every round decision or finding to its resolution location.
+For rejected findings, record the rejection and reason. Update unverified points and pending user choices.
+Return applied decision IDs and unapplied IDs with reasons through the runtime. The lead saves them at the application report path above.
+Do not silently settle user-owned choices.

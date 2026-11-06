@@ -1,0 +1,29 @@
+<!-- Slot template. The lead fills this file. The read-only verifier reads the filled file. -->
+# Verification brief: <round: integration round number>
+
+Spec: <path: edited spec>
+Backup: <path: pre-edit copy for this pass>
+Integration brief: <path: numbered decisions and binding source text>
+Application report: <work>/application-<round>.md (applied and unapplied IDs with reasons)
+Sources: <paths: proposals, cross-check and user answers>
+Settings: <resolved setting lines with sources>
+Scope: <first pass: every decision and introduced contradictions; later pass: earlier must-fix IDs and new edits only>
+Earlier verification: <path: earlier report for comparison against this pass's backup, or first pass>
+
+## Verification rules
+
+Stay read-only. Compare the spec and backup. Read the integration brief and its source files.
+Check decisions against the brief and binding wording. Check new edits for contradictions elsewhere in the spec.
+For later passes, mark earlier must-fix IDs resolved or open with evidence. Check only those IDs and new edits.
+Write the report to the lead through the runtime. The lead saves it as `<work>/verification-<round>.md`.
+
+## Required report
+
+- Decisions: <each decision ID: applied as decided or gap, with spec location and source evidence>
+- Must fix: <each stable ID: spec location, defect, input or state → wrong result, and why it blocks implementation; or none>
+- Notes: <claims without a failure scenario and other nonblocking observations; or none>
+- Unverified: <pending user confirmations, unavailable checks and other limits; or none>
+- Verdict: <ready to implement, or not ready to implement; readiness needs no must-fix items or unapplied decisions>
+
+A must-fix claim without a failure scenario is a note. Notes do not trigger fixes.
+The lead records your model from runtime evidence alongside this report.
