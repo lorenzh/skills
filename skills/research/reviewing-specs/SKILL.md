@@ -1,6 +1,6 @@
 ---
 name: reviewing-specs
-description: Multi-perspective specification review with parallel role subagents, an independent cross-check and one synthesis report. Use when the user asks to review a spec, design doc or RFC from several perspectives, to review the spec with parallel subagents, to pre-mortem a design doc, or to find gaps and risks in a spec before implementation; also for "Spezifikation aus mehreren Blickwinkeln prüfen", "Spec gründlich prüfen mit Subagents" or "Review der Spec vor der Umsetzung".
+description: Multi-perspective specification review with parallel role subagents, an independent cross-check and one synthesis report. Use when the user asks to review a spec, design doc or RFC from several perspectives, to review the spec with parallel subagents, to pre-mortem a design doc, or to find gaps and risks in a spec before implementation; also for "Spezifikation aus mehreren Blickwinkeln prüfen", "Spec gründlich prüfen mit Subagents" or "Review der Spec vor der Umsetzung". Use also for "work the findings into the spec", "make the spec ready to implement", "Befunde in die Spec einarbeiten" or "Spec umsetzungsreif machen".
 ---
 
 # Reviewing Specs
@@ -17,8 +17,10 @@ Find a specification's weaknesses, gaps, contradictions and risks before impleme
 | roles | Analysis roles | comma-separated role IDs from the roles reference, plus `name: focus` extras | all nine roles |
 | role-report-lines | Size cap of one role report | whole number | 60 |
 | cross-check-lines | Size cap of the cross-check | whole number | 120 |
+| round-limit | Integration and verification rounds per request | positive whole number | 3 |
 
-The review is read-only for the spec and the current design: change neither. Agents write only their own report file.
+Steps 1–5 are read-only for the spec and current design. Agents write only their own report file.
+Only an explicit request to work findings or open problems into the spec authorizes step 6. It authorizes spec edits only.
 
 ## 1. Resolve settings and inputs
 
@@ -69,6 +71,13 @@ Answer each question the user added mid-run in its own appendix.
 Before you hand off, check that every role file, `cross-check.md` and the report exist and are non-empty.
 Done when the report file exists, no `<…>` slot is left, and the user has its path and the overall verdict.
 
+## 6. Work findings into the spec (only on request)
+
+If the user asks for spec edits, read [references/fix-rounds.md](references/fix-rounds.md) and follow its bounded cross-family loop.
+For supplied findings or open problems, resolve step 1 inputs and settings before entering this step. A new review is unnecessary.
+Without that request, stop after the report.
+Done when the user has the verifier's verdict and model, numbered decisions awaiting confirmation, user questions and unverified items.
+
 ## Example
 
 Input: "Review this spec from several perspectives: docs/specs/042-sync.md." The context and current design are not given.
@@ -81,3 +90,6 @@ Result: `docs/specs/042-sync-review.md`; eight roles' recovery findings appear a
 - Read [references/roles.md](references/roles.md) when step 3 writes the role briefs.
 - Copy [templates/role-report.md.tmpl](templates/role-report.md.tmpl) into each role brief in step 3.
 - Copy [templates/report.md.tmpl](templates/report.md.tmpl) when step 5 starts.
+- Read [references/fix-rounds.md](references/fix-rounds.md) only when the user requests spec edits.
+- Fill [templates/integrate-brief.md.tmpl](templates/integrate-brief.md.tmpl) before dispatching a spec integrator in step 6.
+- Fill [templates/verify-brief.md.tmpl](templates/verify-brief.md.tmpl) before dispatching its verifier in step 6.

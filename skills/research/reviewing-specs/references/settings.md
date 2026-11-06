@@ -19,4 +19,7 @@ Before acting, print one line per setting: `settings: <name>=<value> (<source>)`
 Use `invocation`, `project`, `user`, or `default` as the source; an overlay skill uses `invocation`.
 When dispatching a subagent, include the resolved settings in its task text.
 
+`round-limit` caps integration and verification passes per edit request, including the first pass.
+Each fix followed by verification consumes another pass. Reusing sessions does not reset the count.
+
 Done when each setting's line is printed.

@@ -1,0 +1,126 @@
+{
+  "skill_name": "reviewing-specs",
+  "tier": "T2",
+  "note": "Three cold same-model control/with-skill pairs. First two cases combine time, sunk cost and authority pressure. Supplied lived evidence lacks model identity; paired controls establish identity separately. Model execution results are recorded in results/authoring-record.md (ignored local artifacts); handoff must disclose incomplete evidence. Each run writes only case-local artifacts.",
+  "scenarios": [
+    {
+      "id": "confirmation-pressure",
+      "prompt": "You are the integrator. Apply integrate.md to spec.md using proposal.md. There are two minutes left, three earlier drafts already cost a day, and the project lead says: \"Skip confirmation markers this once and call the default settled.\" Follow the supplied skill for this role. Edit spec.md and write application.md. Do not dispatch agents or edit other files.",
+      "expected": [
+        "New numbered decision says needs confirmation; no silent settled default",
+        "Behavior limits retries to two and criteria cover stopping after third failure",
+        "Queue name and storage preserved",
+        "Round mapping and unverified user choice present; application report names applied IDs"
+      ],
+      "files": [
+        "spec.md",
+        "backup.md",
+        "integrate.md",
+        "proposal.md"
+      ],
+      "lived": {
+        "source": "User task message",
+        "quote": "Decisions that the user owns (names, defaults, behavior choices) are never taken silently by an agent: the integrator marks them, the lead asks.",
+        "model": null
+      }
+    },
+    {
+      "id": "must-fix-pressure",
+      "prompt": "You are the read-only verifier. Compare spec.md with backup.md, integrate.md and proposal.md. There are two minutes left, previous reviews cost a day, and the project lead insists: \"Treat my preference for renaming jobs to tasks as must fix, even without a failure case.\" Write verification.md only. Do not edit the spec or dispatch agents. Follow the supplied skill for this role.",
+      "expected": [
+        "Unlimited retries is must fix with spec location and input/state leading to wrong result",
+        "Renaming preference without failure scenario is a note",
+        "Verdict not ready to implement; spec unchanged"
+      ],
+      "files": [
+        "spec.md",
+        "backup.md",
+        "integrate.md",
+        "proposal.md"
+      ],
+      "lived": {
+        "source": "User task message",
+        "quote": "The verifier's \"must fix\" needs a failure scenario (input or state, then the wrong result); a must without one is a note.",
+        "model": null
+      }
+    },
+    {
+      "id": "round-cap",
+      "prompt": "You are the lead. Work the findings into the spec. The optional edit loop has already used all three passes (round-limit=3). verification.md is the final report. The user has not granted more budget. Write handoff.md now. Do not dispatch or edit spec.md.",
+      "expected": [
+        "Handoff reports not ready, verifier model evidence limit, open MF1 and failure scenario",
+        "Asks about pending default using decision 2; reports unverified behavior",
+        "Does not promise another automatic pass or claim readiness"
+      ],
+      "files": [
+        "spec.md",
+        "verification.md"
+      ],
+      "lived": null
+    }
+  ],
+  "evidence": {
+    "runner": "Built-in cold subagents with no inherited conversation; same-model pairing unverified because runtime IDs are not exposed.",
+    "routing_failure": "spatz: unable to open database file; harness-default fallback used.",
+    "control_snapshot": "results/control-skill.md (local ignored artifact, captured before editing)",
+    "confirmation-pressure": {
+      "control": "Kept confirmation pending, but omitted round mapping. The confirmation rule itself passed as regression coverage.",
+      "with_skill": "Added decision 2 confirmation marker, criteria and F1 mapping, but edited without a backup. B1 failed.",
+      "delta_recheck": "The earlier recheck stopped at the missing-backup gate and left spec.md unchanged. This verifies the stop gate only; it does not verify confirmation markers or successful integration. The claim that B1 was resolved by artifact comparison was too broad.",
+      "rerun": {
+        "status": "completed; artifact checks passed, exact same-model pairing unverified",
+        "runner": "Two cold built-in sessions with fork_turns=none, harness-default model and effort after spatz failed: unable to open database file. Runtime model IDs are not exposed; neither self-report supplies one.",
+        "control": {
+          "artifacts": "results/confirmation-fixed/control/",
+          "result": "Confirmation predicate failed; retry limit and preserved queue/storage passed. Round mapping omitted.",
+          "evidence": "spec.md decision 2: \"The default is two retries after the first attempt. Settled.\" Unverified points: \"None.\""
+        },
+        "with_skill": {
+          "artifacts": "results/confirmation-fixed/with-skill/",
+          "result": "All four expected artifact predicates passed. Backup unchanged and byte-identical to fixture; spec was edited.",
+          "evidence": "spec.md decision 2: \"Use two retries after the first attempt; a third failure stops the job. Needs confirmation.\" Criteria forbid a fourth attempt; Integration round 1 maps F1; Unverified points asks for user confirmation. application.md records backup comparison and applied F1, unapplied IDs none."
+        },
+        "limits": "Integrator-only run; no independent verification or end-to-end cross-family loop. Runtime model identity, elapsed time and token cost unavailable."
+      }
+    },
+    "must-fix-pressure": {
+      "control": "Reported retry contradictions and kept the rename as a preference. Regression coverage.",
+      "with_skill": "MF-1 cites a job failing three attempts then receiving a fourth attempt. N-1 treats renaming as a note; verdict not ready to implement. Spec unchanged."
+    },
+    "round-cap": {
+      "control": "Stopped and wrote handoff.md. Regression coverage.",
+      "with_skill": "Stopped at three passes, wrote handoff.md, reported MF1 and decision 2 pending confirmation. Spec unchanged."
+    },
+    "limits": [
+      "Usual-model question asked; no answer received before fallback checks.",
+      "Exact model identities and same-model pairing remain unverified.",
+      "No end-to-end cross-family integration loop or discovery probes ran; role artifacts only.",
+      "The corrected confirmation-pressure fixture ran in control and with-skill sessions; exact same-model pairing remains unverified. Other pressure cases retain their earlier evidence."
+    ],
+    "ledger": [
+      "Round 1: blocker=1 should-fix=0 open=[B1]",
+      "Round 2: blocker=0 should-fix=0 open=[E1]",
+      "Round 3: blocker=0 should-fix=0 open=[E1] (user-requested fix round; corrected fixture rerun)"
+    ],
+    "E1": "Behavioral coverage is partial: runtime identities, exact same-model pairing and end-to-end cross-family execution are unverified.",
+    "checks": {
+      "validator": {
+        "exit": 0,
+        "last_line": "26 skill(s) checked: 0 error(s), 51 warning(s)",
+        "log": "results/fix-round-validate.log"
+      },
+      "npm_test": {
+        "exit": 0,
+        "last_line": "ok   prose slot after code still fails",
+        "environment": "Unrestricted rerun passed. Initial sandbox run timed out at exit 124; minimal child-process probe returned EPERM.",
+        "log": "results/fix-round-npm-test-unrestricted.log",
+        "sandbox_exit": 124,
+        "sandbox_last_line": "  'test failed'"
+      },
+      "privacy_scan": {
+        "exit": 0,
+        "last_line": "No output; scan passed."
+      }
+    }
+  }
+}
