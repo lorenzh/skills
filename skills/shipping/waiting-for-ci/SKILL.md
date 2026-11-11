@@ -77,6 +77,8 @@ Start waits longer than about two minutes with the harness background option, so
 
 Start the wait from a directory that outlives it, not from a worktree that may be removed meanwhile. Pass `--repo <owner>/<repo>` to every `gh` call except `gh api`, which has no `--repo` flag; its `repos/<owner>/<repo>/…` path names the repository. Once its working directory is gone, `gh` fails with "Unable to read current working directory".
 
+Do not start a job with `nohup cmd > log 2>&1 &` inside a Bash call that is itself a background call. The harness reports completion when the launcher shell returns, not when the job ends, and the job keeps running after the "completed" notice. Either make the long command the background command itself, without a trailing `&`, or launch it detached and wait with a bounded loop on the result file, also checking that no matching process runs (bracket form, as in step 1: `pgrep -f '[c]md'`).
+
 Done when the wait runs in the background and its PID or job id and log path are noted.
 
 ## 4. Check state, do not assume it
