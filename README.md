@@ -100,6 +100,28 @@ To use a local clone, run `codex plugin marketplace add ./` in the clone. The in
 
 Tested with codex-cli 0.162.1.
 
+### Install as a Grok plugin
+
+With Grok, add this repo as a plugin marketplace, then install the `lorenzh` plugin. It holds all skills:
+
+```bash
+grok plugin marketplace add lorenzh/skills
+grok plugin install lorenzh --trust
+```
+
+A local checkout uses the same commands with `./`:
+
+```bash
+grok plugin marketplace add ./
+grok plugin install lorenzh --trust
+```
+
+Grok drops a catalog source of `./`, so the marketplace entry points at `skills/`. That install copies the skills. To install the whole checkout instead, run `grok plugin install . --trust`.
+
+Install either the plugin or the skills through `npx skills add`, not both; otherwise Grok loads every skill twice (bare and as `lorenzh:<name>`).
+
+Tested with grok 1.0.92.
+
 ## Customizing a skill
 
 Add `## Skill settings` lines to your user or project AGENTS.md or CLAUDE.md, using the skill's name and a documented setting:

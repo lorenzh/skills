@@ -611,3 +611,90 @@ test('reports a missing Codex marketplace once the Codex manifest exists', (t) =
   assert.equal(r.status, 1);
   assert.ok(r.stdout.includes('.agents/plugins/marketplace.json: missing'), r.stdout);
 });
+
+function grokFixture(t, plugin = {}, market = {}) {
+  const f = pluginFixture(t);
+  f.write('.grok-plugin/plugin.json', JSON.stringify({ name: 'lorenzh', version: '0.1.0', skills: './skills/', ...plugin }));
+  f.write('.grok-plugin/marketplace.json', JSON.stringify({
+    name: 'lorenzh-skills',
+    owner: { name: 'x' },
+    plugins: [{ name: 'lorenzh', source: { source: 'url', url: 'https://github.com/lorenzh/skills.git', ref: 'main' } }],
+    ...market,
+  }));
+  return f;
+}
+
+for (const [label, skills] of [['root folder', './skills/'], ['every category', ['./skills/agents', './skills/terminal']]]) {
+  test(`accepts Grok manifests listing ${label}`, (t) => {
+    const r = grokFixture(t, { skills }).run();
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  });
+}
+
+test('accepts a Grok marketplace source of ./skills with a category manifest', (t) => {
+  const f = grokFixture(t, {}, { plugins: [{ name: 'lorenzh', source: './skills' }] });
+  f.write('skills/.grok-plugin/plugin.json', JSON.stringify({
+    name: 'lorenzh', version: '0.1.0', skills: ['./agents', './terminal'], agents: './.not-agents',
+  }));
+  const r = f.run();
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+});
+
+test('Grok marketplace source ./skills needs the category manifest', (t) => {
+  const r = grokFixture(t, {}, { plugins: [{ name: 'lorenzh', source: './skills' }] }).run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /skills\/\.grok-plugin\/plugin\.json: missing/);
+});
+
+test('skills manifest must not scan the agents category as subagents', (t) => {
+  const f = grokFixture(t, {}, { plugins: [{ name: 'lorenzh', source: './skills' }] });
+  f.write('skills/.grok-plugin/plugin.json', JSON.stringify({
+    name: 'lorenzh', version: '0.1.0', skills: ['./agents', './terminal'],
+  }));
+  const r = f.run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /"agents" must point away from the agents category/);
+});
+
+test('Grok plugin.json skills must cover every category', (t) => {
+  const r = grokFixture(t, { skills: ['./skills/agents'] }).run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /\.grok-plugin\/plugin\.json: "skills" .*missing \.\/skills\/terminal/);
+});
+
+test('Grok marketplace must list the plugin', (t) => {
+  const r = grokFixture(t, {}, { plugins: [{ name: 'other', source: { source: 'url', url: 'https://example.com/plugin.git' } }] }).run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /\.grok-plugin\/marketplace\.json: no plugin entry named "lorenzh"/);
+});
+
+test('Grok plugin name must equal the Claude plugin name', (t) => {
+  const r = grokFixture(t, { name: 'other' }, { plugins: [{ name: 'other', source: { source: 'url', url: 'https://example.com/plugin.git' } }] }).run();
+  assert.doesNotMatch(r.stdout, /no plugin entry/);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /name "other" differs/);
+});
+
+for (const source of ['./', '.', { type: 'local', path: './' }, { source: 'local', path: '.' }]) {
+  test(`Grok marketplace rejects root source ${JSON.stringify(source)}`, (t) => {
+    const r = grokFixture(t, {}, { plugins: [{ name: 'lorenzh', source }] }).run();
+    assert.equal(r.status, 1);
+    assert.match(r.stdout, /marketplace root; Grok drops it/);
+  });
+}
+
+test('reports a missing Grok marketplace once the Grok manifest exists', (t) => {
+  const f = grokFixture(t);
+  fs.rmSync(path.join(f.root, '.grok-plugin', 'marketplace.json'));
+  const r = f.run();
+  assert.equal(r.status, 1);
+  assert.ok(r.stdout.includes('.grok-plugin/marketplace.json: missing'), r.stdout);
+});
+
+test('plugin.json versions must match across manifests', (t) => {
+  const f = grokFixture(t, { version: '9.9.9' });
+  f.write('.claude-plugin/plugin.json', JSON.stringify({ name: 'lorenzh', version: '1.0.0', skills: ['./skills/agents', './skills/terminal'] }));
+  const r = f.run();
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /plugin\.json version differs:.*\.claude-plugin\/plugin\.json 1\.0\.0.*\.grok-plugin\/plugin\.json 9\.9\.9/);
+});

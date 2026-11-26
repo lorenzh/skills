@@ -25,6 +25,7 @@ No build and no dependencies — the deliverables are the skill folders.
 | `scripts/` | Repo tooling (Node, no dependencies) |
 | `.claude-plugin/` | Claude plugin manifest (`plugin.json`, one `skills` entry per category) and marketplace (`marketplace.json`) |
 | `.codex-plugin/`, `.agents/plugins/` | Codex plugin manifest (`plugin.json`, `skills` is `./skills/`; Codex scans it recursively) and Codex marketplace (`marketplace.json`) |
+| `.grok-plugin/`, `skills/.grok-plugin/` | Grok marketplace (`source` is `./skills`, because a source of `./` is dropped) and two manifests. The repo-root manifest lists `./skills/` for `grok plugin install .`. The manifest in `skills/` lists each category (the marketplace counter looks one level down) and points `agents` at a missing path so the `agents` category is not loaded as subagents |
 
 ## Categories
 
@@ -84,7 +85,7 @@ No build and no dependencies — the deliverables are the skill folders.
 - Write placeholders for local paths in `skills/` and `evals/`: `<scratch>/…`, `/home/<user>/…`. The validator rejects `/home/<name>`, `/Users/<name>`, `C:\Users\<name>` and `/tmp/claude-<uid>/-…` paths outside `evals/**/results/` (ASCII names of letters, digits, `.`, `_`, `-` only); only placeholders and the exact fake names in `FIXTURE_NAMES` (`scripts/validate-skills.mjs`) pass. It also rejects likely secrets (tokens, keys, passwords); fixtures use placeholders or the fake values in `FIXTURE_SECRETS`.
 - Link every file in `references/` from `SKILL.md`; the validator fails on a link to a missing file.
 - Write skill scripts in Node ≥18 ESM (`.mjs`) or Python 3, standard library only. Repo tooling under `scripts/` stays Node. Name a skill's runtime in the README requirements table.
-- `.codex-plugin/plugin.json` and `.claude-plugin/plugin.json` carry the same `version`. The bump-version workflow raises the patch on every push to main. Do not bump by hand in PRs. Keep `marketplace.json` versionless.
+- `.grok-plugin/plugin.json`, `skills/.grok-plugin/plugin.json`, `.codex-plugin/plugin.json` and `.claude-plugin/plugin.json` carry the same `version`. The bump-version workflow raises the patch on every push to main. Do not bump by hand in PRs. Keep `marketplace.json` versionless.
 
 ## Writing a skill
 

@@ -13,7 +13,13 @@
 //   or on a marketplace.json plugin entry (the commit SHA is the version); and, when
 //   .codex-plugin/plugin.json or .agents/plugins/marketplace.json exists: the other one missing,
 //   a Codex plugin name that differs from the Claude one, Codex "skills" neither "./skills/" nor
-//   covering every category, plugin name missing from the Codex marketplace; a local path in a
+//   covering every category, plugin name missing from the Codex marketplace; and, when
+//   .grok-plugin/plugin.json or marketplace.json exists: the other one missing, a Grok plugin name
+//   that differs from the Claude one, Grok "skills" neither "./skills/" nor covering every category,
+//   plugin name missing from the Grok marketplace, a marketplace source of "." or "./" (Grok drops it),
+//   a source of "./skills" without skills/.grok-plugin/plugin.json listing each category once
+//   (and an agents path, so the agents category is not scanned as subagents),
+//   plugin.json versions that differ across the Claude, Codex and Grok manifests; a local path in a
 //   file under skills/ or evals/ (/home/<name>, /Users/<name>, <drive>:\Users\<name>, a
 //   /tmp/claude-<uid>/-… scratchpad; ASCII names of letters, digits, ".", "_", "-" only);
 //   allowed: placeholders such as /home/<user>, the exact fake fixture names in FIXTURE_NAMES,
@@ -47,6 +53,8 @@ quality, that relative markdown links in skills, AGENTS.md and README.md resolve
 that .claude-plugin/plugin.json and marketplace.json match the skill categories, and that
 .codex-plugin/plugin.json and .agents/plugins/marketplace.json exist together, use the Claude
 plugin name, cover every skill category ("./skills/" or one entry per category) and list the plugin, and
+that .grok-plugin/plugin.json and marketplace.json do the same, with a marketplace source Grok keeps
+(a git url or a subdirectory, never "." or "./"), and that plugin.json versions match across manifests, and
 that no file under skills/ or evals/ (except evals/**/results/) holds a home path
 (/home/<name>, /Users/<name>, C:\\Users\\<name>) or a /tmp/claude-<uid>/-… scratchpad path.
 It covers ASCII names of letters, digits, ".", "_" and "-" only.
@@ -309,7 +317,7 @@ for (const doc of ["AGENTS.md", "README.md"]) {
 
 if (!fs.existsSync(skillsDir)) errors.push("skills/: missing directory");
 for (const category of fs.existsSync(skillsDir) ? fs.readdirSync(skillsDir, { withFileTypes: true }) : []) {
-  if (!category.isDirectory()) continue;
+  if (!category.isDirectory() || category.name.startsWith(".")) continue;
   const categoryPath = path.join(skillsDir, category.name);
   if (!CATEGORY.test(category.name))
     errors.push(`${rel(categoryPath)}: category must be lowercase letters and single hyphens`);
@@ -472,6 +480,97 @@ if (codexMarket) {
   if (codexPlugin && !entries.some((entry) => entry?.name === codexPlugin.name))
     errors.push(`${rel(codexMarketFile)}: no plugin entry named "${codexPlugin.name}" (the name in .codex-plugin/plugin.json)`);
 }
+
+// Grok scans "./skills/" recursively. A marketplace source of "." or "./" is dropped, so the
+// catalog entry points at the GitHub repo (or any non-root relative path).
+const grokDir = path.join(repoRoot, ".grok-plugin");
+const grokPluginFile = path.join(grokDir, "plugin.json");
+const grokMarketFile = path.join(grokDir, "marketplace.json");
+if ([grokPluginFile, grokMarketFile].some(fs.existsSync))
+  for (const file of [grokPluginFile, grokMarketFile]) if (!fs.existsSync(file)) errors.push(`${rel(file)}: missing`);
+const grokPlugin = readJson(grokPluginFile);
+const grokMarket = readJson(grokMarketFile);
+const rootSource = (source) => {
+  const pathValue = typeof source === "string" ? source : source?.path;
+  if (typeof source === "object" && source && typeof source.url === "string" && source.url.trim()) return "";
+  if (typeof pathValue !== "string" || !pathValue.trim()) return "missing source path";
+  const stripped = pathValue.trim().replace(/^\.\//, "").replace(/\/$/, "");
+  if (stripped === "" || stripped === ".") return `source ${JSON.stringify(pathValue)} is the marketplace root; Grok drops it`;
+  if (stripped.split(/[\\/]/).some((part) => part === "" || part === "." || part === ".."))
+    return `source ${JSON.stringify(pathValue)} is not a relative subdirectory`;
+  return "";
+};
+if (grokPlugin) {
+  checkName(grokPluginFile, "plugin", grokPlugin.name);
+  if (plugin && grokPlugin.name !== plugin.name)
+    errors.push(`${rel(grokPluginFile)}: name "${grokPlugin.name}" differs from ${rel(pluginFile)} name "${plugin.name}"`);
+  const listed = (Array.isArray(grokPlugin.skills) ? grokPlugin.skills : [grokPlugin.skills ?? ""]).map((s) =>
+    path.posix.normalize(String(s)).replace(/\/$/, ""),
+  );
+  const missing = listed.includes("skills") ? [] : [...skillCategories].filter((c) => !listed.includes(`skills/${c}`));
+  if (missing.length)
+    errors.push(`${rel(grokPluginFile)}: "skills" must be "./skills/" or list every category; missing ${missing.map((c) => `./skills/${c}`).join(", ")}`);
+}
+if (grokMarket) {
+  checkName(grokMarketFile, "marketplace", grokMarket.name);
+  const entries = Array.isArray(grokMarket.plugins) ? grokMarket.plugins : [];
+  for (const entry of entries) {
+    checkName(grokMarketFile, "plugin entry", entry?.name);
+    if (entry && typeof entry === "object" && "version" in entry)
+      errors.push(`${rel(grokMarketFile)}: plugin entry "${entry.name}": ${NO_VERSION}`);
+    const problem = rootSource(entry?.source);
+    if (problem)
+      errors.push(`${rel(grokMarketFile)}: plugin entry "${entry?.name ?? ""}": ${problem}`);
+  }
+  if (grokPlugin && !entries.some((entry) => entry?.name === grokPlugin.name))
+    errors.push(`${rel(grokMarketFile)}: no plugin entry named "${grokPlugin.name}" (the name in .grok-plugin/plugin.json)`);
+}
+
+// Marketplace source "./skills" installs that directory. Its manifest lists categories one level
+// deep (the counter stops there) and must not use the default agents/ directory.
+const skillsSource = (source) => {
+  if (typeof source === "string") return source;
+  if (!source || typeof source !== "object" || (typeof source.url === "string" && source.url.trim())) return null;
+  return typeof source.path === "string" ? source.path : "";
+};
+const installsSkillsDir = grokMarket && (Array.isArray(grokMarket.plugins) ? grokMarket.plugins : []).some((entry) => {
+  const source = skillsSource(entry?.source);
+  return source !== null && source.trim().replace(/^\.\//, "").replace(/\/$/, "") === "skills";
+});
+const innerPluginFile = path.join(skillsDir, ".grok-plugin", "plugin.json");
+const innerPlugin = installsSkillsDir || fs.existsSync(innerPluginFile) ? readJson(innerPluginFile) : undefined;
+if (installsSkillsDir && !fs.existsSync(innerPluginFile))
+  errors.push(`${rel(innerPluginFile)}: missing (marketplace source is ./skills)`);
+if (innerPlugin) {
+  checkName(innerPluginFile, "plugin", innerPlugin.name);
+  if (grokPlugin && innerPlugin.name !== grokPlugin.name)
+    errors.push(`${rel(innerPluginFile)}: name "${innerPlugin.name}" differs from ${rel(grokPluginFile)} name "${grokPlugin.name}"`);
+  const listed = (Array.isArray(innerPlugin.skills) ? innerPlugin.skills : [innerPlugin.skills ?? ""]).map((s) =>
+    path.posix.normalize(String(s)).replace(/\/$/, ""),
+  );
+  const expected = [...skillCategories];
+  const missing = expected.filter((c) => !listed.includes(c));
+  const extra = listed.filter((d) => !expected.includes(d));
+  if (missing.length || extra.length || listed.length !== new Set(listed).size)
+    errors.push(`${rel(innerPluginFile)}: "skills" must list each category once` +
+      (missing.length ? `; missing ${missing.map((c) => `./${c}`).join(", ")}` : "") +
+      (extra.length ? `; not a skill category: ${extra.join(", ")}` : ""));
+  if (expected.includes("agents")) {
+    const agents = typeof innerPlugin.agents === "string" ? innerPlugin.agents : "";
+    const agentsPath = path.posix.normalize(agents).replace(/\/$/, "");
+    if (!agents || agentsPath === "agents" || agentsPath === ".")
+      errors.push(`${rel(innerPluginFile)}: "agents" must point away from the agents category; that directory holds skills`);
+  }
+}
+
+const versioned = [
+  [pluginFile, plugin],
+  [codexPluginFile, codexPlugin],
+  [grokPluginFile, grokPlugin],
+  [innerPluginFile, innerPlugin],
+].filter(([, manifest]) => manifest && typeof manifest.version === "string");
+if (new Set(versioned.map(([, manifest]) => manifest.version)).size > 1)
+  errors.push(`plugin.json version differs: ${versioned.map(([file, manifest]) => `${rel(file)} ${manifest.version}`).join(", ")}`);
 
 for (const w of warnings) console.log(`WARN  ${redact(w)}`);
 for (const e of errors) console.log(`ERROR ${redact(e)}`);
