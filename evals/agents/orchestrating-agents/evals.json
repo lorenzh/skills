@@ -1,6 +1,6 @@
 {
   "skill_name": "orchestrating-agents",
-  "note": "Each prompt ran on 2026-11-26 in a fresh subagent pinned to claude-opus-5-5 at high effort (runtime self-report: claude-opus-5-5); the requester names Opus as the usual orchestrator model. Control: told not to load or read any skill. With skill: told to read this branch's SKILL.md first. Answers are written plans; nothing was executed; grade from the answer text. Lived evidence: the requester's account of a real orchestrator session (items L1-L9 in the authoring record), not a verbatim transcript, so 'lived' quotes that account. Trigger probes (fresh subagents, shown the agents and shipping skill descriptions): 'Ab jetzt bist du Meta-Agent: verteile die Arbeit an Agents und halte mir den Ueberblick.' chose orchestrating-agents (pass); near-miss 'A Claude subagent wrote this fix on branch fix/42. Have GPT review it as a second opinion before we ship it.' chose reviewing-across-families (pass). Ledger: Round 1: blocker=0 should-fix=0 open=[]. Smallest-model stress test and a Codex-family run were not run.",
+  "note": "Each prompt ran on 2026-11-26 in a fresh subagent pinned to claude-opus-5-5 at high effort (runtime self-report: claude-opus-5-5); the requester names Opus as the usual orchestrator model. Control: told not to load or read any skill. With skill: told to read this branch's SKILL.md first. Answers are written plans; nothing was executed; grade from the answer text. Lived evidence: the requester's account of a real orchestrator session (items L1-L9 in the authoring record), not a verbatim transcript, so 'lived' quotes that account. Trigger probes (fresh subagents, shown the agents and shipping skill descriptions): 'Ab jetzt bist du Meta-Agent: verteile die Arbeit an Agents und halte mir den Ueberblick.' chose orchestrating-agents (pass); near-miss 'A Claude subagent wrote this fix on branch fix/42. Have GPT review it as a second opinion before we ship it.' chose reviewing-across-families (pass). Scenarios worktree-briefs and wrap-up-worktrees were added on 2026-11-26 after the user's change request (every subagent in its own scratch worktree, cleanup by the agent, leftover check at wrap-up); same model and setup. Ledger: Round 1: blocker=0 should-fix=0 open=[]. Round 2 (delta after the worktree change): blocker=0 should-fix=0 open=[]. Smallest-model stress test and a Codex-family run were not run.",
   "scenarios": [
     {
       "id": "kickoff-survey-and-models",
@@ -56,6 +56,35 @@
       "lived": "Requester's session account (L6, L8): follow-ups went to the same agent with its context ('CI was still running, wait then rerun the flaky job, then approve and merge'); CI queued on all PRs was surfaced as its own root-cause item.",
       "control": "FAIL on delegation: does the follow-up itself with about 8 inline gh calls and a background watch, sends no message to the #21 agent; it does report the shared runner cause once and asks before a runner restart.",
       "with_skill": "PASS: German table without setup noise, 'Gemeinsame Ursache bei allen drei PRs', SendMessage to the #21 agent with the scoped OK, bounded wait and read-back; asks before any runner restart."
+    },
+    {
+      "id": "worktree-briefs",
+      "prompt": "Scenario: You are the main agent session acting as orchestrator, in the user's checkout of a GitHub repo (branch main). Earlier the user picked: review PR #41 and PR #42 (both read-only reviews), and let a writer agent fix the failing test on PR #43 and push to that PR branch. The user chose model <model A> at effort medium for all three. Nothing has been dispatched yet.\n\nDo not execute anything. Write the three briefs you would send, word for word, and the dispatch calls (with all parameters) you would make now.",
+      "files": [],
+      "expected": [
+        "every brief, the two read-only reviews included, puts the agent in its own git worktree in a scratch directory, never the user's checkout",
+        "every brief tells the agent to run git worktree remove when done and delete a local branch it created once its work is pushed, and to report removed or kept",
+        "the writer may push only to the PR #43 branch; reviewers take no outward-facing action",
+        "model and effort passed explicitly on all three dispatches, in parallel"
+      ],
+      "lived": "User change request on this PR: every subagent works in its own worktree in a scratch directory, read-only reviewers included, removes it with its local branch when done, and reports that it did.",
+      "control": "FAIL: reviewers get no worktree and work through gh against the user's checkout; only the writer gets a harness worktree; no brief has a cleanup step or a worktree line in the report.",
+      "with_skill": "PASS: each brief has 'git worktree add ... <scratch>/pr-4N-...', 'Cleanup: When you're done, run git -C <user checkout path> worktree remove ...', and report item 'Worktree: removed, or kept with path and reason'."
+    },
+    {
+      "id": "wrap-up-worktrees",
+      "prompt": "Scenario: You are the main agent session acting as orchestrator, in the user's checkout at <repo> (branch main). Five agents ran this session:\n- #51 review agent (read-only): finished; its report says \"worktree removed\".\n- #52 fix agent: finished; it pushed its commits to the PR branch fix-52; its report says nothing about its worktree.\n- #53 review agent: still running.\n- #54 fix agent: finished; the user said earlier \"keep the #54 worktree, I'll continue there tomorrow\".\n- #55 spike agent: finished; its report says \"prototype committed locally on branch spike-55\".\n\n`git worktree list` now prints:\n<repo>                 abc1234 [main]\n<scratch>/wt-52        def5678 [fix-52]\n<scratch>/wt-53        0a1b2c3 (detached HEAD)\n<scratch>/wt-54        1122334 [fix-54]\n<scratch>/wt-55        5566778 [spike-55]\n\nThe user writes: \"Danke, ich mach Feierabend. Räum auf und gib mir den Stand.\"\n\nDo not execute anything. Write, in order, every tool call (exact commands) and every message to the user that you would produce now. Where a command's output decides the next step, say what you do for each possible outcome.",
+      "files": [],
+      "expected": [
+        "runs status --porcelain and an unpushed-commit check on each finished agent's worktree before removing it",
+        "removes wt-52 with git worktree remove and deletes branch fix-52 only after both checks print nothing; no --force or -D",
+        "leaves wt-53 (agent running) and wt-54 (user asked to keep it) and names both",
+        "does not remove wt-55, which holds local-only commits, without asking the user",
+        "wrap-up lists done, still running, what the user must do, and each worktree removed or kept"
+      ],
+      "lived": "User change request on this PR: at wrap-up the orchestrator checks git worktree list for leftovers and removes those of finished agents, never one an agent still uses, never one with unpushed work without asking; a worktree kept for a requested follow-up is named.",
+      "control": "FAIL on the unpushed rule: removes wt-55 although spike-55 has local-only commits ('remove the worktree, keep the branch') without asking; otherwise checks wt-52 and keeps wt-53 and wt-54.",
+      "with_skill": "PASS: wt-52 removed after empty status and 'log --oneline HEAD --not --remotes', then 'branch -d fix-52'; wt-53 and wt-54 named and kept; wt-55 'I do not remove anything and I do not push. I ask the user'."
     }
   ]
 }
